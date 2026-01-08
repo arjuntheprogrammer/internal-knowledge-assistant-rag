@@ -73,12 +73,16 @@ async function checkAuthStatus() {
     if (data.authenticated) {
       statusDiv.textContent = "Status: Connected ✅";
       statusDiv.style.color = "#059669";
-      btn.textContent = "Reconnect";
+      btn.textContent = "Switch Account";
+      document.getElementById("auth-hint").textContent =
+        "Your Google account is linked.";
       if (foldersContainer) foldersContainer.style.display = "block";
     } else {
       statusDiv.textContent = "Status: Not Connected ❌";
       statusDiv.style.color = "#dc2626";
-      btn.textContent = "Connect";
+      btn.textContent = "Authorize Now";
+      document.getElementById("auth-hint").textContent =
+        "Link your account to see folders.";
       if (foldersContainer) foldersContainer.style.display = "none";
     }
   } catch (e) {
@@ -94,8 +98,25 @@ async function handleGoogleAuth() {
     const data = await response.json();
 
     if (data.auth_url) {
-      // Redirect to Google
-      window.location.href = data.auth_url;
+      // Open Google Auth in a popup
+      const width = 600;
+      const height = 700;
+      const left = (window.innerWidth - width) / 2;
+      const top = (window.innerHeight - height) / 2;
+
+      const popup = window.open(
+        data.auth_url,
+        "GoogleAuth",
+        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,status=yes`
+      );
+
+      // Refresh status when popup closes (rough check)
+      const timer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(timer);
+          checkAuthStatus();
+        }
+      }, 1000);
     } else {
       alert("Error: " + (data.message || "Could not get auth URL"));
     }
@@ -259,34 +280,43 @@ async function sendFeedback(messageId, rating) {
 }
 
 // Drive Folder Management
+// Drive Folder Management
 function addDriveFolder(value = "", isSaved = false) {
   const list = document.getElementById("drive-folders-list");
+  if (!list) return;
+
   const div = document.createElement("div");
-  div.className = "form-group folder-row";
+  div.className = "folder-row";
   div.style.display = "flex";
-  div.style.gap = "10px";
+  div.style.gap = "12px";
   div.style.marginBottom = "10px";
   div.style.alignItems = "center";
+  div.style.padding = "10px 14px";
+  div.style.background = "#fff";
+  div.style.borderRadius = "12px";
+  div.style.border = "1px solid #e2e8f0";
 
   const input = document.createElement("input");
   input.type = "text";
-  input.placeholder = "Enter Google Drive Folder ID";
+  input.placeholder = "Paste Google Drive Folder ID here...";
   input.value = value;
   input.className = "drive-folder-input";
   input.style.flex = "1";
+  input.style.border = "none";
+  input.style.outline = "none";
+  input.style.background = "transparent";
+  input.style.fontSize = "0.9rem";
   if (isSaved) input.disabled = true;
 
   const saveBtn = document.createElement("button");
   saveBtn.textContent = "Save";
   saveBtn.style.padding = "0.5rem 1rem";
   saveBtn.style.fontSize = "0.8rem";
-  saveBtn.style.display = isSaved ? "none" : "none"; // Hidden until typing
+  saveBtn.style.borderRadius = "8px";
+  saveBtn.style.display = "none"; // Initially hidden
   saveBtn.onclick = async () => {
     if (!input.value.trim()) return;
     await saveConfig();
-    input.disabled = true;
-    saveBtn.style.display = "none";
-    removeBtn.style.display = "inline-flex";
   };
 
   const removeBtn = document.createElement("button");
@@ -294,10 +324,13 @@ function addDriveFolder(value = "", isSaved = false) {
   removeBtn.className = "btn-secondary";
   removeBtn.style.padding = "0.5rem 1rem";
   removeBtn.style.fontSize = "0.8rem";
-  removeBtn.style.borderColor = "#ef4444";
+  removeBtn.style.borderRadius = "8px";
+  removeBtn.style.borderColor = "#fee2e2";
   removeBtn.style.color = "#ef4444";
+  removeBtn.style.background = "#fff";
   removeBtn.style.display = isSaved ? "inline-flex" : "none";
   removeBtn.onclick = async () => {
+    div.classList.add("removing");
     div.remove();
     await saveConfig();
   };
@@ -305,7 +338,8 @@ function addDriveFolder(value = "", isSaved = false) {
   // Show save button when user types
   input.oninput = () => {
     if (!isSaved) {
-      saveBtn.style.display = input.value.trim() ? "inline-flex" : "none";
+      saveBtn.style.display =
+        input.value.trim().length > 5 ? "inline-flex" : "none";
     }
   };
 
@@ -337,6 +371,12 @@ async function loadConfig() {
         config.google_client_id || "";
       document.getElementById("google-client-secret").value =
         config.google_client_secret || "";
+
+      // Show Redirect URI for help
+      const redirectDisplay = document.getElementById("redirect-uri-display");
+      if (redirectDisplay) {
+        redirectDisplay.textContent = `${window.location.origin}/admin/oauth2callback`;
+      }
 
       // Load folders
       const list = document.getElementById("drive-folders-list");
@@ -384,6 +424,7 @@ async function saveConfig() {
     if (res.ok) {
       alert("Configuration saved! Verifying Drive connection...");
       await verifyDriveConnection();
+      await loadConfig(); // Refresh UI to show saved states (Remove buttons, etc.)
     }
   } catch (err) {
     alert("Failed to save config");
@@ -428,4 +469,11 @@ async function verifyDriveConnection() {
   } catch (e) {
     ul.innerHTML = `<li style="color: red">Verification request failed: ${e}</li>`;
   }
+}
+
+function copyRedirectUri() {
+  const uri = document.getElementById("redirect-uri-display").textContent;
+  navigator.clipboard.writeText(uri).then(() => {
+    alert("Redirect URI copied to clipboard!");
+  });
 }

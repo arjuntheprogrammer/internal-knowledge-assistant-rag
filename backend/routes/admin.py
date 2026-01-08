@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, url_for, redirect
 from backend.middleware.auth import token_required, admin_required
 from backend.models.config import SystemConfig
 import os
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 
@@ -42,23 +42,22 @@ def google_login(current_user):
     # Priority 1: Config from UI
     if client_id and client_secret:
         client_config = {
-            "installed": {
+            "web": {
                 "client_id": client_id,
                 "client_secret": client_secret,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
-                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                "redirect_uris": [url_for('admin.oauth2callback', _external=True)]
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
             }
         }
-        flow = InstalledAppFlow.from_client_config(
+        flow = Flow.from_client_config(
             client_config, SCOPES,
             redirect_uri=url_for('admin.oauth2callback', _external=True)
         )
 
     # Priority 2: File-based
     elif os.path.exists(CREDENTIALS_FILE):
-        flow = InstalledAppFlow.from_client_secrets_file(
+        flow = Flow.from_client_secrets_file(
             CREDENTIALS_FILE, SCOPES,
             redirect_uri=url_for('admin.oauth2callback', _external=True)
         )
@@ -96,21 +95,20 @@ def oauth2callback():
         flow = None
         if client_id and client_secret:
              client_config = {
-                "installed": {
+                "web": {
                     "client_id": client_id,
                     "client_secret": client_secret,
                     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                     "token_uri": "https://oauth2.googleapis.com/token",
-                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                    "redirect_uris": [url_for('admin.oauth2callback', _external=True)]
+                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
                 }
              }
-             flow = InstalledAppFlow.from_client_config(
+             flow = Flow.from_client_config(
                 client_config, SCOPES,
                 redirect_uri=url_for('admin.oauth2callback', _external=True)
              )
         else:
-             flow = InstalledAppFlow.from_client_secrets_file(
+             flow = Flow.from_client_secrets_file(
                 CREDENTIALS_FILE, SCOPES,
                 redirect_uri=url_for('admin.oauth2callback', _external=True)
              )

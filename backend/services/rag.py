@@ -24,6 +24,32 @@ class RAGService:
         return ServiceContext.from_defaults(llm=llm)
 
     @classmethod
+    def ensure_client_secrets(cls):
+        """Creates client_secrets.json from DB config if it doesn't exist."""
+        config = SystemConfig.get_config()
+        client_id = config.get('google_client_id')
+        client_secret = config.get('google_client_secret')
+
+        if client_id and client_secret:
+            secrets_path = os.path.join(os.getcwd(), 'backend', 'credentials', 'client_secrets.json')
+            os.makedirs(os.path.dirname(secrets_path), exist_ok=True)
+
+            import json
+            secrets_data = {
+                "web": {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
+                }
+            }
+            with open(secrets_path, 'w') as f:
+                json.dump(secrets_data, f)
+            return secrets_path
+        return None
+
+    @classmethod
     def get_google_token_data(cls):
         """Helper to get google token from DB."""
         from backend.services.db import Database
@@ -58,7 +84,7 @@ class RAGService:
 
         # 2. Load Google Drive Documents
         creds_dir = os.path.join(os.getcwd(), 'backend', 'credentials')
-        creds_path = os.path.join(creds_dir, 'credentials.json')
+        creds_path = cls.ensure_client_secrets() # Dynamically generate
         token_path = cls.get_google_token_data()
 
         if (token_path and os.path.exists(token_path)) or os.path.exists(creds_path):
@@ -106,7 +132,7 @@ class RAGService:
         from the configured folders for verification.
         """
         creds_dir = os.path.join(os.getcwd(), 'backend', 'credentials')
-        creds_path = os.path.join(creds_dir, 'credentials.json')
+        creds_path = cls.ensure_client_secrets() # Dynamically generate
         token_path = cls.get_google_token_data()
 
         loader = None
