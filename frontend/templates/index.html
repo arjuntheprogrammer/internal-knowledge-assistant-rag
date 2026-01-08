@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div id="chat-container">
+        <div id="chat-history">
+            <div class="message bot-message">
+                Hello! I am your Internal Knowledge Assistant. How can I help you today?
+            </div>
+        </div>
+        <div id="input-area">
+            <input type="text" id="user-input" placeholder="Type your question here..." onkeypress="handleEnter(event)">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Check auth on load
+    document.addEventListener('DOMContentLoaded', () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login';
+        } else {
+            updateNav();
+        }
+    });
+</script>
+{% endblock %}

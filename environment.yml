@@ -1,0 +1,19 @@
+name: internal-knowledge-assistant
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.10
+  - flask>=3.0.0
+  - pip
+  - pip:
+      - flask-cors==4.0.0
+      - pymongo==4.6.1
+      - llama-index==0.9.40
+      - openai==1.10.0
+      - python-dotenv==1.0.1
+      - gunicorn==21.2.0
+      - google-auth-oauthlib==1.2.0
+      - google-api-python-client==2.111.0
+      - llama-hub==0.0.71
+      - PyJWT==2.8.0

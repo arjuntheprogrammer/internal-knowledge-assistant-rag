@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-form">
+    <h2>Login</h2>
+    <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="email" required>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="password" required>
+        </div>
+        <button type="submit" style="width: 100%;">Login</button>
+    </form>
+    <p style="text-align: center; margin-top: 10px;">
+        Don't have an account? <a href="/signup">Sign up</a>
+    </p>
+</div>
+{% endblock %}
