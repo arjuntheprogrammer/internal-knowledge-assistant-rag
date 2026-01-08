@@ -292,3 +292,32 @@ button:active {
     padding-bottom: 1rem;
     border-bottom: 1px solid #f1f5f9;
 }
+
+/* Google Drive Folder Row */
+.folder-row {
+  background: #f8fafc;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+}
+
+.folder-row:hover {
+  background: #fff;
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.folder-row input:disabled {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--text-main);
+  font-weight: 600;
+  cursor: default;
+}
+
+#drive-folders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}

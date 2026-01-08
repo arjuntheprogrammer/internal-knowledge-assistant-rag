@@ -30,9 +30,9 @@ CREDENTIALS_FILE = os.path.join(os.getcwd(), 'backend', 'credentials', 'credenti
 TOKEN_FILE = os.path.join(os.getcwd(), 'backend', 'credentials', 'token.json')
 
 @admin_bp.route('/google-login', methods=['GET'])
-# @token_required # skipped for simplicity of redirect, or use query param token
-# @admin_required
-def google_login():
+@token_required
+@admin_required
+def google_login(current_user):
     config = SystemConfig.get_config()
     client_id = config.get('google_client_id')
     client_secret = config.get('google_client_secret')
@@ -63,27 +63,32 @@ def google_login():
             redirect_uri=url_for('admin.oauth2callback', _external=True)
         )
     else:
-        return jsonify({'message': 'Google Credentials not configured. Please enter Client ID/Secret or provide credentials.json'}), 400
+        return jsonify({'message': 'Google Credentials not configured.'}), 400
 
-    authorization_url, state = flow.authorization_url(
+    # Store user email in state to retrieve it in callback
+    state = current_user['email']
+    authorization_url, _ = flow.authorization_url(
         access_type='offline',
-        include_granted_scopes='true'
+        include_granted_scopes='true',
+        state=state
     )
-    # in a real app, store state in session
     return jsonify({'auth_url': authorization_url})
 
 
 @admin_bp.route('/oauth2callback')
 def oauth2callback():
-    # Helper to handle the callback
-    state = request.args.get('state')
+    state = request.args.get('state') # This is the user email we passed
     code = request.args.get('code')
     error = request.args.get('error')
 
     if error:
         return f"Error: {error}"
 
+    if not state:
+        return "Error: User context (state) missing from callback"
+
     try:
+        from backend.models.user import User
         config = SystemConfig.get_config()
         client_id = config.get('google_client_id')
         client_secret = config.get('google_client_secret')
@@ -111,20 +116,20 @@ def oauth2callback():
              )
 
         flow.fetch_token(code=code)
-
-
         creds = flow.credentials
-        with open(TOKEN_FILE, 'w') as token:
-            token.write(creds.to_json())
+
+        # Save token to user in DB
+        User.update_google_token(state, creds.to_json())
 
         return "Authentication successful! You can close this window and return to the dashboard."
     except Exception as e:
         return f"Authentication failed: {e}"
 
 @admin_bp.route('/chk_google_auth', methods=['GET'])
-def check_google_auth():
-    is_authenticated = os.path.exists(TOKEN_FILE)
-    return jsonify({'authenticated': is_authenticated})
+@token_required
+def check_google_auth(current_user):
+    token = current_user.get('google_token')
+    return jsonify({'authenticated': bool(token)})
 
 @admin_bp.route('/preview_docs', methods=['POST'])
 @token_required

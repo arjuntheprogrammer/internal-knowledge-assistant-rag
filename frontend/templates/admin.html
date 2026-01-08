@@ -35,14 +35,25 @@
 
     <div class="config-section">
         <h3>Google Drive Connector</h3>
-        <p>Configure folders to be indexed.</p>
-        <!-- Placeholder for Drive folder management -->
-        <div id="drive-folders-list"></div>
-        <button onclick="addDriveFolder()">+ Add Folder</button>
+        <div id="google-auth-section" style="margin-bottom: 20px; padding: 15px; background: #f1f5f9; border-radius: 12px; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <div id="drive-auth-status" style="font-weight: 600; margin-bottom: 5px;">Status: Checking...</div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Authenticate with Google to index Drive folders.</p>
+            </div>
+            <button id="auth-btn" class="btn-secondary" onclick="handleGoogleAuth()">Connect Google Drive</button>
+        </div>
 
-        <div id="verification-results" style="margin-top: 15px; padding: 10px; border: 1px solid #ddd; background: #f9f9f9; display: none;">
-            <strong>Verification Results:</strong>
-            <ul id="files-list"></ul>
+        <div id="drive-folders-container" style="display:none;">
+            <p style="font-weight: 600; margin-bottom: 1rem;">Managed Folders</p>
+            <div id="drive-folders-list"></div>
+            <button onclick="addDriveFolder()" style="background: var(--background-bg); color: var(--text-main); border: 1px dashed #cbd5e1; box-shadow: none; width: 100%; margin-top: 10px;">+ Add New Folder ID</button>
+        </div>
+
+        <div id="verification-results" style="margin-top: 20px; padding: 15px; border: 1px solid #e2e8f0; background: #fff; border-radius: 12px; display: none;">
+            <div style="font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                <span style="color: var(--primary-color)">ℹ️</span> Verification Results
+            </div>
+            <ul id="files-list" style="margin: 0; padding-left: 20px; font-size: 0.9rem; line-height: 1.6;"></ul>
         </div>
     </div>
 

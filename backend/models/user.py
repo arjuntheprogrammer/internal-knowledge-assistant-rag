@@ -38,6 +38,20 @@ class User:
         return check_password_hash(stored_password_hash, password)
 
     @staticmethod
+    def update_google_token(email, token):
+        db = Database.get_db()
+        db.users.update_one(
+            {'email': email},
+            {'$set': {'google_token': token}}
+        )
+
+    @staticmethod
+    def get_google_token(email):
+        db = Database.get_db()
+        user = db.users.find_one({'email': email})
+        return user.get('google_token') if user else None
+
+    @staticmethod
     def create_admin_if_not_exists():
         db = Database.get_db()
         if not db.users.find_one({'email': 'admin@gmail.com'}):

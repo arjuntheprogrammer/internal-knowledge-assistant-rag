@@ -61,6 +61,7 @@ function logout() {
 async function checkAuthStatus() {
   const statusDiv = document.getElementById("drive-auth-status");
   const btn = document.getElementById("auth-btn");
+  const foldersContainer = document.getElementById("drive-folders-container");
   if (!statusDiv) return;
 
   try {
@@ -71,12 +72,14 @@ async function checkAuthStatus() {
 
     if (data.authenticated) {
       statusDiv.textContent = "Status: Connected ✅";
-      statusDiv.style.color = "lightgreen";
-      btn.textContent = "Reconnect Google Drive";
+      statusDiv.style.color = "#059669";
+      btn.textContent = "Reconnect";
+      if (foldersContainer) foldersContainer.style.display = "block";
     } else {
       statusDiv.textContent = "Status: Not Connected ❌";
-      statusDiv.style.color = "red";
-      btn.textContent = "Connect Google Drive";
+      statusDiv.style.color = "#dc2626";
+      btn.textContent = "Connect";
+      if (foldersContainer) foldersContainer.style.display = "none";
     }
   } catch (e) {
     console.error("Auth check failed", e);
@@ -256,26 +259,58 @@ async function sendFeedback(messageId, rating) {
 }
 
 // Drive Folder Management
-function addDriveFolder(value = "") {
+function addDriveFolder(value = "", isSaved = false) {
   const list = document.getElementById("drive-folders-list");
   const div = document.createElement("div");
-  div.className = "form-group";
+  div.className = "form-group folder-row";
   div.style.display = "flex";
   div.style.gap = "10px";
   div.style.marginBottom = "10px";
+  div.style.alignItems = "center";
 
   const input = document.createElement("input");
   input.type = "text";
-  input.placeholder = "Folder ID";
+  input.placeholder = "Enter Google Drive Folder ID";
   input.value = value;
   input.className = "drive-folder-input";
+  input.style.flex = "1";
+  if (isSaved) input.disabled = true;
+
+  const saveBtn = document.createElement("button");
+  saveBtn.textContent = "Save";
+  saveBtn.style.padding = "0.5rem 1rem";
+  saveBtn.style.fontSize = "0.8rem";
+  saveBtn.style.display = isSaved ? "none" : "none"; // Hidden until typing
+  saveBtn.onclick = async () => {
+    if (!input.value.trim()) return;
+    await saveConfig();
+    input.disabled = true;
+    saveBtn.style.display = "none";
+    removeBtn.style.display = "inline-flex";
+  };
 
   const removeBtn = document.createElement("button");
   removeBtn.textContent = "Remove";
-  removeBtn.className = "btn-secondary"; // Assuming CSS class exists or defaults
-  removeBtn.onclick = () => div.remove();
+  removeBtn.className = "btn-secondary";
+  removeBtn.style.padding = "0.5rem 1rem";
+  removeBtn.style.fontSize = "0.8rem";
+  removeBtn.style.borderColor = "#ef4444";
+  removeBtn.style.color = "#ef4444";
+  removeBtn.style.display = isSaved ? "inline-flex" : "none";
+  removeBtn.onclick = async () => {
+    div.remove();
+    await saveConfig();
+  };
+
+  // Show save button when user types
+  input.oninput = () => {
+    if (!isSaved) {
+      saveBtn.style.display = input.value.trim() ? "inline-flex" : "none";
+    }
+  };
 
   div.appendChild(input);
+  div.appendChild(saveBtn);
   div.appendChild(removeBtn);
   list.appendChild(div);
 }
@@ -307,7 +342,7 @@ async function loadConfig() {
       const list = document.getElementById("drive-folders-list");
       list.innerHTML = "";
       if (config.drive_folders && config.drive_folders.length > 0) {
-        config.drive_folders.forEach((f) => addDriveFolder(f.id));
+        config.drive_folders.forEach((f) => addDriveFolder(f.id, true));
       }
     }
   } catch (err) {
