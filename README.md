@@ -145,8 +145,11 @@ To use a local LLM with Ollama:
 To enable the Google Drive connector:
 1. Enable the Google Drive API in your Google Cloud Console.
 2. Create a Service Account or OAuth credentials.
-3. Download the JSON key file and save it as `backend/credentials/credentials.json`.
-4. Run the application; it will automatically detect the credentials and attempt to load documents from folders configured in the Admin Dashboard.
+3. Download the JSON key file.
+4. Rename `backend/credentials/credentials.template.json` to `backend/credentials/credentials.json` and paste your content there (or just save your downloaded file as `credentials.json` in that folder).
+   *Note: `credentials.json` is gitignored to secure your secrets.*
+5. Run the application; it will automatically detect the credentials and attempt to load documents from folders configured in the Admin Dashboard.
+
 
 ### 8. Analytics & Monitoring (LangSmith)
 To enable tracing with LangSmith:
