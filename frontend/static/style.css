@@ -197,6 +197,19 @@ nav {
   gap: 1rem;
 }
 
+.admin-right #verification-results {
+  font-size: 0.85rem;
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.admin-right #verification-results ul,
+.admin-right #verification-results li {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 .admin-save-panel {
   background: white;
   border: 1px solid #e2e8f0;

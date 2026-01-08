@@ -97,6 +97,9 @@ Create a `.env` file in the root directory and add the following variables:
 SECRET_KEY=your_secret_key
 MONGO_URI=mongodb://mongo:27017/internal_knowledge_db # or localhost if running locally
 OPENAI_API_KEY=your_openai_api_key
+PINECONE_API_KEY=your_pinecone_api_key
+PINECONE_ENVIRONMENT=your_pinecone_env
+PINECONE_INDEX_NAME=internal-knowledge-assistant
 ```
 
 ### 3. Run with Docker (Recommended)
@@ -141,7 +144,25 @@ To use a local LLM with Ollama:
    ```
    *Note: If running with Docker, you may need to use `http://host.docker.internal:11434` to access Ollama from within the container.*
 
-### 7. Google Drive Configuration
+### 7. Pinecone Vector Store (Local Dev)
+Pinecone is a managed service (not local). For local development, you can either:
+- Use Pinecone by configuring the env vars below, or
+- Leave `PINECONE_*` unset to fall back to the in-memory vector store.
+
+To use Pinecone:
+1. Create a project and API key in the Pinecone console.
+2. Note your environment/region name from Pinecone.
+3. Add the following to your `.env` file:
+   ```bash
+   PINECONE_API_KEY=your_pinecone_api_key
+   PINECONE_ENVIRONMENT=your_pinecone_env
+   PINECONE_INDEX_NAME=internal-knowledge-assistant
+   # Optional overrides
+   PINECONE_METRIC=cosine
+   PINECONE_DIMENSION=
+   ```
+
+### 8. Google Drive Configuration
 To enable the Google Drive connector:
 1. Enable the Google Drive API in your Google Cloud Console.
 2. Create a Service Account or OAuth credentials.
@@ -151,7 +172,7 @@ To enable the Google Drive connector:
 5. Run the application; it will automatically detect the credentials and attempt to load documents from folders configured in the Admin Dashboard.
 
 
-### 8. Analytics & Monitoring (LangSmith)
+### 9. Analytics & Monitoring (LangSmith)
 To enable tracing with LangSmith:
 
 1. Sign up at [smith.langchain.com](https://smith.langchain.com).
@@ -164,4 +185,3 @@ To enable tracing with LangSmith:
    LANGCHAIN_PROJECT=internal-knowledge-assistant
    ```
    The application will automatically logging traces to your project.
-

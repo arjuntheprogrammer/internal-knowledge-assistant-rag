@@ -1,4 +1,4 @@
-from llama_index import VectorStoreIndex, SimpleDirectoryReader, ServiceContext
+from llama_index import VectorStoreIndex, SimpleDirectoryReader, ServiceContext, StorageContext
 from llama_index.llms import OpenAI, Ollama
 from backend.models.config import SystemConfig
 import os
@@ -23,6 +23,45 @@ class RAGService:
             )
 
         return ServiceContext.from_defaults(llm=llm)
+
+    @staticmethod
+    def get_pinecone_dimension(embed_model):
+        dimension = os.getenv("PINECONE_DIMENSION")
+        if dimension:
+            try:
+                return int(dimension)
+            except ValueError:
+                raise ValueError("PINECONE_DIMENSION must be an integer.")
+
+        try:
+            return len(embed_model.get_text_embedding("dimension probe"))
+        except Exception as exc:
+            raise ValueError(
+                "Unable to infer embedding dimension. "
+                "Set PINECONE_DIMENSION in the environment."
+            ) from exc
+
+    @classmethod
+    def get_pinecone_vector_store(cls, service_context):
+        api_key = os.getenv("PINECONE_API_KEY")
+        environment = os.getenv("PINECONE_ENVIRONMENT") or os.getenv("PINECONE_ENV")
+        index_name = os.getenv("PINECONE_INDEX_NAME")
+        metric = os.getenv("PINECONE_METRIC", "cosine")
+
+        if not api_key or not environment or not index_name:
+            return None
+
+        import pinecone
+        from llama_index.vector_stores import PineconeVectorStore
+
+        pinecone.init(api_key=api_key, environment=environment)
+
+        if index_name not in pinecone.list_indexes():
+            dimension = cls.get_pinecone_dimension(service_context.embed_model)
+            pinecone.create_index(index_name, dimension=dimension, metric=metric)
+
+        pinecone_index = pinecone.Index(index_name)
+        return PineconeVectorStore(pinecone_index)
 
     @classmethod
     def ensure_client_secrets(cls):
@@ -343,7 +382,16 @@ class RAGService:
 
         try:
             service_context = cls.get_service_context()
-            cls.index = VectorStoreIndex.from_documents(documents, service_context=service_context)
+            vector_store = cls.get_pinecone_vector_store(service_context)
+            storage_context = None
+            if vector_store:
+                storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+            cls.index = VectorStoreIndex.from_documents(
+                documents,
+                service_context=service_context,
+                storage_context=storage_context,
+            )
             print("Index initialized successfully.")
         except Exception as e:
             print(f"Index initialization error: {e}")
