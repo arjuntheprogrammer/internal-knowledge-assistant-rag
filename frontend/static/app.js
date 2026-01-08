@@ -57,6 +57,55 @@ function logout() {
   window.location.href = "/login";
 }
 
+// Google Auth
+async function checkAuthStatus() {
+  const statusDiv = document.getElementById("drive-auth-status");
+  const btn = document.getElementById("auth-btn");
+  if (!statusDiv) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/admin/chk_google_auth`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
+    const data = await response.json();
+
+    if (data.authenticated) {
+      statusDiv.textContent = "Status: Connected ✅";
+      statusDiv.style.color = "lightgreen";
+      btn.textContent = "Reconnect Google Drive";
+    } else {
+      statusDiv.textContent = "Status: Not Connected ❌";
+      statusDiv.style.color = "red";
+      btn.textContent = "Connect Google Drive";
+    }
+  } catch (e) {
+    console.error("Auth check failed", e);
+  }
+}
+
+async function handleGoogleAuth() {
+  try {
+    const response = await fetch(`${API_BASE}/admin/google-login`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
+    const data = await response.json();
+
+    if (data.auth_url) {
+      // Redirect to Google
+      window.location.href = data.auth_url;
+    } else {
+      alert("Error: " + (data.message || "Could not get auth URL"));
+    }
+  } catch (e) {
+    alert("Failed to initiate auth: " + e);
+  }
+}
+
+// Check auth on admin load
+if (window.location.pathname.includes("/admin")) {
+  checkAuthStatus();
+}
+
 function updateNav() {
   const user = JSON.parse(localStorage.getItem("user"));
   if (user) {
@@ -158,6 +207,31 @@ async function sendFeedback(messageId, rating) {
   }
 }
 
+// Drive Folder Management
+function addDriveFolder(value = "") {
+  const list = document.getElementById("drive-folders-list");
+  const div = document.createElement("div");
+  div.className = "form-group";
+  div.style.display = "flex";
+  div.style.gap = "10px";
+  div.style.marginBottom = "10px";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "Folder ID";
+  input.value = value;
+  input.className = "drive-folder-input";
+
+  const removeBtn = document.createElement("button");
+  removeBtn.textContent = "Remove";
+  removeBtn.className = "btn-secondary"; // Assuming CSS class exists or defaults
+  removeBtn.onclick = () => div.remove();
+
+  div.appendChild(input);
+  div.appendChild(removeBtn);
+  list.appendChild(div);
+}
+
 // Admin Functions
 async function loadConfig() {
   const token = localStorage.getItem("token");
@@ -174,6 +248,19 @@ async function loadConfig() {
       if (config.ollama_url)
         document.getElementById("ollama-url").value = config.ollama_url;
       toggleLLMConfig(config.llm_provider);
+
+      // Load Google Config
+      document.getElementById("google-client-id").value =
+        config.google_client_id || "";
+      document.getElementById("google-client-secret").value =
+        config.google_client_secret || "";
+
+      // Load folders
+      const list = document.getElementById("drive-folders-list");
+      list.innerHTML = "";
+      if (config.drive_folders && config.drive_folders.length > 0) {
+        config.drive_folders.forEach((f) => addDriveFolder(f.id));
+      }
     }
   } catch (err) {
     console.error("Failed to load config");
@@ -183,11 +270,23 @@ async function loadConfig() {
 async function saveConfig() {
   const token = localStorage.getItem("token");
   const provider = document.getElementById("llm-provider").value;
+
+  // Collect drive folders
+  const folderInputs = document.querySelectorAll(".drive-folder-input");
+  const driveFolders = Array.from(folderInputs)
+    .map((input) => ({ id: input.value.trim() }))
+    .filter((f) => f.id);
+
   const config = {
     llm_provider: provider,
     openai_model: document.getElementById("openai-model").value,
     ollama_url: document.getElementById("ollama-url").value,
     ollama_model: document.getElementById("ollama-model").value,
+    drive_folders: driveFolders,
+    google_client_id: document.getElementById("google-client-id").value.trim(),
+    google_client_secret: document
+      .getElementById("google-client-secret")
+      .value.trim(),
   };
 
   try {
@@ -199,8 +298,51 @@ async function saveConfig() {
       },
       body: JSON.stringify(config),
     });
-    if (res.ok) alert("Configuration saved!");
+    if (res.ok) {
+      alert("Configuration saved! Verifying Drive connection...");
+      await verifyDriveConnection();
+    }
   } catch (err) {
     alert("Failed to save config");
+  }
+}
+
+async function verifyDriveConnection() {
+  const listContainer = document.getElementById("verification-results");
+  const ul = document.getElementById("files-list");
+  const token = localStorage.getItem("token");
+
+  listContainer.style.display = "block";
+  ul.innerHTML = "<li>Scanning...</li>";
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/preview_docs`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+
+    ul.innerHTML = "";
+
+    if (!data.success) {
+      ul.innerHTML = `<li style="color: red">Error: ${data.message}</li>`;
+      return;
+    }
+
+    if (data.files && data.files.length > 0) {
+      const infoLi = document.createElement("li");
+      infoLi.innerHTML = `<strong>${data.message}</strong>`;
+      ul.appendChild(infoLi);
+
+      data.files.forEach((f) => {
+        const li = document.createElement("li");
+        li.textContent = f;
+        ul.appendChild(li);
+      });
+    } else {
+      ul.innerHTML = `<li>${data.message || "No files found."}</li>`;
+    }
+  } catch (e) {
+    ul.innerHTML = `<li style="color: red">Verification request failed: ${e}</li>`;
   }
 }
