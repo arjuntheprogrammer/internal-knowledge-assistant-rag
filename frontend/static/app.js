@@ -101,18 +101,66 @@ async function handleGoogleAuth() {
   }
 }
 
-// Check auth on admin load
-if (window.location.pathname.includes("/admin")) {
-  checkAuthStatus();
+// Auth & Route Protection
+function checkRouteAccess() {
+  const path = window.location.pathname;
+  const publicRoutes = ["/login", "/signup"];
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  // 1. If public route, just show content
+  if (publicRoutes.includes(path)) {
+    document.getElementById("main-content").style.display = "block";
+    return;
+  }
+
+  // 2. If no token, redirect to login
+  if (!token || !user) {
+    window.location.href = "/login";
+    return;
+  }
+
+  // 3. Role-based checks
+  if (path.includes("/admin") && user.role !== "admin") {
+    alert("Access Denied: Admins only.");
+    window.location.href = "/";
+    return;
+  }
+
+  // 4. Access Granted
+  document.getElementById("main-content").style.display = "block";
+  updateNav();
+
+  // Additional initializers
+  if (path.includes("/admin")) {
+    checkAuthStatus();
+  }
 }
+
+// Run check immediately
+document.addEventListener("DOMContentLoaded", checkRouteAccess);
+
+// ... existing code ...
 
 function updateNav() {
   const user = JSON.parse(localStorage.getItem("user"));
+  const path = window.location.pathname;
+
+  // Highlight active link
+  const links = document.querySelectorAll(".nav-links a");
+  links.forEach((link) => {
+    if (link.getAttribute("href") === path) {
+      link.classList.add("active");
+    } else {
+      link.classList.remove("active");
+    }
+  });
+
   if (user) {
     document.getElementById("login-link").style.display = "none";
-    document.getElementById("logout-link").style.display = "block";
+    document.getElementById("logout-link").style.display = "flex";
     if (user.role === "admin") {
-      document.getElementById("admin-link").style.display = "block";
+      document.getElementById("admin-link").style.display = "flex";
     }
   }
 }

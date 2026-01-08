@@ -1,163 +1,294 @@
 :root {
-  --primary-color: #007bff;
-  --secondary-color: #6c757d;
-  --background-color: #f8f9fa;
-  --text-color: #333;
-  --chat-bg-user: #007bff;
-  --chat-text-user: white;
-  --chat-bg-bot: #e9ecef;
-  --chat-text-bot: #333;
+  --primary-hue: 220;
+  --primary-color: hsl(var(--primary-hue), 85%, 55%);
+  --primary-hover: hsl(var(--primary-hue), 85%, 45%);
+  --secondary-color: #64748b;
+  --background-bg: #f8fafc;
+  --surface-white: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --radius-lg: 12px;
+  --nav-height: 70px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scrollbar-gutter: stable; /* Prevents layout shift when scrollbars appear */
 }
 
 body {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans_serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   margin: 0;
   padding: 0;
-  background-color: var(--background-color);
-  color: var(--text-color);
+  background-color: var(--background-bg);
+  color: var(--text-main);
   display: flex;
   flex-direction: column;
   height: 100vh;
+  overflow: hidden; /* Lock viewport */
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Nav Bar - Consistent Size */
 nav {
-  background-color: #fff;
-  padding: 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  height: var(--nav-height);
+  min-height: var(--nav-height);
+  max-height: var(--nav-height);
+  padding: 0 2rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
 }
 
-nav a {
+.logo-link {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: transparent;
+    background: linear-gradient(135deg, var(--primary-color), #8b5cf6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    letter-spacing: -0.03em;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 100%;
+}
+
+.nav-links a {
   text-decoration: none;
-  color: var(--text-color);
-  margin: 0 10px;
-  font-weight: 500;
+  color: var(--text-muted);
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 0.9rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-nav a.active {
+.nav-links a:hover {
   color: var(--primary-color);
+  background-color: rgba(59, 130, 246, 0.06);
+}
+
+.nav-links a.active {
+  color: var(--primary-color);
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+#logout-link:hover {
+    color: #ef4444;
+    background-color: rgba(239, 68, 68, 0.06);
+}
+
+/* Page Containers */
+#main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Important for fixed chat height */
 }
 
 .container {
-  padding: 2rem;
-  max-width: 1200px;
+  padding: 2.5rem 2rem;
+  max-width: 1000px;
   margin: 0 auto;
   width: 100%;
+  overflow-y: auto; /* Default scroll for admin/others */
 }
 
-/* Chat Interface */
-#chat-container {
-  flex: 1;
+/* Chat-specific container locks layout to viewport */
+.chat-page-container {
+  padding: 1rem 2rem;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  max-width: 900px;
-  margin: 20px auto;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden; /* Prevent outer scroll */
+}
+
+/* Chat Component - Locked Height */
+#chat-container {
+  flex: 1;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto 10px auto;
+  background: var(--surface-white);
+  border-radius: 1.5rem;
+  box-shadow: var(--shadow-md);
   overflow: hidden;
-  height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
 #chat-history {
   flex: 1;
-  padding: 20px;
+  padding: 2rem;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .message {
-  margin-bottom: 15px;
-  padding: 10px 15px;
-  border-radius: 20px;
-  max-width: 70%;
-  line-height: 1.5;
+  padding: 0.8rem 1.4rem;
+  border-radius: 1.25rem;
+  max-width: 75%;
+  line-height: 1.6;
+  font-size: 0.95rem;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .user-message {
-  background-color: var(--chat-bg-user);
-  color: var(--chat-text-user);
+  background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+  color: white;
   align-self: flex-end;
-  margin-left: auto;
-  border-bottom-right-radius: 5px;
+  border-bottom-right-radius: 0.25rem;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
 }
 
 .bot-message {
-  background-color: var(--chat-bg-bot);
-  color: var(--chat-text-bot);
+  background-color: #f1f5f9;
+  color: var(--text-main);
   align-self: flex-start;
-  margin-right: auto;
-  border-bottom-left-radius: 5px;
+  border-bottom-left-radius: 0.25rem;
 }
 
 #input-area {
-  padding: 20px;
-  border-top: 1px solid #eee;
+  padding: 1.5rem;
+  background: white;
+  border-top: 1px solid #f1f5f9;
   display: flex;
-  gap: 10px;
-  background: #fcfcfc;
+  gap: 12px;
 }
 
 #user-input {
   flex: 1;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 20px;
+  padding: 0.9rem 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
   outline: none;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  background-color: #f8fafc;
+}
+
+#user-input:focus {
+  border-color: var(--primary-color);
+  background-color: white;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
 
 button {
   background-color: var(--primary-color);
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 20px;
+  padding: 0.9rem 1.8rem;
+  border-radius: 9999px;
   cursor: pointer;
-  transition: background 0.2s;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
 }
 
 button:hover {
-  background-color: #0056b3;
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px -3px rgba(59, 130, 246, 0.4);
 }
 
-/* Auth Forms */
+button:active {
+  transform: translateY(0);
+}
+
+/* Auth & Forms */
 .auth-form {
-  max-width: 400px;
-  margin: 50px auto;
-  padding: 30px;
+  max-width: 420px;
+  margin: 5rem auto;
+  padding: 3rem;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 1.5rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
 .auth-form h2 {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .form-group {
-  margin-bottom: 15px;
+    margin-bottom: 1.5rem;
 }
 
 .form-group label {
-  display: block;
-  margin-bottom: 5px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    display: block;
 }
 
-.form-group input {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-sizing: border-box; /* Fix padding issue */
+.form-group input, .form-group select {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    background: #fcfcfc;
 }
 
-/* Admin Dashboard */
+.form-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+/* Config Section */
 .config-section {
   background: white;
-  padding: 20px;
-  margin-bottom: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border-radius: 1.25rem;
+  border: 1px solid #e2e8f0;
+}
+
+.config-section h3 {
+    margin-top: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f1f5f9;
 }

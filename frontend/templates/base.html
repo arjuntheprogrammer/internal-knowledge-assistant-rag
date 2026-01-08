@@ -11,7 +11,9 @@
   </head>
   <body>
     <nav>
-      <div class="logo">Knowledge Assistant</div>
+      <a href="/" class="logo-link">
+          <div class="logo">Knowledge Assistant</div>
+      </a>
       <div class="nav-links">
         <a href="/">Chat</a>
         <a href="/admin/dashboard" id="admin-link" style="display: none"
@@ -24,7 +26,7 @@
       </div>
     </nav>
 
-    <div id="main-content">{% block content %}{% endblock %}</div>
+    <div id="main-content" style="display: none;">{% block content %}{% endblock %}</div>
 
     <script src="{{ url_for('static', filename='app.js') }}"></script>
   </body>
