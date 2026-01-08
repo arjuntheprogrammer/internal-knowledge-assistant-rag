@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
+<div class="container admin-page">
     <h2>Admin Configuration</h2>
 
     <div class="config-section">
@@ -35,10 +35,10 @@
 
     <div class="config-section">
         <h3>1. Google Drive API Credentials</h3>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
             Obtain these from the <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a>.
         </p>
-        <div style="background: #fff9db; border: 1px solid #fab005; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.85rem;">
+        <div style="background: #fff9db; border: 1px solid #fab005; padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 0.85rem;">
             <strong style="color: #f08c00;">⚠️ Important:</strong> To avoid "Error 400: redirect_uri_mismatch", you MUST add the following URL to the <strong>Authorized redirect URIs</strong> in your Google Console:
             <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
                 <code id="redirect-uri-display" style="background: #fff; padding: 4px 8px; border-radius: 4px; border: 1px solid #e2e8f0; flex: 1;"></code>
@@ -60,10 +60,10 @@
 
     <div class="config-section">
         <h3>2. Authentication</h3>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
             Once API credentials are saved, connect your Google Account to authorize file access.
         </p>
-        <div id="google-auth-section" style="padding: 15px; background: #f1f5f9; border-radius: 12px; display: flex; align-items: center; justify-content: space-between;">
+        <div id="google-auth-section" style="padding: 12px; background: #f1f5f9; border-radius: 12px; display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <div id="drive-auth-status" style="font-weight: 600; margin-bottom: 5px;">Status: Checking...</div>
                 <p id="auth-hint" style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Login required</p>
@@ -74,7 +74,7 @@
 
     <div id="drive-folders-container" class="config-section" style="display:none;">
         <h3>3. Managed Folders</h3>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
             Add the folder IDs (or full Google Drive folder URLs) you want the assistant to index.
         </p>
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
@@ -85,13 +85,16 @@
         <button onclick="addDriveFolder()" style="background: var(--background-bg); color: var(--text-main); border: 1px dashed #cbd5e1; box-shadow: none; width: 100%; margin-top: 10px; border-radius: 12px; padding: 12px;">+ Add New Folder</button>
     </div>
 
-    <div id="verification-results" style="margin-top: 20px; padding: 15px; border: 1px solid #e2e8f0; background: #fff; border-radius: 12px; display: none;">
+    <div id="verification-results" style="margin-top: 16px; padding: 15px; border: 1px solid #e2e8f0; background: #fff; border-radius: 12px; display: none;">
         <div style="font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
             <span style="color: var(--primary-color)">ℹ️</span> Verification Results
         </div>
         <ul id="files-list" style="margin: 0; padding-left: 20px; font-size: 0.9rem; line-height: 1.6;"></ul>
     </div>
 
+</div>
+
+<div class="admin-save-bar">
     <button onclick="saveConfig()">Save Configuration</button>
 </div>
 

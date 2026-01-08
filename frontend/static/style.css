@@ -122,6 +122,57 @@ nav {
   width: 100%;
 }
 
+.admin-page {
+  padding: 1.5rem 2rem 6rem;
+}
+
+.admin-page h2 {
+  margin: 0 0 1.25rem;
+  font-size: 1.5rem;
+}
+
+.admin-page .config-section {
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.admin-page .config-section h3 {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+}
+
+.admin-page .form-group {
+  margin-bottom: 1rem;
+}
+
+.admin-page .form-group input,
+.admin-page .form-group select {
+  padding: 0.65rem 0.85rem;
+  font-size: 0.9rem;
+}
+
+.admin-page p {
+  margin-bottom: 0.75rem;
+}
+
+.admin-save-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  justify-content: center;
+  background: rgba(248, 250, 252, 0.95);
+  border-top: 1px solid #e2e8f0;
+  box-shadow: 0 -6px 16px rgba(15, 23, 42, 0.08);
+  z-index: 900;
+}
+
+.admin-save-bar button {
+  min-width: 220px;
+}
+
 /* Chat-specific container locks layout to viewport */
 .chat-page-container {
   padding: 1rem 2rem;
