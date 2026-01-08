@@ -75,20 +75,22 @@
     <div id="drive-folders-container" class="config-section" style="display:none;">
         <h3>3. Managed Folders</h3>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
-            Add the IDs of the folders you want the assistant to index.
+            Add the folder IDs (or full Google Drive folder URLs) you want the assistant to index.
         </p>
-        <div id="drive-folders-list"></div>
-        <button onclick="addDriveFolder()" style="background: var(--background-bg); color: var(--text-main); border: 1px dashed #cbd5e1; box-shadow: none; width: 100%; margin-top: 10px; border-radius: 12px; padding: 12px;">+ Add New Folder ID</button>
-    </div>
-
-        <div id="verification-results" style="margin-top: 20px; padding: 15px; border: 1px solid #e2e8f0; background: #fff; border-radius: 12px; display: none;">
-            <div style="font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
-                <span style="color: var(--primary-color)">ℹ️</span> Verification Results
-            </div>
-            <ul id="files-list" style="margin: 0; padding-left: 20px; font-size: 0.9rem; line-height: 1.6;"></ul>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <button onclick="verifyDriveConnection()" style="padding: 0.5rem 1rem; font-size: 0.8rem; background: #e2e8f0; color: #0f172a; box-shadow: none;">Verify Folder Access</button>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Checks the first few folders and reports access.</span>
         </div>
+        <div id="drive-folders-list"></div>
+        <button onclick="addDriveFolder()" style="background: var(--background-bg); color: var(--text-main); border: 1px dashed #cbd5e1; box-shadow: none; width: 100%; margin-top: 10px; border-radius: 12px; padding: 12px;">+ Add New Folder</button>
     </div>
 
+    <div id="verification-results" style="margin-top: 20px; padding: 15px; border: 1px solid #e2e8f0; background: #fff; border-radius: 12px; display: none;">
+        <div style="font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--primary-color)">ℹ️</span> Verification Results
+        </div>
+        <ul id="files-list" style="margin: 0; padding-left: 20px; font-size: 0.9rem; line-height: 1.6;"></ul>
+    </div>
 
     <button onclick="saveConfig()">Save Configuration</button>
 </div>

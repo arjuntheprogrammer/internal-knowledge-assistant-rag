@@ -18,7 +18,9 @@
 }
 
 html {
-    scrollbar-gutter: stable; /* Prevents layout shift when scrollbars appear */
+  scrollbar-gutter: stable;
+  height: auto;
+  min-height: 100%;
 }
 
 body {
@@ -29,9 +31,10 @@ body {
   color: var(--text-main);
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  overflow: hidden; /* Lock viewport */
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  overflow-y: auto; /* Enable vertical scroll */
+  overflow-x: hidden;
 }
 
 /* Nav Bar - Consistent Size */
@@ -109,7 +112,7 @@ nav {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Important for fixed chat height */
+    min-height: 0;
 }
 
 .container {
@@ -117,16 +120,19 @@ nav {
   max-width: 1000px;
   margin: 0 auto;
   width: 100%;
-  overflow-y: auto; /* Default scroll for admin/others */
 }
 
 /* Chat-specific container locks layout to viewport */
 .chat-page-container {
   padding: 1rem 2rem;
-  height: 100%;
+  height: calc(100vh - var(--nav-height));
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Prevent outer scroll */
+  overflow: hidden;
+  position: fixed;
+  top: var(--nav-height);
+  left: 0;
+  right: 0;
 }
 
 /* Chat Component - Locked Height */
@@ -134,7 +140,7 @@ nav {
   flex: 1;
   width: 100%;
   max-width: 1000px;
-  margin: 0 auto 10px auto;
+  margin: 0 auto;
   background: var(--surface-white);
   border-radius: 1.5rem;
   box-shadow: var(--shadow-md);
@@ -142,6 +148,7 @@ nav {
   display: flex;
   flex-direction: column;
   border: 1px solid rgba(226, 232, 240, 0.8);
+  height: calc(100vh - var(--nav-height) - 40px); /* Account for padding */
 }
 
 #chat-history {

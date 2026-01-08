@@ -62,15 +62,16 @@ async function checkAuthStatus() {
   const statusDiv = document.getElementById("drive-auth-status");
   const btn = document.getElementById("auth-btn");
   const foldersContainer = document.getElementById("drive-folders-container");
-  if (!statusDiv) return;
+  if (!statusDiv) return false;
 
   try {
     const response = await fetch(`${API_BASE}/admin/chk_google_auth`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
     const data = await response.json();
+    const authenticated = Boolean(data.authenticated);
 
-    if (data.authenticated) {
+    if (authenticated) {
       statusDiv.textContent = "Status: Connected ✅";
       statusDiv.style.color = "#059669";
       btn.textContent = "Switch Account";
@@ -85,13 +86,30 @@ async function checkAuthStatus() {
         "Link your account to see folders.";
       if (foldersContainer) foldersContainer.style.display = "none";
     }
+    return authenticated;
   } catch (e) {
+    statusDiv.textContent = "Status: Unknown ⚠️";
+    statusDiv.style.color = "#d97706";
+    btn.textContent = "Retry";
+    document.getElementById("auth-hint").textContent =
+      "Unable to reach auth status.";
+    if (foldersContainer) foldersContainer.style.display = "none";
     console.error("Auth check failed", e);
+    return false;
   }
 }
 
 async function handleGoogleAuth() {
   try {
+    const clientId = document.getElementById("google-client-id")?.value.trim();
+    const clientSecret = document
+      .getElementById("google-client-secret")
+      ?.value.trim();
+
+    if (clientId && clientSecret) {
+      await saveConfig({ verifyDrive: false, showAlert: false });
+    }
+
     const response = await fetch(`${API_BASE}/admin/google-login`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
@@ -110,10 +128,25 @@ async function handleGoogleAuth() {
         `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,status=yes`
       );
 
+      if (!popup) {
+        window.location.href = data.auth_url;
+        return;
+      }
+
+      const authListener = (event) => {
+        if (event.origin !== window.location.origin) return;
+        if (event.data?.type === "google-auth-success") {
+          checkAuthStatus();
+        }
+      };
+
+      window.addEventListener("message", authListener);
+
       // Refresh status when popup closes (rough check)
       const timer = setInterval(() => {
         if (popup.closed) {
           clearInterval(timer);
+          window.removeEventListener("message", authListener);
           checkAuthStatus();
         }
       }, 1000);
@@ -280,7 +313,21 @@ async function sendFeedback(messageId, rating) {
 }
 
 // Drive Folder Management
-// Drive Folder Management
+function extractDriveFolderId(value) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const folderMatch = trimmed.match(
+    /drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/i
+  );
+  if (folderMatch) return folderMatch[1];
+
+  const openMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/i);
+  if (openMatch) return openMatch[1];
+
+  return trimmed;
+}
+
 function addDriveFolder(value = "", isSaved = false) {
   const list = document.getElementById("drive-folders-list");
   if (!list) return;
@@ -298,7 +345,7 @@ function addDriveFolder(value = "", isSaved = false) {
 
   const input = document.createElement("input");
   input.type = "text";
-  input.placeholder = "Paste Google Drive Folder ID here...";
+  input.placeholder = "Paste Google Drive Folder URL or ID...";
   input.value = value;
   input.className = "drive-folder-input";
   input.style.flex = "1";
@@ -335,12 +382,20 @@ function addDriveFolder(value = "", isSaved = false) {
     await saveConfig();
   };
 
-  // Show save button when user types
-  input.oninput = () => {
+  const refreshSaveVisibility = () => {
     if (!isSaved) {
       saveBtn.style.display =
         input.value.trim().length > 5 ? "inline-flex" : "none";
     }
+  };
+
+  input.oninput = refreshSaveVisibility;
+  input.onblur = () => {
+    const normalized = extractDriveFolderId(input.value);
+    if (normalized && normalized !== input.value.trim()) {
+      input.value = normalized;
+    }
+    refreshSaveVisibility();
   };
 
   div.appendChild(input);
@@ -390,15 +445,24 @@ async function loadConfig() {
   }
 }
 
-async function saveConfig() {
+async function saveConfig(options = {}) {
+  const { verifyDrive = true, showAlert = true } = options;
   const token = localStorage.getItem("token");
   const provider = document.getElementById("llm-provider").value;
 
   // Collect drive folders
   const folderInputs = document.querySelectorAll(".drive-folder-input");
-  const driveFolders = Array.from(folderInputs)
-    .map((input) => ({ id: input.value.trim() }))
-    .filter((f) => f.id);
+  const driveFolderIds = [];
+  folderInputs.forEach((input) => {
+    const normalized = extractDriveFolderId(input.value);
+    if (normalized) {
+      input.value = normalized;
+      driveFolderIds.push(normalized);
+    }
+  });
+
+  const uniqueIds = [...new Set(driveFolderIds)];
+  const driveFolders = uniqueIds.map((id) => ({ id }));
 
   const config = {
     llm_provider: provider,
@@ -421,11 +485,23 @@ async function saveConfig() {
       },
       body: JSON.stringify(config),
     });
-    if (res.ok) {
-      alert("Configuration saved! Verifying Drive connection...");
-      await verifyDriveConnection();
-      await loadConfig(); // Refresh UI to show saved states (Remove buttons, etc.)
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(result.message || "Failed to save config");
+      return;
     }
+
+    if (showAlert) {
+      alert("Configuration saved!");
+    }
+    let shouldVerify = verifyDrive;
+    if (verifyDrive) {
+      shouldVerify = await checkAuthStatus();
+    }
+    if (shouldVerify) {
+      await verifyDriveConnection();
+    }
+    await loadConfig(); // Refresh UI to show saved states (Remove buttons, etc.)
   } catch (err) {
     alert("Failed to save config");
   }
@@ -447,6 +523,13 @@ async function verifyDriveConnection() {
     const data = await res.json();
 
     ul.innerHTML = "";
+
+    if (!res.ok) {
+      ul.innerHTML = `<li style="color: red">Error: ${
+        data.message || "Verification failed."
+      }</li>`;
+      return;
+    }
 
     if (!data.success) {
       ul.innerHTML = `<li style="color: red">Error: ${data.message}</li>`;

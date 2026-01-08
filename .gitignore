@@ -1,3 +1,4 @@
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -153,3 +154,12 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Secrets / Credentials
+client_secrets.json
+credentials.json
+token.json
+token_db.json
+backend/credentials/*.json
+!backend/credentials/credentials.template.json
+backend/credentials/pydrive_creds.txt
