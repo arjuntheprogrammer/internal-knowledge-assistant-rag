@@ -1,9 +1,16 @@
 from flask import Blueprint, request, jsonify
+from llama_index.schema import QueryBundle
 from backend.middleware.auth import token_required
 from backend.services.rag import RAGService
 from backend.services.safety import SafetyService
 
 chat_bp = Blueprint("chat", __name__)
+
+MARKDOWN_INSTRUCTIONS = (
+    "Please format your response in GitHub-flavored Markdown. "
+    "Use headings, bullet lists, and code fences where appropriate. "
+    "Keep it concise and readable."
+)
 
 
 @chat_bp.route("/feedback", methods=["POST"])
@@ -37,7 +44,11 @@ def chat(current_user):
 
     try:
         # Pass user context/ACL here in future
-        response_text = RAGService.query(user_message)
+        query_bundle = QueryBundle(
+            query_str=f"{user_message}\n\n{MARKDOWN_INSTRUCTIONS}",
+            custom_embedding_strs=[user_message],
+        )
+        response_text = RAGService.query(query_bundle)
 
         # Safety Check Output
         is_safe_response, reason_response = SafetyService.is_safe(response_text)

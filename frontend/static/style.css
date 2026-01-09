@@ -308,6 +308,50 @@ nav {
   border-bottom-left-radius: 0.25rem;
 }
 
+.bot-message p {
+  margin: 0.4rem 0;
+}
+
+.bot-message ul,
+.bot-message ol {
+  margin: 0.4rem 0 0.4rem 1.2rem;
+  padding: 0;
+}
+
+.bot-message li {
+  margin: 0.2rem 0;
+}
+
+.bot-message a {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.bot-message code {
+  background: rgba(15, 23, 42, 0.08);
+  border-radius: 6px;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.85em;
+  font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+
+.bot-message pre {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.bot-message pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
 #input-area {
   padding: 1.5rem;
   background: white;

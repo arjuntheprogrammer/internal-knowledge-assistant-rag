@@ -51,7 +51,11 @@ function appendMessage(sender, text, messageId = null) {
   msg.className = `message ${sender}-message`;
 
   const content = document.createElement("div");
-  content.textContent = text;
+  if (sender === "bot") {
+    content.innerHTML = renderMarkdown(text);
+  } else {
+    content.textContent = text;
+  }
   msg.appendChild(content);
 
   if (sender === "bot" && messageId) {
@@ -77,6 +81,28 @@ function appendMessage(sender, text, messageId = null) {
 
   history.appendChild(msg);
   history.scrollTop = history.scrollHeight;
+}
+
+function renderMarkdown(text) {
+  if (window.marked) {
+    const html = window.marked.parse(text || "");
+    if (window.DOMPurify) {
+      return window.DOMPurify.sanitize(html);
+    }
+    return html;
+  }
+  return escapeHtml(text || "").replace(/\n/g, "<br>");
+}
+
+function escapeHtml(text) {
+  const map = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  };
+  return text.replace(/[&<>"']/g, (char) => map[char]);
 }
 
 async function sendFeedback(messageId, rating) {
