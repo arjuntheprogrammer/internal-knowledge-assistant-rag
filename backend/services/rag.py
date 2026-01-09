@@ -21,7 +21,7 @@ class RAGService:
     def initialize_index(cls):
         documents = []
 
-        data_dir = os.path.join(os.getcwd(), 'backend', 'data')
+        data_dir = os.path.join(os.getcwd(), "backend", "data")
         os.makedirs(data_dir, exist_ok=True)
         try:
             local_docs = SimpleDirectoryReader(data_dir).load_data()
@@ -42,7 +42,9 @@ class RAGService:
             vector_store = cls.get_vector_store()
             storage_context = None
             if vector_store:
-                storage_context = StorageContext.from_defaults(vector_store=vector_store)
+                storage_context = StorageContext.from_defaults(
+                    vector_store=vector_store
+                )
 
             cls.index = VectorStoreIndex.from_documents(
                 documents,

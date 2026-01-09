@@ -3,8 +3,9 @@ from backend.services.db import Database
 from datetime import datetime
 import uuid
 
+
 class User:
-    def __init__(self, email, password, name, role='user'):
+    def __init__(self, email, password, name, role="user"):
         self.email = email
         self.password_hash = generate_password_hash(password)
         self.name = name
@@ -14,16 +15,16 @@ class User:
 
     def save(self):
         db = Database.get_db()
-        if db.users.find_one({'email': self.email}):
+        if db.users.find_one({"email": self.email}):
             return False
 
         user_data = {
-            '_id': self._id,
-            'email': self.email,
-            'password_hash': self.password_hash,
-            'name': self.name,
-            'role': self.role,
-            'created_at': self.created_at
+            "_id": self._id,
+            "email": self.email,
+            "password_hash": self.password_hash,
+            "name": self.name,
+            "role": self.role,
+            "created_at": self.created_at,
         }
         db.users.insert_one(user_data)
         return True
@@ -31,7 +32,7 @@ class User:
     @staticmethod
     def get_by_email(email):
         db = Database.get_db()
-        return db.users.find_one({'email': email})
+        return db.users.find_one({"email": email})
 
     @staticmethod
     def verify_password(stored_password_hash, password):
@@ -40,21 +41,18 @@ class User:
     @staticmethod
     def update_google_token(email, token):
         db = Database.get_db()
-        db.users.update_one(
-            {'email': email},
-            {'$set': {'google_token': token}}
-        )
+        db.users.update_one({"email": email}, {"$set": {"google_token": token}})
 
     @staticmethod
     def get_google_token(email):
         db = Database.get_db()
-        user = db.users.find_one({'email': email})
-        return user.get('google_token') if user else None
+        user = db.users.find_one({"email": email})
+        return user.get("google_token") if user else None
 
     @staticmethod
     def create_admin_if_not_exists():
         db = Database.get_db()
-        if not db.users.find_one({'email': 'admin@gmail.com'}):
-            admin = User('admin@gmail.com', 'admin@gmail.com', 'Admin', 'admin')
+        if not db.users.find_one({"email": "admin@gmail.com"}):
+            admin = User("admin@gmail.com", "admin@gmail.com", "Admin", "admin")
             admin.save()
             print("Admin user created")

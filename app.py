@@ -10,10 +10,10 @@ from backend.services.scheduler import SchedulerService
 import os
 
 
-def create_app(config_name='default'):
-    app = Flask(__name__,
-                static_folder='frontend/static',
-                template_folder='frontend/templates')
+def create_app(config_name="default"):
+    app = Flask(
+        __name__, static_folder="frontend/static", template_folder="frontend/templates"
+    )
 
     app.config.from_object(config[config_name])
 
@@ -25,36 +25,36 @@ def create_app(config_name='default'):
         User.create_admin_if_not_exists()
 
         # Start Background Scheduler (only in main process to avoid duplicates in debug mode with reloader)
-        if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
+        if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
             SchedulerService.start_polling()
 
     # Register Blueprints
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(admin_bp, url_prefix='/api/admin')
-    app.register_blueprint(chat_bp, url_prefix='/api/chat')
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(admin_bp, url_prefix="/api/admin")
+    app.register_blueprint(chat_bp, url_prefix="/api/chat")
 
     from flask import render_template
 
-    @app.route('/')
+    @app.route("/")
     def index():
-        return render_template('index.html')
+        return render_template("index.html")
 
-    @app.route('/login')
+    @app.route("/login")
     def login():
-        return render_template('login.html')
+        return render_template("login.html")
 
-    @app.route('/signup')
+    @app.route("/signup")
     def signup():
-        return render_template('signup.html')
+        return render_template("signup.html")
 
-    @app.route('/admin/dashboard')
+    @app.route("/admin/dashboard")
     def admin_dashboard():
-        return render_template('admin.html')
+        return render_template("admin.html")
 
     return app
 
 
-if __name__ == '__main__':
-    app = create_app(os.getenv('FLASK_CONFIG') or 'default')
+if __name__ == "__main__":
+    app = create_app(os.getenv("FLASK_CONFIG") or "default")
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host="0.0.0.0", port=port)

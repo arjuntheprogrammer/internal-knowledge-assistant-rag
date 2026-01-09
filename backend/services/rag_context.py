@@ -6,15 +6,15 @@ import os
 
 def get_service_context():
     config = SystemConfig.get_config()
-    if config['llm_provider'] == 'openai':
+    if config["llm_provider"] == "openai":
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OpenAI API Key not found")
-        llm = OpenAI(model=config.get('openai_model', 'gpt-3.5-turbo'))
+        llm = OpenAI(model=config.get("openai_model", "gpt-3.5-turbo"))
     else:
         llm = Ollama(
-            base_url=config.get('ollama_url', 'http://localhost:11434'),
-            model=config.get('ollama_model', 'llama2')
+            base_url=config.get("ollama_url", "http://localhost:11434"),
+            model=config.get("ollama_model", "llama2"),
         )
 
     return ServiceContext.from_defaults(llm=llm)

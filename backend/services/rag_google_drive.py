@@ -7,11 +7,13 @@ from backend.models.config import SystemConfig
 def ensure_client_secrets():
     """Creates client_secrets.json from DB config if it doesn't exist."""
     config = SystemConfig.get_config()
-    client_id = config.get('google_client_id')
-    client_secret = config.get('google_client_secret')
+    client_id = config.get("google_client_id")
+    client_secret = config.get("google_client_secret")
 
     if client_id and client_secret:
-        secrets_path = os.path.join(os.getcwd(), 'backend', 'credentials', 'client_secrets.json')
+        secrets_path = os.path.join(
+            os.getcwd(), "backend", "credentials", "client_secrets.json"
+        )
         os.makedirs(os.path.dirname(secrets_path), exist_ok=True)
 
         secrets_data = {
@@ -24,7 +26,7 @@ def ensure_client_secrets():
                 "redirect_uris": ["http://localhost"],
             }
         }
-        with open(secrets_path, 'w') as f:
+        with open(secrets_path, "w") as f:
             json.dump(secrets_data, f)
         return secrets_path
     return None
@@ -35,7 +37,7 @@ def sanitize_oauth_credentials_file(path):
         return None
 
     try:
-        with open(path, 'r') as handle:
+        with open(path, "r") as handle:
             data = json.load(handle)
     except Exception:
         return path
@@ -43,14 +45,14 @@ def sanitize_oauth_credentials_file(path):
     if not isinstance(data, dict):
         return path
 
-    if data.get('type') == 'service_account':
+    if data.get("type") == "service_account":
         return path
 
     oauth_key = None
-    if 'web' in data:
-        oauth_key = 'web'
-    elif 'installed' in data:
-        oauth_key = 'installed'
+    if "web" in data:
+        oauth_key = "web"
+    elif "installed" in data:
+        oauth_key = "installed"
 
     if not oauth_key:
         return path
@@ -59,10 +61,10 @@ def sanitize_oauth_credentials_file(path):
         return path
 
     sanitized_path = os.path.join(
-        os.getcwd(), 'backend', 'credentials', 'oauth_client_sanitized.json'
+        os.getcwd(), "backend", "credentials", "oauth_client_sanitized.json"
     )
     os.makedirs(os.path.dirname(sanitized_path), exist_ok=True)
-    with open(sanitized_path, 'w') as handle:
+    with open(sanitized_path, "w") as handle:
         json.dump({oauth_key: data[oauth_key]}, handle)
     return sanitized_path
 
@@ -73,11 +75,13 @@ def resolve_credentials_path():
     if config_path:
         candidates.append(config_path)
 
-    candidates.extend([
-        os.path.join(os.getcwd(), 'backend', 'credentials', 'client_secrets.json'),
-        os.path.join(os.getcwd(), 'backend', 'credentials', 'credentials.json'),
-        os.path.join(os.getcwd(), 'client_secrets.json'),
-    ])
+    candidates.extend(
+        [
+            os.path.join(os.getcwd(), "backend", "credentials", "client_secrets.json"),
+            os.path.join(os.getcwd(), "backend", "credentials", "credentials.json"),
+            os.path.join(os.getcwd(), "client_secrets.json"),
+        ]
+    )
 
     for path in candidates:
         if path and os.path.exists(path):
@@ -91,7 +95,9 @@ def get_google_drive_reader():
         import tempfile
         from pathlib import Path
         from llama_index import SimpleDirectoryReader
-        from llama_index.download.llamahub_modules.google_drive.base import GoogleDriveReader as BaseGoogleDriveReader
+        from llama_index.download.llamahub_modules.google_drive.base import (
+            GoogleDriveReader as BaseGoogleDriveReader,
+        )
 
         logger = logging.getLogger(__name__)
 
@@ -127,7 +133,9 @@ def get_google_drive_reader():
                                 "modified at": fileid_meta[5],
                             }
 
-                        loader = SimpleDirectoryReader(temp_dir, file_metadata=get_metadata)
+                        loader = SimpleDirectoryReader(
+                            temp_dir, file_metadata=get_metadata
+                        )
                         documents = loader.load_data()
                         for doc in documents:
                             doc.id_ = doc.metadata.get("file id", doc.id_)
@@ -140,28 +148,29 @@ def get_google_drive_reader():
         return PatchedGoogleDriveReader
     except Exception:
         from llama_index import download_loader
-        return download_loader('GoogleDriveReader')
+
+        return download_loader("GoogleDriveReader")
 
 
 def ensure_pydrive_client_secrets(creds_path):
     """Ensure a valid client_secrets.json exists in CWD for PyDrive."""
     config = SystemConfig.get_config()
-    client_id = config.get('google_client_id')
-    client_secret = config.get('google_client_secret')
+    client_id = config.get("google_client_id")
+    client_secret = config.get("google_client_secret")
 
     oauth_data = None
     if creds_path and os.path.exists(creds_path):
         try:
-            with open(creds_path, 'r') as handle:
+            with open(creds_path, "r") as handle:
                 data = json.load(handle)
         except Exception:
             data = None
 
-        if isinstance(data, dict) and data.get('type') != 'service_account':
-            if 'web' in data:
-                oauth_data = {'web': data['web']}
-            elif 'installed' in data:
-                oauth_data = {'installed': data['installed']}
+        if isinstance(data, dict) and data.get("type") != "service_account":
+            if "web" in data:
+                oauth_data = {"web": data["web"]}
+            elif "installed" in data:
+                oauth_data = {"installed": data["installed"]}
     if not oauth_data and client_id and client_secret:
         oauth_data = {
             "web": {
@@ -176,15 +185,15 @@ def ensure_pydrive_client_secrets(creds_path):
     if not oauth_data:
         return None
 
-    key = 'web' if 'web' in oauth_data else 'installed'
+    key = "web" if "web" in oauth_data else "installed"
     client_section = oauth_data.get(key, {})
-    if not client_section.get('redirect_uris'):
-        client_section['redirect_uris'] = ["http://localhost"]
+    if not client_section.get("redirect_uris"):
+        client_section["redirect_uris"] = ["http://localhost"]
         oauth_data[key] = client_section
 
-    dest_path = os.path.join(os.getcwd(), 'client_secrets.json')
+    dest_path = os.path.join(os.getcwd(), "client_secrets.json")
     try:
-        with open(dest_path, 'w') as handle:
+        with open(dest_path, "w") as handle:
             json.dump(oauth_data, handle)
     except Exception:
         return None
@@ -196,17 +205,17 @@ def ensure_pydrive_creds_from_token(token_path, pydrive_creds_path):
         return None
 
     try:
-        with open(token_path, 'r') as handle:
+        with open(token_path, "r") as handle:
             data = json.load(handle)
     except Exception:
         return None
 
-    token = data.get('token')
-    refresh_token = data.get('refresh_token')
-    client_id = data.get('client_id')
-    client_secret = data.get('client_secret')
-    token_uri = data.get('token_uri')
-    expiry = data.get('expiry')
+    token = data.get("token")
+    refresh_token = data.get("refresh_token")
+    client_id = data.get("client_id")
+    client_secret = data.get("client_secret")
+    token_uri = data.get("token_uri")
+    expiry = data.get("expiry")
 
     if not all([token, refresh_token, client_id, client_secret, token_uri]):
         return None
@@ -215,6 +224,7 @@ def ensure_pydrive_creds_from_token(token_path, pydrive_creds_path):
     if expiry:
         try:
             from datetime import datetime, timezone
+
             token_expiry = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
             if token_expiry.tzinfo is None:
                 token_expiry = token_expiry.replace(tzinfo=timezone.utc)
@@ -223,6 +233,7 @@ def ensure_pydrive_creds_from_token(token_path, pydrive_creds_path):
 
     try:
         from oauth2client.client import OAuth2Credentials
+
         creds = OAuth2Credentials(
             access_token=token,
             client_id=client_id,
@@ -235,7 +246,7 @@ def ensure_pydrive_creds_from_token(token_path, pydrive_creds_path):
             scopes=data.get("scopes"),
         )
         os.makedirs(os.path.dirname(pydrive_creds_path), exist_ok=True)
-        with open(pydrive_creds_path, 'w') as handle:
+        with open(pydrive_creds_path, "w") as handle:
             handle.write(creds.to_json())
         return pydrive_creds_path
     except Exception:
@@ -245,13 +256,16 @@ def ensure_pydrive_creds_from_token(token_path, pydrive_creds_path):
 def get_google_token_data():
     """Helper to get google token from DB."""
     from backend.services.db import Database
+
     db = Database.get_db()
-    user = db.users.find_one({'google_token': {'$exists': True, '$ne': None}})
+    user = db.users.find_one({"google_token": {"$exists": True, "$ne": None}})
     if user:
-        token_data = user.get('google_token')
-        token_path = os.path.join(os.getcwd(), 'backend', 'credentials', 'token_db.json')
+        token_data = user.get("google_token")
+        token_path = os.path.join(
+            os.getcwd(), "backend", "credentials", "token_db.json"
+        )
         os.makedirs(os.path.dirname(token_path), exist_ok=True)
-        with open(token_path, 'w') as f:
+        with open(token_path, "w") as f:
             f.write(token_data)
         return token_path
     return None
@@ -263,7 +277,7 @@ def _build_drive_loader(creds_path, token_path):
             GoogleDriveReader = get_google_drive_reader()
             ensure_pydrive_client_secrets(creds_path)
             pydrive_creds_path = os.path.join(
-                os.getcwd(), 'backend', 'credentials', 'pydrive_creds.txt'
+                os.getcwd(), "backend", "credentials", "pydrive_creds.txt"
             )
             ensure_pydrive_creds_from_token(token_path, pydrive_creds_path)
             loader_kwargs = {
@@ -293,7 +307,9 @@ def load_google_drive_documents():
     creds_path = resolve_credentials_path()
     token_path = get_google_token_data()
 
-    if (token_path and os.path.exists(token_path)) or (creds_path and os.path.exists(creds_path)):
+    if (token_path and os.path.exists(token_path)) or (
+        creds_path and os.path.exists(creds_path)
+    ):
         try:
             loader, auth_type, error = _build_drive_loader(creds_path, token_path)
             if not loader:
@@ -302,13 +318,15 @@ def load_google_drive_documents():
                 return documents
 
             config = SystemConfig.get_config()
-            folder_ids = [f['id'] for f in config.get('drive_folders', [])]
+            folder_ids = [f["id"] for f in config.get("drive_folders", [])]
 
             for folder_id in folder_ids:
                 if folder_id:
                     drive_docs = loader.load_data(folder_id=folder_id)
                     documents.extend(drive_docs)
-                    print(f"Loaded {len(drive_docs)} documents from Drive folder {folder_id}.")
+                    print(
+                        f"Loaded {len(drive_docs)} documents from Drive folder {folder_id}."
+                    )
 
             if auth_type:
                 print(f"Using {auth_type}.")
@@ -328,16 +346,16 @@ def get_drive_file_list():
 
     loader, auth_type, error = _build_drive_loader(creds_path, token_path)
     if not loader:
-        return {'success': False, 'message': error}
+        return {"success": False, "message": error}
 
     config = SystemConfig.get_config()
-    folder_ids = [f['id'] for f in config.get('drive_folders', []) if f.get('id')]
+    folder_ids = [f["id"] for f in config.get("drive_folders", []) if f.get("id")]
 
     if not folder_ids:
         return {
-            'success': True,
-            'files': [],
-            'message': f"Connected via {auth_type}, but no folders configured.",
+            "success": True,
+            "files": [],
+            "message": f"Connected via {auth_type}, but no folders configured.",
         }
 
     found_files = []
@@ -346,11 +364,17 @@ def get_drive_file_list():
             docs = loader.load_data(folder_id=folder_id)
             count = len(docs)
             if count > 0:
-                found_files.append(f"Folder {folder_id}: Found {count} document chunks.")
+                found_files.append(
+                    f"Folder {folder_id}: Found {count} document chunks."
+                )
             else:
                 found_files.append(f"Folder {folder_id}: Empty or no access.")
 
-        return {'success': True, 'files': found_files, 'message': f"Verified with {auth_type}"}
+        return {
+            "success": True,
+            "files": found_files,
+            "message": f"Verified with {auth_type}",
+        }
 
     except Exception as e:
-        return {'success': False, 'message': f"Error accessing Drive folders: {e}"}
+        return {"success": False, "message": f"Error accessing Drive folders: {e}"}

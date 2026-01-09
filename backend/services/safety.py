@@ -1,5 +1,5 @@
 class SafetyService:
-    FORBIDDEN_TERMS = ['internal-confidential', 'secret-key']
+    FORBIDDEN_TERMS = ["internal-confidential", "secret-key"]
 
     @classmethod
     def is_safe(cls, text):

@@ -2,6 +2,7 @@ import threading
 import time
 from backend.services.rag import RAGService
 
+
 class SchedulerService:
     @staticmethod
     def start_polling(interval=60):
