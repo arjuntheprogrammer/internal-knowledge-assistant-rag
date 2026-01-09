@@ -88,7 +88,6 @@ This is a simple AI-powered internal knowledge assistant with ACL that can be us
 
 ### 1. Clone the repository
 
-
 ```bash
 git clone <repository_url>
 cd internal-knowledge-assistant
@@ -97,7 +96,6 @@ cd internal-knowledge-assistant
 ### 2. Configuration
 
 Create a `.env` file in the root directory and add the following variables:
-
 
 ```bash
 SECRET_KEY=your_secret_key
