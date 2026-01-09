@@ -79,15 +79,20 @@ export function bindLogout() {
 
 export function updateNav() {
   const user = JSON.parse(localStorage.getItem("user"));
-  const path = window.location.pathname;
+  const path = normalizePath(window.location.pathname);
 
   const links = document.querySelectorAll(".nav-links a");
   links.forEach((link) => {
-    if (link.getAttribute("href") === path) {
-      link.classList.add("active");
-    } else {
-      link.classList.remove("active");
-    }
+    const href = normalizePath(link.getAttribute("href"));
+    const isAdminLink = href.startsWith("/admin");
+    const isLoginLink = href === "/login";
+    const isActive = isAdminLink
+      ? path.startsWith("/admin")
+      : isLoginLink
+        ? path.startsWith("/login")
+        : href === path;
+
+    link.classList.toggle("active", isActive);
   });
 
   if (user) {
@@ -102,4 +107,12 @@ export function updateNav() {
       if (adminLink) adminLink.style.display = "flex";
     }
   }
+}
+
+function normalizePath(pathname) {
+  if (!pathname) return "/";
+  if (pathname !== "/" && pathname.endsWith("/")) {
+    return pathname.slice(0, -1);
+  }
+  return pathname;
 }

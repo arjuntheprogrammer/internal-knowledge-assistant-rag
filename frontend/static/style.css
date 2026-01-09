@@ -79,7 +79,8 @@ nav {
   height: 100%;
 }
 
-.nav-links a {
+.nav-links a,
+.nav-links button {
   text-decoration: none;
   color: var(--text-muted);
   font-weight: 600;
@@ -92,12 +93,21 @@ nav {
   justify-content: center;
 }
 
-.nav-links a:hover {
+.nav-links button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.nav-links a:hover,
+.nav-links button:hover {
   color: var(--primary-color);
   background-color: rgba(59, 130, 246, 0.06);
 }
 
-.nav-links a.active {
+.nav-links a.active,
+.nav-links button.active {
   color: var(--primary-color);
   background-color: rgba(59, 130, 246, 0.1);
 }
