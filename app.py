@@ -7,10 +7,12 @@ from backend.routes.auth import auth_bp
 from backend.routes.admin import admin_bp
 from backend.routes.chat import chat_bp
 from backend.services.scheduler import SchedulerService
+from backend.logging_setup import configure_logging
 import os
 
 
 def create_app(config_name="default"):
+    configure_logging()
     app = Flask(
         __name__, static_folder="frontend/static", template_folder="frontend/templates"
     )
