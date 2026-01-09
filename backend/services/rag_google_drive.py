@@ -112,13 +112,23 @@ def get_google_drive_reader():
                             return metadata[filename]
 
                         temp_dir = Path(temp_dir)
+                        os.makedirs(temp_dir, exist_ok=True)
                         metadata = {}
 
                         for fileid_meta in fileids_meta:
                             filename = fileid_meta[2]
                             if not filename:
                                 continue
-                            filepath = os.path.join(temp_dir, filename)
+                            safe_filename = os.path.basename(filename).strip()
+                            if not safe_filename:
+                                continue
+                            altsep = os.path.altsep
+                            if os.path.sep in safe_filename or (altsep and altsep in safe_filename):
+                                safe_filename = safe_filename.replace(os.path.sep, "_")
+                                if altsep:
+                                    safe_filename = safe_filename.replace(altsep, "_")
+                            filepath = os.path.join(temp_dir, safe_filename)
+                            os.makedirs(os.path.dirname(filepath), exist_ok=True)
                             fileid = fileid_meta[0]
                             final_filepath = self._download_file(fileid, filepath)
                             if not final_filepath:
