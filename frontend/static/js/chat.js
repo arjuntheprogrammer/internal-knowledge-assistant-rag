@@ -53,6 +53,7 @@ function appendMessage(sender, text, messageId = null) {
   const content = document.createElement("div");
   if (sender === "bot") {
     content.innerHTML = renderMarkdown(text);
+    decorateLinks(content);
   } else {
     content.textContent = text;
   }
@@ -103,6 +104,15 @@ function escapeHtml(text) {
     "'": "&#39;",
   };
   return text.replace(/[&<>"']/g, (char) => map[char]);
+}
+
+function decorateLinks(container) {
+  const links = container.querySelectorAll("a");
+  if (!links.length) return;
+  links.forEach((link) => {
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+  });
 }
 
 async function sendFeedback(messageId, rating) {
