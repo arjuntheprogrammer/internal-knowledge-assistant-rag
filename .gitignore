@@ -164,3 +164,4 @@ backend/credentials/*.json
 backend/credentials/**/*.json
 !backend/credentials/credentials.template.json
 backend/credentials/pydrive_creds.txt
+chroma-data/

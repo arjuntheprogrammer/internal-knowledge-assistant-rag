@@ -30,8 +30,7 @@ services:
       - IS_PERSISTENT=TRUE
       - PERSIST_DIRECTORY=/chroma/chroma
     volumes:
-      - chroma_data:/chroma/chroma
+      - ./chroma-data:/chroma/chroma
 
 volumes:
   mongo_data:
-  chroma_data:

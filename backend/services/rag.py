@@ -1,5 +1,9 @@
 from llama_index import VectorStoreIndex, SimpleDirectoryReader, StorageContext
+from llama_index.prompts import PromptTemplate
+from llama_index.response.schema import Response
+from typing import Any
 import os
+import re
 
 from backend.services.rag_context import get_service_context
 from backend.services.rag_chroma import get_chroma_vector_store
@@ -69,9 +73,27 @@ class RAGService:
         if not cls.index:
             return "Knowledge base is empty. Please add documents."
 
-        query_engine = cls.index.as_query_engine()
+        text_qa_template = PromptTemplate(
+            "Context: {context_str}\n"
+            "Answer the question based ONLY on the context. "
+            "If unsure, say 'Insufficient information'. "
+            "Format as Markdown with:\n"
+            "Answer: [response]\n"
+            "**Sources:** bullet list of citations\n"
+            "Question: {query_str}\nAnswer: "
+        )
+        refine_template = PromptTemplate(
+            "Original: {query_str}\nPrevious answer: {existing_answer}\n"
+            "Refine using new context: {context_str}\n"
+            "Keep the Markdown formatting. Answer: "
+        )
+        query_engine = cls.index.as_query_engine(
+            similarity_top_k=5,
+            text_qa_template=text_qa_template,
+            refine_template=refine_template,
+        )
         response = query_engine.query(question)
-        return str(response)
+        return cls._format_markdown_response(response)
 
     @staticmethod
     def _log_vector_store_count(vector_store):
@@ -81,3 +103,77 @@ class RAGService:
                 print(f"Chroma collection count: {collection.count()}")
         except Exception as exc:
             print(f"Chroma collection count check failed: {exc}")
+
+    @classmethod
+    def _format_markdown_response(cls, response: Any) -> str:
+        response_text = cls._extract_response_text(response) or ""
+        response_text = response_text.strip()
+
+        answer_text, sources_text = cls._split_sources(response_text)
+        if not answer_text:
+            answer_text = "Insufficient information"
+
+        sources_block = cls._format_sources(response, sources_text)
+        return f"{answer_text}\n\n{sources_block}"
+
+    @staticmethod
+    def _extract_response_text(response: Any) -> str:
+        if isinstance(response, Response):
+            return response.response or ""
+        return str(response)
+
+    @staticmethod
+    def _split_sources(text: str) -> tuple[str, str]:
+        if not text:
+            return "", ""
+        match = re.search(
+            r"(?im)^[\s>*-]*\**sources\**\s*[:\-]\s*",
+            text,
+        )
+        if not match:
+            return text, ""
+        return text[: match.start()].strip(), text[match.end() :].strip()
+
+    @staticmethod
+    def _format_sources(response: Any, sources_text: str) -> str:
+        sources = []
+        source_nodes = getattr(response, "source_nodes", None)
+        if source_nodes:
+            for node_with_score in source_nodes:
+                node = getattr(node_with_score, "node", None)
+                if not node:
+                    continue
+                metadata = getattr(node, "metadata", {}) or {}
+                label = (
+                    metadata.get("file name")
+                    or metadata.get("file_name")
+                    or metadata.get("filename")
+                    or metadata.get("file id")
+                    or node.node_id
+                )
+                if label and label not in sources:
+                    if label != node.node_id:
+                        sources.append(f"{label} (id: {node.node_id})")
+                    else:
+                        sources.append(label)
+
+        if sources:
+            bullets = "\n".join(f"- {source}" for source in sources)
+            return f"\n**Sources:**\n{bullets}"
+
+        cleaned_sources = sources_text.strip()
+        if cleaned_sources:
+            cleaned_sources = re.sub(
+                r"(?i)^\s*\**sources\**\s*[:\-]\s*",
+                "",
+                cleaned_sources,
+            ).strip()
+            if re.search(r"(?m)^\s*[-*]\s+", cleaned_sources):
+                return f"**Sources:**\n{cleaned_sources}"
+            if "," in cleaned_sources:
+                items = [item.strip() for item in cleaned_sources.split(",") if item.strip()]
+                bullets = "\n".join(f"- {item}" for item in items)
+                return f"**Sources:**\n{bullets}" if bullets else "**Sources:** None"
+            return f"**Sources:** {cleaned_sources}"
+
+        return "**Sources:** None"
