@@ -1,6 +1,14 @@
 import os
 
-from llama_index.vector_stores import ChromaVectorStore
+from llama_index.vector_stores import ChromaVectorStore as BaseChromaVectorStore
+from llama_index.vector_stores.types import VectorStoreQuery
+
+
+class SafeChromaVectorStore(BaseChromaVectorStore):
+    def query(self, query: VectorStoreQuery, **kwargs):
+        if query.query_embedding is not None:
+            query.query_embedding = [float(value) for value in query.query_embedding]
+        return super().query(query, **kwargs)
 
 
 def _get_chroma_port(value):
@@ -20,12 +28,12 @@ def get_chroma_vector_store():
     ssl = os.getenv("CHROMA_SSL", "false").lower() in {"1", "true", "yes"}
 
     if persist_dir:
-        return ChromaVectorStore.from_params(
+        return SafeChromaVectorStore.from_params(
             collection_name=collection_name,
             persist_dir=persist_dir,
         )
 
-    return ChromaVectorStore.from_params(
+    return SafeChromaVectorStore.from_params(
         collection_name=collection_name,
         host=host,
         port=port,

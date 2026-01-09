@@ -52,6 +52,8 @@ class RAGService:
                 storage_context=storage_context,
             )
             print("Index initialized successfully.")
+            if vector_store:
+                cls._log_vector_store_count(vector_store)
         except Exception as e:
             print(f"Index initialization error: {e}")
 
@@ -70,3 +72,12 @@ class RAGService:
         query_engine = cls.index.as_query_engine()
         response = query_engine.query(question)
         return str(response)
+
+    @staticmethod
+    def _log_vector_store_count(vector_store):
+        try:
+            collection = getattr(vector_store, "_collection", None)
+            if collection is not None and hasattr(collection, "count"):
+                print(f"Chroma collection count: {collection.count()}")
+        except Exception as exc:
+            print(f"Chroma collection count check failed: {exc}")

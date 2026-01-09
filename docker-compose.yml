@@ -23,7 +23,7 @@ services:
     volumes:
       - mongo_data:/data/db
   chroma:
-    image: chromadb/chroma:latest
+    image: chromadb/chroma:0.4.24
     ports:
       - "${CHROMA_PORT:-8000}:${CHROMA_PORT:-8000}"
     environment:
