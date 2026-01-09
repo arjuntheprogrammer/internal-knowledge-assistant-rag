@@ -18,6 +18,7 @@ dependencies:
       - chromadb==0.4.24
       - posthog>=2.4.0,<3
       - llama-hub==0.0.71
+      - langsmith>=0.1.100,<0.2
       - black==24.3.0
       - PyJWT==2.8.0
       - numpy==1.26.4
