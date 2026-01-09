@@ -73,6 +73,12 @@ class RAGService:
         if not cls.index:
             return "Knowledge base is empty. Please add documents."
 
+        query_text = str(question)
+        is_list_query = bool(
+            re.search(r"\b(list|all|show|enumerate|provide|give me)\b", query_text, re.I)
+        )
+        similarity_top_k = 10 if is_list_query else 3
+
         text_qa_template = PromptTemplate(
             "Context: {context_str}\n"
             "Answer the question based ONLY on the context. "
@@ -80,15 +86,17 @@ class RAGService:
             "Format as Markdown with:\n"
             "Answer: [response]\n"
             "**Sources:** bullet list of citations\n"
+            "If the question asks for a list, use bullet points.\n"
             "Question: {query_str}\nAnswer: "
         )
         refine_template = PromptTemplate(
             "Original: {query_str}\nPrevious answer: {existing_answer}\n"
             "Refine using new context: {context_str}\n"
+            "If the question asks for a list, keep bullet points. "
             "Keep the Markdown formatting. Answer: "
         )
         query_engine = cls.index.as_query_engine(
-            similarity_top_k=5,
+            similarity_top_k=similarity_top_k,
             text_qa_template=text_qa_template,
             refine_template=refine_template,
         )
