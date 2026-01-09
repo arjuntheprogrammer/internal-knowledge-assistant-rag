@@ -20,7 +20,7 @@
           >Admin</a
         >
         <a href="/login" id="login-link">Login</a>
-        <a href="#" id="logout-link" style="display: none" onclick="logout()"
+        <a href="#" id="logout-link" style="display: none"
           >Logout</a
         >
       </div>
@@ -28,6 +28,6 @@
 
     <div id="main-content" style="display: none;">{% block content %}{% endblock %}</div>
 
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='app.js') }}"></script>
   </body>
 </html>

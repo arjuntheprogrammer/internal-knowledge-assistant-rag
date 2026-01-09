@@ -46,7 +46,7 @@
             <strong style="color: #f08c00;">⚠️ Important:</strong> To avoid "Error 400: redirect_uri_mismatch", you MUST add the following URL to the <strong>Authorized redirect URIs</strong> in your Google Console:
             <div style="margin-top: 6px; display: flex; align-items: center; gap: 8px;">
                 <code id="redirect-uri-display" style="background: #fff; padding: 4px 8px; border-radius: 4px; border: 1px solid #e2e8f0; flex: 1;"></code>
-                <button onclick="copyRedirectUri()" style="padding: 4px 8px; font-size: 0.75rem; width: auto; margin: 0; background: #e2e8f0; color: #000; box-shadow: none;">Copy</button>
+                <button id="copy-redirect-btn" style="padding: 4px 8px; font-size: 0.75rem; width: auto; margin: 0; background: #e2e8f0; color: #000; box-shadow: none;">Copy</button>
             </div>
             <hr style="margin: 8px 0; border: 0; border-top: 1px solid #e9ecef;">
             <strong style="color: #f08c00;">🔐 Error 403 (access_denied)?</strong> Since the app is in "Testing" mode, you MUST add your email (<code>arjuntheprogrammer@gmail.com</code>) to the <strong>"Test users"</strong> list under the <strong>OAuth Consent Screen</strong> tab in your Google Cloud Console.
@@ -61,7 +61,7 @@
                 <input type="password" id="google-client-secret" placeholder="••••••••••••••••">
             </div>
         </div>
-        <button onclick="saveConfig()" class="btn-secondary" style="margin-top: 10px;">Save API Credentials</button>
+        <button id="save-api-btn" class="btn-secondary" style="margin-top: 10px;">Save API Credentials</button>
     </div>
 
     <div class="config-section">
@@ -74,7 +74,7 @@
                 <div id="drive-auth-status" style="font-weight: 600; margin-bottom: 5px;">Status: Checking...</div>
                 <p id="auth-hint" style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Login required</p>
             </div>
-            <button id="auth-btn" class="btn-secondary" onclick="handleGoogleAuth()">Connect Google Account</button>
+            <button id="auth-btn" class="btn-secondary">Connect Google Account</button>
         </div>
     </div>
 
@@ -84,11 +84,11 @@
             Add the folder IDs (or full Google Drive folder URLs) you want the assistant to index.
         </p>
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-            <button onclick="verifyDriveConnection()" style="padding: 0.5rem 1rem; font-size: 0.8rem; background: #e2e8f0; color: #0f172a; box-shadow: none;">Verify Folder Access</button>
+            <button id="verify-drive-btn" style="padding: 0.5rem 1rem; font-size: 0.8rem; background: #e2e8f0; color: #0f172a; box-shadow: none;">Verify Folder Access</button>
             <span style="font-size: 0.8rem; color: var(--text-muted);">Checks the first few folders and reports access.</span>
         </div>
         <div id="drive-folders-list"></div>
-        <button onclick="addDriveFolder()" style="background: var(--background-bg); color: var(--text-main); border: 1px dashed #cbd5e1; box-shadow: none; width: 100%; margin-top: 10px; border-radius: 12px; padding: 12px;">+ Add New Folder</button>
+        <button id="add-drive-folder-btn" style="background: var(--background-bg); color: var(--text-main); border: 1px dashed #cbd5e1; box-shadow: none; width: 100%; margin-top: 10px; border-radius: 12px; padding: 12px;">+ Add New Folder</button>
     </div>
 
         </div>
@@ -102,25 +102,10 @@
             </div>
 
             <div class="admin-save-panel">
-                <button onclick="saveConfig()">Save Configuration</button>
+                <button id="save-config-btn">Save Configuration</button>
             </div>
         </div>
     </div>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        loadConfig();
-
-        const providerSelect = document.getElementById('llm-provider');
-        providerSelect.addEventListener('change', (e) => {
-            toggleLLMConfig(e.target.value);
-        });
-    });
-
-    function toggleLLMConfig(provider) {
-        document.getElementById('openai-config').style.display = provider === 'openai' ? 'contents' : 'none';
-        document.getElementById('ollama-config').style.display = provider === 'ollama' ? 'contents' : 'none';
-    }
-</script>
 {% endblock %}
