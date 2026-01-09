@@ -5,6 +5,7 @@ import datetime
 
 auth_bp = Blueprint('auth', __name__)
 
+
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json()
@@ -21,6 +22,7 @@ def signup():
         return jsonify({'message': 'User created successfully'}), 201
     else:
         return jsonify({'message': 'User already exists'}), 409
+
 
 @auth_bp.route('/login', methods=['POST'])
 def login():

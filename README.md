@@ -11,7 +11,7 @@ This is a simple AI-powered internal knowledge assistant with ACL that can be us
 3. Frontend: HTML, CSS, JS
 4. RAG: LlamaIndex
 5. Database: MongoDB
-6. Vector Store: Pinecone
+6. Vector Store: Chroma
 7. Chat Model: OpenAI/Ollama
 8. Knowledge Base: Google Drive Folder
 9. Google Drive Connector: Google Drive API
@@ -97,14 +97,14 @@ Create a `.env` file in the root directory and add the following variables:
 SECRET_KEY=your_secret_key
 MONGO_URI=mongodb://mongo:27017/internal_knowledge_db # or localhost if running locally
 OPENAI_API_KEY=your_openai_api_key
-PINECONE_API_KEY=your_pinecone_api_key
-PINECONE_ENVIRONMENT=your_pinecone_env
-PINECONE_INDEX_NAME=internal-knowledge-assistant
+CHROMA_HOST=chroma
+CHROMA_PORT=8000
+CHROMA_COLLECTION=internal-knowledge-assistant
 ```
 
 ### 3. Run with Docker (Recommended)
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 The backend API will be available at `http://localhost:5000`.
 
@@ -144,23 +144,27 @@ To use a local LLM with Ollama:
    ```
    *Note: If running with Docker, you may need to use `http://host.docker.internal:11434` to access Ollama from within the container.*
 
-### 7. Pinecone Vector Store (Local Dev)
-Pinecone is a managed service (not local). For local development, you can either:
-- Use Pinecone by configuring the env vars below, or
-- Leave `PINECONE_*` unset to fall back to the in-memory vector store.
+### 7. Chroma Vector Store (Docker)
+Chroma runs as a local service. The `docker-compose.yml` includes a `chroma` container that the backend connects to.
 
-To use Pinecone:
-1. Create a project and API key in the Pinecone console.
-2. Note your environment/region name from Pinecone.
-3. Add the following to your `.env` file:
+To use Chroma with Docker:
+1. Ensure the `chroma` service is running via `docker compose up --build`.
+2. Set the following in your `.env` file:
    ```bash
-   PINECONE_API_KEY=your_pinecone_api_key
-   PINECONE_ENVIRONMENT=your_pinecone_env
-   PINECONE_INDEX_NAME=internal-knowledge-assistant
-   # Optional overrides
-   PINECONE_METRIC=cosine
-   PINECONE_DIMENSION=
+   CHROMA_HOST=chroma
+   CHROMA_PORT=8000
+   CHROMA_COLLECTION=internal-knowledge-assistant
    ```
+
+To use Chroma locally (outside Docker), run a server and point the backend at it:
+```bash
+docker run -p 8000:8000 chromadb/chroma:latest
+```
+```bash
+CHROMA_HOST=localhost
+CHROMA_PORT=8000
+CHROMA_COLLECTION=internal-knowledge-assistant
+```
 
 ### 8. Google Drive Configuration
 To enable the Google Drive connector:

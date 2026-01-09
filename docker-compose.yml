@@ -6,14 +6,15 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     ports:
-      - "5000:5000"
+      - "${PORT:-5001}:${PORT:-5001}"
     volumes:
       - .:/app
-    environment:
-      - FLASK_ENV=development
-      - MONGO_URI=mongodb://mongo:27017/internal_knowledge_db
+    env_file:
+      - .env
+    command: ["sh", "-c", "flask run --host=0.0.0.0 --port=${PORT:-5001}"]
     depends_on:
       - mongo
+      - chroma
 
   mongo:
     image: mongo:latest
@@ -21,6 +22,16 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+  chroma:
+    image: chromadb/chroma:latest
+    ports:
+      - "${CHROMA_PORT:-8000}:${CHROMA_PORT:-8000}"
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+    volumes:
+      - chroma_data:/chroma/chroma
 
 volumes:
   mongo_data:
+  chroma_data:

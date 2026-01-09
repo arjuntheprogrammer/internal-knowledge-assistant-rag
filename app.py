@@ -9,6 +9,7 @@ from backend.routes.chat import chat_bp
 from backend.services.scheduler import SchedulerService
 import os
 
+
 def create_app(config_name='default'):
     app = Flask(__name__,
                 static_folder='frontend/static',
@@ -28,9 +29,9 @@ def create_app(config_name='default'):
             SchedulerService.start_polling()
 
     # Register Blueprints
-    app.register_blueprint(auth_bp, url_prefix='/auth')
-    app.register_blueprint(admin_bp, url_prefix='/admin')
-    app.register_blueprint(chat_bp, url_prefix='/chat')
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(chat_bp, url_prefix='/api/chat')
 
     from flask import render_template
 
@@ -57,4 +58,3 @@ if __name__ == '__main__':
     app = create_app(os.getenv('FLASK_CONFIG') or 'default')
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-

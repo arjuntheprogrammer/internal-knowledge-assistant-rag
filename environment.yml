@@ -15,5 +15,7 @@ dependencies:
       - gunicorn==21.2.0
       - google-auth-oauthlib==1.2.0
       - google-api-python-client==2.111.0
+      - chromadb==0.4.24
       - llama-hub==0.0.71
+      - black==24.3.0
       - PyJWT==2.8.0

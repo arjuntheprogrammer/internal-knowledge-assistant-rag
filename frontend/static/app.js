@@ -1,4 +1,4 @@
-const API_BASE = ""; // Relative path to support running on any port
+const API_BASE = "/api"; // Relative path to support running on any port
 
 // Auth Functions
 async function handleLogin(e) {
@@ -430,7 +430,7 @@ async function loadConfig() {
       // Show Redirect URI for help
       const redirectDisplay = document.getElementById("redirect-uri-display");
       if (redirectDisplay) {
-        redirectDisplay.textContent = `${window.location.origin}/admin/oauth2callback`;
+        redirectDisplay.textContent = `${window.location.origin}/api/admin/oauth2callback`;
       }
 
       // Load folders
