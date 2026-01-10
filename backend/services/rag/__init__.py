@@ -76,9 +76,9 @@ class RAGService:
                 r"\b(list|all|show|enumerate|provide|give me)\b", query_text, re.I
             )
         )
-        similarity_top_k = 10 if is_list_query else 3
+        similarity_top_k = 20 if is_list_query else 3
 
-        text_qa_template = PromptTemplate(
+        default_text_qa_template = PromptTemplate(
             "Context: {context_str}\n"
             "Answer the question based ONLY on the context. "
             "If unsure, say 'Insufficient information'. "
@@ -88,11 +88,35 @@ class RAGService:
             "If the question asks for a list, use bullet points.\n"
             "Question: {query_str}\n**Answer:** "
         )
-        refine_template = PromptTemplate(
+        list_text_qa_template = PromptTemplate(
+            "Context: {context_str}\n"
+            "Answer the question based ONLY on the context. "
+            "If unsure, say 'Insufficient information'. "
+            "The user asked for a list. Enumerate every unique item mentioned "
+            "in the context; do not stop early. "
+            "If the context seems incomplete, add: '(List may be incomplete)'. "
+            "Format as Markdown with:\n"
+            "**Answer:** [bullet list]\n"
+            "**Sources:** bullet list of citations\n"
+            "Question: {query_str}\n**Answer:** "
+        )
+        default_refine_template = PromptTemplate(
             "Original: {query_str}\nPrevious answer: {existing_answer}\n"
             "Refine using new context: {context_str}\n"
             "If the question asks for a list, keep bullet points. "
             "Keep the Markdown formatting. **Answer:** "
+        )
+        list_refine_template = PromptTemplate(
+            "Original: {query_str}\nPrevious answer: {existing_answer}\n"
+            "Refine using new context: {context_str}\n"
+            "Update the list with any new unique items from the context. "
+            "Keep bullet points and Markdown formatting. **Answer:** "
+        )
+        text_qa_template = (
+            list_text_qa_template if is_list_query else default_text_qa_template
+        )
+        refine_template = (
+            list_refine_template if is_list_query else default_refine_template
         )
         return cls.index.as_query_engine(
             llm=llm,
