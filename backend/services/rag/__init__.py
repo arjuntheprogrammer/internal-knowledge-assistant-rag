@@ -1,6 +1,12 @@
 from llama_index import VectorStoreIndex, SimpleDirectoryReader, StorageContext
 from llama_index.prompts import PromptTemplate
-from typing import Any
+from llama_index.query_engine.router_query_engine import RouterQueryEngine
+from llama_index.response.schema import Response
+from llama_index.schema import QueryBundle
+from llama_index.selectors import LLMSingleSelector
+from llama_index.tools import QueryEngineTool
+from llama_index.core.base_query_engine import BaseQueryEngine
+import logging
 import os
 import re
 
@@ -12,6 +18,7 @@ from .rag_formatter import RAGFormatter
 
 class RAGService:
     index = None
+    logger = logging.getLogger(__name__)
 
     @classmethod
     def get_service_context(cls):
@@ -62,20 +69,12 @@ class RAGService:
             print(f"Index initialization error: {e}")
 
     @classmethod
-    def get_drive_file_list(cls):
-        return rag_google_drive.get_drive_file_list()
-
-    @classmethod
-    def query(cls, question):
-        if not cls.index:
-            cls.initialize_index()
-
-        if not cls.index:
-            return "Knowledge base is empty. Please add documents."
-
-        query_text = str(question)
+    def _build_rag_query_engine(cls, query_bundle: QueryBundle):
+        query_text = query_bundle.query_str or str(query_bundle)
         is_list_query = bool(
-            re.search(r"\b(list|all|show|enumerate|provide|give me)\b", query_text, re.I)
+            re.search(
+                r"\b(list|all|show|enumerate|provide|give me)\b", query_text, re.I
+            )
         )
         similarity_top_k = 10 if is_list_query else 3
 
@@ -95,13 +94,93 @@ class RAGService:
             "If the question asks for a list, keep bullet points. "
             "Keep the Markdown formatting. **Answer:** "
         )
-        query_engine = cls.index.as_query_engine(
+        return cls.index.as_query_engine(
             similarity_top_k=similarity_top_k,
             text_qa_template=text_qa_template,
             refine_template=refine_template,
         )
-        response = query_engine.query(question)
-        return RAGFormatter.format_markdown_response(response)
+
+    @classmethod
+    def get_drive_file_list(cls):
+        return rag_google_drive.get_drive_file_list()
+
+    @classmethod
+    def query(cls, question):
+        service_context = cls.get_service_context()
+        selector = LLMSingleSelector.from_defaults(service_context=service_context)
+
+        casual_engine = CasualQueryEngine(service_context=service_context)
+        rag_engine = LazyRAGQueryEngine(service_context=service_context)
+
+        tools = [
+            QueryEngineTool.from_defaults(
+                query_engine=casual_engine,
+                name="casual_chat",
+                description=(
+                    "Handle greetings, small talk, confirmations, thanks, or casual "
+                    "conversation that does not require company documents or data. "
+                    "Use this for short social replies like 'hi', 'hello', 'thanks', "
+                    "'how are you', or general chit-chat."
+                ),
+            ),
+            QueryEngineTool.from_defaults(
+                query_engine=rag_engine,
+                name="knowledge_base_retrieval",
+                description=(
+                    "Use for questions that need internal knowledge, policies, files, "
+                    "procedures, or any answer that must be grounded in the document "
+                    "corpus. Run retrieval when the user asks about specific facts, "
+                    "summaries, or details from company docs or Google Drive."
+                ),
+            ),
+        ]
+
+        router_engine = RouterQueryEngine.from_defaults(
+            query_engine_tools=tools,
+            service_context=service_context,
+            selector=selector,
+            select_multi=False,
+        )
+        response = router_engine.query(question)
+
+        query_text = None
+        if isinstance(question, QueryBundle):
+            query_text = question.query_str
+        else:
+            query_text = str(question)
+
+        selector_result = None
+        if isinstance(response, Response):
+            selector_result = (response.metadata or {}).get("selector_result")
+        selected_index = None
+        selected_reason = None
+        if selector_result is not None:
+            selected_index = getattr(selector_result, "ind", None)
+            selected_reason = getattr(selector_result, "reason", None)
+            if selected_index is None:
+                inds = getattr(selector_result, "inds", [])
+                selected_index = inds[0] if inds else None
+                reasons = getattr(selector_result, "reasons", None)
+                if reasons:
+                    selected_reason = reasons[0]
+
+        if selected_index is not None:
+            selected_tool = tools[selected_index].metadata.name
+        else:
+            selected_tool = "unknown"
+
+        cls.logger.info(
+            "rag_router selection=%s reason=%s query_len=%s",
+            selected_tool,
+            selected_reason,
+            len(query_text) if query_text else 0,
+        )
+
+        if selected_index == 1:
+            return RAGFormatter.format_markdown_response(response)
+        if isinstance(response, Response):
+            return response.response or ""
+        return str(response)
 
     @staticmethod
     def _log_vector_store_count(vector_store):
@@ -111,3 +190,44 @@ class RAGService:
                 print(f"Chroma collection count: {collection.count()}")
         except Exception as exc:
             print(f"Chroma collection count check failed: {exc}")
+
+
+class CasualQueryEngine(BaseQueryEngine):
+    def __init__(self, service_context):
+        super().__init__(service_context.callback_manager)
+        self._service_context = service_context
+        self._prompt = PromptTemplate(
+            "You are a friendly assistant. Respond briefly and naturally to casual "
+            "conversation. If the user asks about internal documents or data, say "
+            "you can look it up and ask for a specific question.\n"
+            "User: {query_str}\nAssistant:"
+        )
+
+    def _query(self, query_bundle: QueryBundle):
+        query_str = query_bundle.query_str or ""
+        response_text = self._service_context.llm.predict(
+            self._prompt, query_str=query_str
+        )
+        return Response(response_text)
+
+    async def _aquery(self, query_bundle: QueryBundle):
+        return self._query(query_bundle)
+
+
+class LazyRAGQueryEngine(BaseQueryEngine):
+    def __init__(self, service_context):
+        super().__init__(service_context.callback_manager)
+        self._service_context = service_context
+
+    def _query(self, query_bundle: QueryBundle):
+        if not RAGService.index:
+            RAGService.initialize_index()
+
+        if not RAGService.index:
+            return Response("Knowledge base is empty. Please add documents.")
+
+        query_engine = RAGService._build_rag_query_engine(query_bundle)
+        return query_engine.query(query_bundle)
+
+    async def _aquery(self, query_bundle: QueryBundle):
+        return self._query(query_bundle)
