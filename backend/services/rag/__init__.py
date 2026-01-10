@@ -23,6 +23,7 @@ from .rag_formatter import RAGFormatter
 class RAGService:
     index = None
     bm25_nodes = None
+    document_catalog = []
     logger = logging.getLogger(__name__)
 
     @classmethod
@@ -53,6 +54,7 @@ class RAGService:
             print("No documents found. Index will be empty.")
             return
         cls._annotate_documents(documents)
+        cls.document_catalog = cls._build_document_catalog(documents)
 
         try:
             settings = cls.get_service_context()
@@ -235,7 +237,38 @@ class RAGService:
         )
 
         if selected_index == 1:
-            return RAGFormatter.format_markdown_response(response)
+            formatted = RAGFormatter.format_markdown_response(response)
+            is_list_query = bool(
+                re.search(
+                    r"\b(list|all|show|enumerate|provide|give me|top)\b",
+                    query_text or "",
+                    re.I,
+                )
+            )
+            is_catalog_query = bool(
+                re.search(
+                    r"\b(document|documents|doc|docs|file|files|knowledge base|drive|folder|stock|stocks|company|companies|ticker|tickers)\b",
+                    query_text or "",
+                    re.I,
+                )
+            )
+            bullet_count = cls._extract_bullet_count(formatted)
+            if is_list_query and (
+                is_catalog_query or (cls.document_catalog and bullet_count == 0)
+            ):
+                if not cls.document_catalog:
+                    return formatted
+                requested = cls._parse_list_limit(query_text or "")
+                list_all = bool(re.search(r"\ball\b", query_text or "", re.I))
+                catalog_count = len(cls.document_catalog)
+                needs_fallback = bullet_count == 0
+                if requested:
+                    needs_fallback = needs_fallback or bullet_count != requested
+                elif list_all and bullet_count < catalog_count:
+                    needs_fallback = True
+                if needs_fallback:
+                    return cls._format_document_catalog_response(limit=requested)
+            return formatted
         if isinstance(response, Response):
             return response.response or ""
         return str(response)
@@ -266,6 +299,82 @@ class RAGService:
                 stock_name = os.path.splitext(base_name)[0].strip()
                 if stock_name:
                     metadata.setdefault("stock_name", stock_name)
+
+    @staticmethod
+    def _build_document_catalog(documents):
+        catalog = {}
+        for doc in documents:
+            metadata = getattr(doc, "metadata", None)
+            if not isinstance(metadata, dict):
+                continue
+            doc_name = metadata.get("stock_name")
+            if not doc_name:
+                file_name = (
+                    metadata.get("file name")
+                    or metadata.get("file_name")
+                    or metadata.get("filename")
+                )
+                if file_name:
+                    doc_name = os.path.splitext(os.path.basename(str(file_name)))[0].strip()
+            if not doc_name:
+                continue
+            drive_id = metadata.get("file id") or metadata.get("file_id")
+            url = None
+            if drive_id:
+                url = f"https://drive.google.com/file/d/{drive_id}/view"
+            catalog.setdefault(doc_name, url)
+        return sorted(
+            [{"name": name, "url": url} for name, url in catalog.items()],
+            key=lambda item: item["name"].lower(),
+        )
+
+    @staticmethod
+    def _parse_list_limit(query_text):
+        if not query_text:
+            return None
+        match = re.search(
+            r"\b(?:top|list|show|give me|provide)\s+(\d+)\b", query_text, re.I
+        )
+        if match:
+            return int(match.group(1))
+        match = re.search(
+            r"\b(\d+)\s+(?:stocks|stock|companies|company|tickers|ticker)\b",
+            query_text,
+            re.I,
+        )
+        if match:
+            return int(match.group(1))
+        return None
+
+    @staticmethod
+    def _extract_bullet_count(response_text):
+        if not response_text:
+            return 0
+        answer_match = re.search(
+            r"(?is)\*\*answer\*\*\s*:?(.*?)(\*\*sources\*\*|$)",
+            response_text,
+        )
+        answer_text = answer_match.group(1) if answer_match else response_text
+        return len(re.findall(r"(?m)^\s*[-*]\s+", answer_text))
+
+    @classmethod
+    def _format_document_catalog_response(cls, limit=None):
+        catalog = cls.document_catalog or []
+        if limit:
+            catalog = catalog[:limit]
+        if not catalog:
+            return "**Answer:** Insufficient information\n\n**Sources:** None"
+        answer_lines = [f"- {item['name']}" for item in catalog]
+        sources = []
+        for item in catalog:
+            if item.get("url"):
+                sources.append(f"- [{item['name']}]({item['url']})")
+        answer_block = "**Answer:**\n" + "\n".join(answer_lines)
+        if sources:
+            sources_block = "**Sources:**\n" + "\n".join(sources)
+        else:
+            sources_block = "**Sources:** None"
+        return f"{answer_block}\n\n{sources_block}"
 
 
 class HybridRetriever(BaseRetriever):
