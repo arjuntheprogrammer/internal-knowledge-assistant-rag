@@ -37,6 +37,7 @@ def configure_logging():
     root_logger.addHandler(error_handler)
 
     logging.getLogger("werkzeug").setLevel(logging.INFO)
+    logging.getLogger("googleapiclient.discovery_cache").setLevel(logging.ERROR)
 
 
 def _has_configured_handler(logger, log_dir):
