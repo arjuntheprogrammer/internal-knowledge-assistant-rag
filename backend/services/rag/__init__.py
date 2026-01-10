@@ -1,13 +1,15 @@
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext
 from llama_index.core.base.base_query_engine import BaseQueryEngine
+from llama_index.core.base.base_retriever import BaseRetriever
 from llama_index.core.base.response.schema import Response
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.postprocessor import LLMRerank
 from llama_index.core.prompts import PromptTemplate
-from llama_index.core.query_engine import RouterQueryEngine
-from llama_index.core.schema import QueryBundle
+from llama_index.core.query_engine import RetrieverQueryEngine, RouterQueryEngine
+from llama_index.core.schema import NodeWithScore, QueryBundle
 from llama_index.core.selectors import LLMSingleSelector
 from llama_index.core.tools import QueryEngineTool
+from llama_index.retrievers.bm25 import BM25Retriever
 import logging
 import os
 import re
@@ -20,6 +22,7 @@ from .rag_formatter import RAGFormatter
 
 class RAGService:
     index = None
+    bm25_nodes = None
     logger = logging.getLogger(__name__)
 
     @classmethod
@@ -61,6 +64,7 @@ class RAGService:
                 )
 
             splitter = SentenceSplitter(chunk_size=512, chunk_overlap=60)
+            cls.bm25_nodes = splitter.get_nodes_from_documents(documents)
             cls.index = VectorStoreIndex.from_documents(
                 documents,
                 callback_manager=settings.callback_manager,
@@ -74,14 +78,16 @@ class RAGService:
             print(f"Index initialization error: {e}")
 
     @classmethod
-    def _build_rag_query_engine(cls, query_bundle: QueryBundle, llm):
+    def _build_rag_query_engine(cls, query_bundle: QueryBundle, llm, callback_manager):
         query_text = query_bundle.query_str or str(query_bundle)
         is_list_query = bool(
             re.search(
                 r"\b(list|all|show|enumerate|provide|give me)\b", query_text, re.I
             )
         )
-        similarity_top_k = 20 if is_list_query else 3
+        vector_top_k = 24 if is_list_query else 6
+        bm25_top_k = 24 if is_list_query else 6
+        max_results = 30 if is_list_query else 10
 
         default_text_qa_template = PromptTemplate(
             "Context: {context_str}\n"
@@ -123,11 +129,26 @@ class RAGService:
         refine_template = (
             list_refine_template if is_list_query else default_refine_template
         )
-        rerank_top_n = 12 if is_list_query else 5
+        rerank_top_n = 24 if is_list_query else 6
         reranker = LLMRerank(llm=llm, top_n=rerank_top_n)
-        return cls.index.as_query_engine(
+
+        vector_retriever = cls.index.as_retriever(similarity_top_k=vector_top_k)
+        bm25_retriever = None
+        if cls.bm25_nodes:
+            bm25_retriever = BM25Retriever.from_defaults(
+                nodes=cls.bm25_nodes, similarity_top_k=bm25_top_k
+            )
+        hybrid_retriever = HybridRetriever(
+            vector_retriever=vector_retriever,
+            bm25_retriever=bm25_retriever,
+            max_results=max_results,
+            callback_manager=callback_manager,
+            bm25_weight=1.2 if is_list_query else 1.0,
+        )
+        return RetrieverQueryEngine.from_args(
+            retriever=hybrid_retriever,
             llm=llm,
-            similarity_top_k=similarity_top_k,
+            callback_manager=callback_manager,
             text_qa_template=text_qa_template,
             refine_template=refine_template,
             node_postprocessors=[reranker],
@@ -247,6 +268,57 @@ class RAGService:
                     metadata.setdefault("stock_name", stock_name)
 
 
+class HybridRetriever(BaseRetriever):
+    def __init__(
+        self,
+        vector_retriever,
+        bm25_retriever,
+        max_results,
+        callback_manager,
+        vector_weight=1.0,
+        bm25_weight=1.0,
+    ):
+        super().__init__(callback_manager=callback_manager)
+        self._vector_retriever = vector_retriever
+        self._bm25_retriever = bm25_retriever
+        self._max_results = max_results
+        self._vector_weight = vector_weight
+        self._bm25_weight = bm25_weight
+
+    def _get_prompt_modules(self):
+        return {}
+
+    def _retrieve(self, query_bundle: QueryBundle):
+        vector_nodes = self._vector_retriever.retrieve(query_bundle)
+        bm25_nodes = []
+        if self._bm25_retriever is not None:
+            bm25_nodes = self._bm25_retriever.retrieve(query_bundle)
+        merged = {}
+
+        def add_nodes(nodes, weight):
+            for node in nodes:
+                score = (node.score or 0.0) * weight
+                key = getattr(node.node, "node_id", None) or getattr(
+                    node.node, "hash", None
+                )
+                if key is None:
+                    key = id(node.node)
+                existing = merged.get(key)
+                if existing is None or score > (existing.score or 0.0):
+                    merged[key] = NodeWithScore(node=node.node, score=score)
+
+        add_nodes(vector_nodes, self._vector_weight)
+        if bm25_nodes:
+            add_nodes(bm25_nodes, self._bm25_weight)
+
+        results = sorted(
+            merged.values(), key=lambda item: item.score or 0.0, reverse=True
+        )
+        if self._max_results:
+            return results[: self._max_results]
+        return results
+
+
 class CasualQueryEngine(BaseQueryEngine):
     def __init__(self, llm, callback_manager):
         super().__init__(callback_manager)
@@ -274,6 +346,7 @@ class LazyRAGQueryEngine(BaseQueryEngine):
     def __init__(self, llm, callback_manager):
         super().__init__(callback_manager)
         self._llm = llm
+        self._callback_manager = callback_manager
 
     def _get_prompt_modules(self):
         return {}
@@ -285,7 +358,9 @@ class LazyRAGQueryEngine(BaseQueryEngine):
         if not RAGService.index:
             return Response("Knowledge base is empty. Please add documents.")
 
-        query_engine = RAGService._build_rag_query_engine(query_bundle, self._llm)
+        query_engine = RAGService._build_rag_query_engine(
+            query_bundle, self._llm, self._callback_manager
+        )
         return query_engine.query(query_bundle)
 
     async def _aquery(self, query_bundle: QueryBundle):
