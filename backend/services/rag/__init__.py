@@ -2,6 +2,7 @@ from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageCon
 from llama_index.core.base.base_query_engine import BaseQueryEngine
 from llama_index.core.base.response.schema import Response
 from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.postprocessor import LLMRerank
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core.query_engine import RouterQueryEngine
 from llama_index.core.schema import QueryBundle
@@ -122,11 +123,14 @@ class RAGService:
         refine_template = (
             list_refine_template if is_list_query else default_refine_template
         )
+        rerank_top_n = 12 if is_list_query else 5
+        reranker = LLMRerank(llm=llm, top_n=rerank_top_n)
         return cls.index.as_query_engine(
             llm=llm,
             similarity_top_k=similarity_top_k,
             text_qa_template=text_qa_template,
             refine_template=refine_template,
+            node_postprocessors=[reranker],
         )
 
     @classmethod
