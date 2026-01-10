@@ -12,7 +12,7 @@ def get_service_context():
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OpenAI API Key not found")
-        llm = OpenAI(model=config.get("openai_model", "gpt-3.5-turbo"))
+        llm = OpenAI(model=config.get("openai_model", "gpt-4o-mini"))
     else:
         llm = Ollama(
             base_url=config.get("ollama_url", "http://localhost:11434"),

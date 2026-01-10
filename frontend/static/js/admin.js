@@ -163,7 +163,7 @@ export async function loadConfig() {
       document.getElementById("llm-provider").value =
         config.llm_provider || "openai";
       document.getElementById("openai-model").value =
-        config.openai_model || "gpt-3.5-turbo";
+        config.openai_model || "gpt-4o-mini";
       if (config.ollama_url) {
         document.getElementById("ollama-url").value = config.ollama_url;
       }
