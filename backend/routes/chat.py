@@ -3,7 +3,7 @@ from backend.middleware.auth import token_required
 from backend.services.rag import RAGService
 from backend.services.safety import SafetyService
 
-from llama_index.schema import QueryBundle
+from llama_index.core.schema import QueryBundle
 
 chat_bp = Blueprint("chat", __name__)
 

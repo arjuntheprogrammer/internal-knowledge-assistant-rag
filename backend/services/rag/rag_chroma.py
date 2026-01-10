@@ -1,7 +1,9 @@
 import os
 
-from llama_index.vector_stores import ChromaVectorStore as BaseChromaVectorStore
-from llama_index.vector_stores.types import VectorStoreQuery
+from llama_index.core.vector_stores.types import VectorStoreQuery
+from llama_index.vector_stores.chroma import (
+    ChromaVectorStore as BaseChromaVectorStore,
+)
 
 
 class SafeChromaVectorStore(BaseChromaVectorStore):

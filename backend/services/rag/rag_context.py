@@ -1,6 +1,7 @@
-from llama_index import ServiceContext
-from llama_index.callbacks import CallbackManager
-from llama_index.llms import OpenAI, Ollama
+from llama_index.core import Settings
+from llama_index.core.callbacks import CallbackManager
+from llama_index.llms.openai import OpenAI
+from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.openai import OpenAIEmbedding
 from backend.models.config import SystemConfig
 from backend.services.langsmith_tracing import get_langsmith_callback_handler
@@ -24,13 +25,8 @@ def get_service_context():
 
     handler = get_langsmith_callback_handler()
     callback_manager = CallbackManager([handler]) if handler else None
-    if embed_model is None:
-        return ServiceContext.from_defaults(
-            llm=llm,
-            callback_manager=callback_manager,
-        )
-    return ServiceContext.from_defaults(
-        llm=llm,
-        embed_model=embed_model,
-        callback_manager=callback_manager,
-    )
+
+    Settings.llm = llm
+    Settings.embed_model = embed_model
+    Settings.callback_manager = callback_manager
+    return Settings

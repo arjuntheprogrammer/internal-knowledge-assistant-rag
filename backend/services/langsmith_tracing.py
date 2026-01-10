@@ -2,12 +2,12 @@ import os
 import logging
 from typing import Any, Dict, Optional
 
-from llama_index.callbacks.base import BASE_TRACE_EVENT
-from llama_index.callbacks.base_handler import BaseCallbackHandler
-from llama_index.callbacks.schema import CBEventType, EventPayload
-from llama_index.callbacks.token_counting import get_llm_token_counts
-from llama_index.utilities.token_counting import TokenCounter
-from llama_index.utils import get_tokenizer
+from llama_index.core.callbacks.base import BASE_TRACE_EVENT
+from llama_index.core.callbacks.base_handler import BaseCallbackHandler
+from llama_index.core.callbacks.schema import CBEventType, EventPayload
+from llama_index.core.callbacks.token_counting import get_llm_token_counts
+from llama_index.core.utilities.token_counting import TokenCounter
+from llama_index.core.utils import get_tokenizer
 
 try:
     from langsmith import Client

@@ -1,7 +1,7 @@
 from typing import Any
 import re
 
-from llama_index.response.schema import Response
+from llama_index.core.base.response.schema import Response
 
 
 class RAGFormatter:

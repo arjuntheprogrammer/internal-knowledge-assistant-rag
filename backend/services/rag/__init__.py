@@ -1,11 +1,11 @@
-from llama_index import VectorStoreIndex, SimpleDirectoryReader, StorageContext
-from llama_index.prompts import PromptTemplate
-from llama_index.query_engine.router_query_engine import RouterQueryEngine
-from llama_index.response.schema import Response
-from llama_index.schema import QueryBundle
-from llama_index.selectors import LLMSingleSelector
-from llama_index.tools import QueryEngineTool
-from llama_index.core.base_query_engine import BaseQueryEngine
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext
+from llama_index.core.base.base_query_engine import BaseQueryEngine
+from llama_index.core.base.response.schema import Response
+from llama_index.core.prompts import PromptTemplate
+from llama_index.core.query_engine import RouterQueryEngine
+from llama_index.core.schema import QueryBundle
+from llama_index.core.selectors import LLMSingleSelector
+from llama_index.core.tools import QueryEngineTool
 import logging
 import os
 import re
@@ -49,7 +49,7 @@ class RAGService:
             return
 
         try:
-            service_context = cls.get_service_context()
+            settings = cls.get_service_context()
             vector_store = cls.get_vector_store()
             storage_context = None
             if vector_store:
@@ -59,7 +59,7 @@ class RAGService:
 
             cls.index = VectorStoreIndex.from_documents(
                 documents,
-                service_context=service_context,
+                callback_manager=settings.callback_manager,
                 storage_context=storage_context,
             )
             print("Index initialized successfully.")
@@ -69,7 +69,7 @@ class RAGService:
             print(f"Index initialization error: {e}")
 
     @classmethod
-    def _build_rag_query_engine(cls, query_bundle: QueryBundle):
+    def _build_rag_query_engine(cls, query_bundle: QueryBundle, llm):
         query_text = query_bundle.query_str or str(query_bundle)
         is_list_query = bool(
             re.search(
@@ -95,6 +95,7 @@ class RAGService:
             "Keep the Markdown formatting. **Answer:** "
         )
         return cls.index.as_query_engine(
+            llm=llm,
             similarity_top_k=similarity_top_k,
             text_qa_template=text_qa_template,
             refine_template=refine_template,
@@ -106,11 +107,15 @@ class RAGService:
 
     @classmethod
     def query(cls, question):
-        service_context = cls.get_service_context()
-        selector = LLMSingleSelector.from_defaults(service_context=service_context)
+        settings = cls.get_service_context()
+        selector = LLMSingleSelector.from_defaults(llm=settings.llm)
 
-        casual_engine = CasualQueryEngine(service_context=service_context)
-        rag_engine = LazyRAGQueryEngine(service_context=service_context)
+        casual_engine = CasualQueryEngine(
+            llm=settings.llm, callback_manager=settings.callback_manager
+        )
+        rag_engine = LazyRAGQueryEngine(
+            llm=settings.llm, callback_manager=settings.callback_manager
+        )
 
         tools = [
             QueryEngineTool.from_defaults(
@@ -137,7 +142,7 @@ class RAGService:
 
         router_engine = RouterQueryEngine.from_defaults(
             query_engine_tools=tools,
-            service_context=service_context,
+            llm=settings.llm,
             selector=selector,
             select_multi=False,
         )
@@ -193,9 +198,9 @@ class RAGService:
 
 
 class CasualQueryEngine(BaseQueryEngine):
-    def __init__(self, service_context):
-        super().__init__(service_context.callback_manager)
-        self._service_context = service_context
+    def __init__(self, llm, callback_manager):
+        super().__init__(callback_manager)
+        self._llm = llm
         self._prompt = PromptTemplate(
             "You are a friendly assistant. Respond briefly and naturally to casual "
             "conversation. If the user asks about internal documents or data, say "
@@ -203,11 +208,12 @@ class CasualQueryEngine(BaseQueryEngine):
             "User: {query_str}\nAssistant:"
         )
 
+    def _get_prompt_modules(self):
+        return {"casual_prompt": self._prompt}
+
     def _query(self, query_bundle: QueryBundle):
         query_str = query_bundle.query_str or ""
-        response_text = self._service_context.llm.predict(
-            self._prompt, query_str=query_str
-        )
+        response_text = self._llm.predict(self._prompt, query_str=query_str)
         return Response(response_text)
 
     async def _aquery(self, query_bundle: QueryBundle):
@@ -215,9 +221,12 @@ class CasualQueryEngine(BaseQueryEngine):
 
 
 class LazyRAGQueryEngine(BaseQueryEngine):
-    def __init__(self, service_context):
-        super().__init__(service_context.callback_manager)
-        self._service_context = service_context
+    def __init__(self, llm, callback_manager):
+        super().__init__(callback_manager)
+        self._llm = llm
+
+    def _get_prompt_modules(self):
+        return {}
 
     def _query(self, query_bundle: QueryBundle):
         if not RAGService.index:
@@ -226,7 +235,7 @@ class LazyRAGQueryEngine(BaseQueryEngine):
         if not RAGService.index:
             return Response("Knowledge base is empty. Please add documents.")
 
-        query_engine = RAGService._build_rag_query_engine(query_bundle)
+        query_engine = RAGService._build_rag_query_engine(query_bundle, self._llm)
         return query_engine.query(query_bundle)
 
     async def _aquery(self, query_bundle: QueryBundle):

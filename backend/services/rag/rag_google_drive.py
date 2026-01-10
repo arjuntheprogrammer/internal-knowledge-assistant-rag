@@ -94,8 +94,8 @@ def get_google_drive_reader():
         import logging
         import tempfile
         from pathlib import Path
-        from llama_index import SimpleDirectoryReader
-        from llama_index.download.llamahub_modules.google_drive.base import (
+        from llama_index.core import SimpleDirectoryReader
+        from llama_index.readers.google import (
             GoogleDriveReader as BaseGoogleDriveReader,
         )
 
@@ -156,10 +156,8 @@ def get_google_drive_reader():
                     return []
 
         return PatchedGoogleDriveReader
-    except Exception:
-        from llama_index import download_loader
-
-        return download_loader("GoogleDriveReader")
+    except Exception as exc:
+        raise RuntimeError("Google Drive reader is unavailable.") from exc
 
 
 def ensure_pydrive_client_secrets(creds_path):
