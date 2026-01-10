@@ -212,31 +212,35 @@ class RAGService:
         selector_result = None
         if isinstance(response, Response):
             selector_result = (response.metadata or {}).get("selector_result")
-        selected_index = None
-        selected_reason = None
+        selected_inds = []
+        selected_reasons = []
         if selector_result is not None:
-            selected_index = getattr(selector_result, "ind", None)
-            selected_reason = getattr(selector_result, "reason", None)
-            if selected_index is None:
-                inds = getattr(selector_result, "inds", [])
-                selected_index = inds[0] if inds else None
-                reasons = getattr(selector_result, "reasons", None)
-                if reasons:
-                    selected_reason = reasons[0]
+            selections = getattr(selector_result, "selections", None)
+            if selections:
+                selected_inds = [selection.index for selection in selections]
+                selected_reasons = [selection.reason for selection in selections]
+            else:
+                inds = getattr(selector_result, "inds", None) or []
+                selected_inds = list(inds)
+                reasons = getattr(selector_result, "reasons", None) or []
+                selected_reasons = list(reasons)
 
-        if selected_index is not None:
-            selected_tool = tools[selected_index].metadata.name
-        else:
-            selected_tool = "unknown"
+        selected_tools = [
+            tools[index].metadata.name
+            for index in selected_inds
+            if 0 <= index < len(tools)
+        ]
+        selected_tool = selected_tools[0] if selected_tools else "unknown"
+        selected_reason = selected_reasons[0] if selected_reasons else None
 
         cls.logger.info(
             "rag_router selection=%s reason=%s query_len=%s",
-            selected_tool,
+            ",".join(selected_tools) if selected_tools else selected_tool,
             selected_reason,
             len(query_text) if query_text else 0,
         )
 
-        if selected_index == 1:
+        if 1 in selected_inds:
             formatted = RAGFormatter.format_markdown_response(response)
             is_list_query = bool(
                 re.search(
