@@ -1,6 +1,7 @@
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext
 from llama_index.core.base.base_query_engine import BaseQueryEngine
 from llama_index.core.base.response.schema import Response
+from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core.query_engine import RouterQueryEngine
 from llama_index.core.schema import QueryBundle
@@ -47,6 +48,7 @@ class RAGService:
         if not documents:
             print("No documents found. Index will be empty.")
             return
+        cls._annotate_documents(documents)
 
         try:
             settings = cls.get_service_context()
@@ -57,10 +59,12 @@ class RAGService:
                     vector_store=vector_store
                 )
 
+            splitter = SentenceSplitter(chunk_size=512, chunk_overlap=60)
             cls.index = VectorStoreIndex.from_documents(
                 documents,
                 callback_manager=settings.callback_manager,
                 storage_context=storage_context,
+                transformations=[splitter],
             )
             print("Index initialized successfully.")
             if vector_store:
@@ -219,6 +223,24 @@ class RAGService:
                 print(f"Chroma collection count: {collection.count()}")
         except Exception as exc:
             print(f"Chroma collection count check failed: {exc}")
+
+    @staticmethod
+    def _annotate_documents(documents):
+        for doc in documents:
+            metadata = getattr(doc, "metadata", None)
+            if not isinstance(metadata, dict):
+                continue
+            file_name = (
+                metadata.get("file name")
+                or metadata.get("file_name")
+                or metadata.get("filename")
+                or metadata.get("file_path")
+            )
+            if file_name:
+                base_name = os.path.basename(str(file_name))
+                stock_name = os.path.splitext(base_name)[0].strip()
+                if stock_name:
+                    metadata.setdefault("stock_name", stock_name)
 
 
 class CasualQueryEngine(BaseQueryEngine):
