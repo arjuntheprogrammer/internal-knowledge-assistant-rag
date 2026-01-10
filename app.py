@@ -7,7 +7,7 @@ from backend.routes.auth import auth_bp
 from backend.routes.admin import admin_bp
 from backend.routes.chat import chat_bp
 from backend.services.scheduler import SchedulerService
-from backend.logging_setup import configure_logging
+from backend.logging import configure_logging
 import os
 
 

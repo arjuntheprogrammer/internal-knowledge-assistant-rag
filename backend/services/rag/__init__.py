@@ -4,10 +4,10 @@ from typing import Any
 import os
 import re
 
-from backend.services.rag_context import get_service_context
-from backend.services.rag_chroma import get_chroma_vector_store
-from backend.services import rag_google_drive
-from backend.services.rag_formatter import RAGFormatter
+from .rag_context import get_service_context
+from .rag_chroma import get_chroma_vector_store
+from . import rag_google_drive
+from .rag_formatter import RAGFormatter
 
 
 class RAGService:
