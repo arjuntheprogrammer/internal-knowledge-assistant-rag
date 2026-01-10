@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 from backend.models.config import SystemConfig
 
@@ -102,10 +103,32 @@ def get_google_drive_reader():
         logger = logging.getLogger(__name__)
 
         class PatchedGoogleDriveReader(BaseGoogleDriveReader):
+            def _download_with_retries(self, fileid, filepath, attempts=3):
+                last_error = None
+                for attempt in range(1, attempts + 1):
+                    try:
+                        return self._download_file(fileid, filepath)
+                    except Exception as exc:
+                        last_error = exc
+                        logger.warning(
+                            "Drive download failed (attempt %s/%s) for %s: %s",
+                            attempt,
+                            attempts,
+                            fileid,
+                            exc,
+                        )
+                        if attempt < attempts:
+                            backoff = min(2 ** attempt, 8)
+                            time.sleep(backoff)
+                if last_error:
+                    raise last_error
+                return None
+
             def _load_data_fileids_meta(self, fileids_meta):
                 if not fileids_meta:
                     return []
                 try:
+                    retry_attempts = int(os.getenv("GOOGLE_DRIVE_DOWNLOAD_RETRIES", "3"))
                     with tempfile.TemporaryDirectory() as temp_dir:
 
                         def get_metadata(filename):
@@ -130,7 +153,9 @@ def get_google_drive_reader():
                             filepath = os.path.join(temp_dir, safe_filename)
                             os.makedirs(os.path.dirname(filepath), exist_ok=True)
                             fileid = fileid_meta[0]
-                            final_filepath = self._download_file(fileid, filepath)
+                            final_filepath = self._download_with_retries(
+                                fileid, filepath, attempts=retry_attempts
+                            )
                             if not final_filepath:
                                 continue
 
