@@ -4,11 +4,21 @@ import re
 
 def log_vector_store_count(vector_store):
     try:
+        # Check for MilvusVectorStore
+        client = getattr(vector_store, "milvus_client", None)
+        collection_name = getattr(vector_store, "collection_name", None)
+        if client is not None and collection_name:
+            stats = client.get_collection_stats(collection_name)
+            count = stats.get("row_count", 0)
+            print(f"Milvus collection '{collection_name}' count: {count}")
+            return
+
+        # Legacy Chroma check
         collection = getattr(vector_store, "_collection", None)
         if collection is not None and hasattr(collection, "count"):
             print(f"Chroma collection count: {collection.count()}")
     except Exception as exc:
-        print(f"Chroma collection count check failed: {exc}")
+        print(f"Vector store count check failed: {exc}")
 
 
 def annotate_documents(documents):

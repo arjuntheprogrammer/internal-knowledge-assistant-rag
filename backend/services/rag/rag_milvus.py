@@ -22,5 +22,5 @@ def get_milvus_vector_store(user_id=None):
         token=token,
         collection_name=collection_name,
         dim=1536,  # Default for OpenAI text-embedding-3-small / ada-002
-        overwrite=False
+        overwrite=True
     )
