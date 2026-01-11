@@ -12,7 +12,7 @@ This is a simple AI-powered internal knowledge assistant that can be used to ans
 4. RAG: LlamaIndex
 5. Database: MongoDB
 6. Vector Store: Chroma
-7. Chat Model: OpenAI/Ollama
+7. Chat Model: OpenAI
 8. Knowledge Base: Google Drive folder
 9. Google Drive Connector: Google Drive API
 10. Analytics and Monitoring: LangSmith
@@ -20,7 +20,7 @@ This is a simple AI-powered internal knowledge assistant that can be used to ans
 ## Workflow
 
 1. User authentication and authorization: user signup (full name, email, password) and login (email, password).
-2. Admin configures Google Drive folders and LLM provider in the Admin UI.
+2. Admin configures Google Drive folders and the OpenAI model in the Admin UI.
 3. Frontend chat interface: user enters a question.
 4. Backend receives the question, applies a basic safety term check, and builds a `QueryBundle`.
 5. Router selects between casual chat or knowledge-base retrieval.
@@ -63,11 +63,10 @@ For a deeper RAG implementation overview, see [RAG.md](RAG.md).
 3. Automatic: poll the Google Drive folder for new documents and update the vector store.
 4. Preview the discovered documents in the Admin UI.
 
-### Configure LLM (OpenAI/Ollama) in UI
+### Configure LLM (OpenAI) in UI
 
-1. Select LLM.
-2. For OpenAI: provide OpenAI API key and model name.
-3. For Ollama: provide Ollama API URL and model name.
+1. Provide the OpenAI API key in `.env`.
+2. Choose the OpenAI model name in the Admin UI (default: `gpt-4o-mini`).
 
 ## Notes
 
@@ -133,22 +132,7 @@ The backend API will be available at `http://localhost:${PORT}`.
    python app.py
    ```
 
-### 5. LLM Configuration (Ollama)
-
-To use a local LLM with Ollama:
-
-1. **Install Ollama**: download from [ollama.ai](https://ollama.ai).
-2. **Pull a model**: run `ollama pull llama2` (or your preferred model).
-3. **Configure `.env`**:
-   update your `.env` file to point to your local Ollama instance:
-
-   ```bash
-   OLLAMA_BASE_URL=http://localhost:11434
-   ```
-
-   Note: if running with Docker, you may need to use `http://host.docker.internal:11434` to access Ollama from within the container.
-
-### 6. Chroma Vector Store (Docker)
+### 5. Chroma Vector Store (Docker)
 
 Chroma runs as a local service. The `docker-compose.yml` includes a `chroma` container that the backend connects to.
 
@@ -175,7 +159,7 @@ CHROMA_PORT=8000
 CHROMA_COLLECTION=internal-knowledge-assistant
 ```
 
-### 7. Google Drive Configuration
+### 6. Google Drive Configuration
 
 To enable the Google Drive connector:
 
@@ -186,7 +170,7 @@ To enable the Google Drive connector:
    Note: `credentials.json` is gitignored to secure your secrets.
 5. Run the application; it will automatically detect the credentials and attempt to load documents from folders configured in the Admin Dashboard.
 
-### 8. Analytics and Monitoring (LangSmith)
+### 7. Analytics and Monitoring (LangSmith)
 
 To enable tracing with LangSmith:
 

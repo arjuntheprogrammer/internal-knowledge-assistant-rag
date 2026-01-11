@@ -86,9 +86,6 @@ questions.
 - OpenAI:
   - LLM default: `gpt-4o-mini`
   - Embeddings: `text-embedding-3-small`
-- Ollama:
-  - LLM: configurable via `.env` (defaults to `llama2`)
-  - Embeddings: not set (None)
 
 Configuration is in `backend/services/rag/rag_context.py` and uses values from
 `.env` via `backend/models/config.py` and `SystemConfig`.

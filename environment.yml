@@ -10,7 +10,6 @@ dependencies:
       - flask-cors==4.0.0
       - pymongo==4.6.1
       - llama-index==0.14.12
-      - llama-index-llms-ollama==0.9.1
       - llama-index-readers-google==0.7.2
       - llama-index-retrievers-bm25==0.6.5
       - llama-index-vector-stores-chroma==0.5.5

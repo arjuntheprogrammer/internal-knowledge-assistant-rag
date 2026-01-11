@@ -11,7 +11,6 @@ class Config:
     )
     UPLOAD_FOLDER = os.path.join(os.getcwd(), "backend/uploads")
     LLM_API_KEY = os.getenv("OPENAI_API_KEY")
-    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 
 class DevelopmentConfig(Config):

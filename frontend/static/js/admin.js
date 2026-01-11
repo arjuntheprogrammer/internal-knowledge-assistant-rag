@@ -1,24 +1,9 @@
 import { API_BASE, authHeaders } from "./api.js";
 import { addDriveFolder, extractDriveFolderId } from "./drive.js";
 
-export function toggleLLMConfig(provider) {
-  const openaiConfig = document.getElementById("openai-config");
-  const ollamaConfig = document.getElementById("ollama-config");
-  if (!openaiConfig || !ollamaConfig) return;
-
-  openaiConfig.style.display = provider === "openai" ? "contents" : "none";
-  ollamaConfig.style.display = provider === "ollama" ? "contents" : "none";
-}
-
 export function bindAdminPage() {
-  const providerSelect = document.getElementById("llm-provider");
-  if (!providerSelect) return;
   const token = localStorage.getItem("token");
   if (!token) return;
-
-  providerSelect.addEventListener("change", (event) => {
-    toggleLLMConfig(event.target.value);
-  });
 
   const saveApiBtn = document.getElementById("save-api-btn");
   if (saveApiBtn) {
@@ -160,14 +145,8 @@ export async function loadConfig() {
     });
     if (res.ok) {
       const config = await res.json();
-      document.getElementById("llm-provider").value =
-        config.llm_provider || "openai";
       document.getElementById("openai-model").value =
         config.openai_model || "gpt-4o-mini";
-      if (config.ollama_url) {
-        document.getElementById("ollama-url").value = config.ollama_url;
-      }
-      toggleLLMConfig(config.llm_provider);
 
       document.getElementById("google-client-id").value =
         config.google_client_id || "";
@@ -194,7 +173,6 @@ export async function loadConfig() {
 
 export async function saveConfig(options = {}) {
   const { verifyDrive = true, showAlert = true } = options;
-  const provider = document.getElementById("llm-provider").value;
 
   const folderInputs = document.querySelectorAll(".drive-folder-input");
   const driveFolderIds = [];
@@ -210,10 +188,7 @@ export async function saveConfig(options = {}) {
   const driveFolders = uniqueIds.map((id) => ({ id }));
 
   const config = {
-    llm_provider: provider,
     openai_model: document.getElementById("openai-model").value,
-    ollama_url: document.getElementById("ollama-url").value,
-    ollama_model: document.getElementById("ollama-model").value,
     drive_folders: driveFolders,
     google_client_id: document.getElementById("google-client-id").value.trim(),
     google_client_secret: document

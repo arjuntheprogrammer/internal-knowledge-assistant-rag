@@ -9,7 +9,6 @@ gunicorn==21.2.0
 httpx==0.28.1
 langsmith>=0.1.100,<0.2
 llama-index==0.14.12
-llama-index-llms-ollama==0.9.1
 llama-index-readers-google==0.7.2
 llama-index-retrievers-bm25==0.6.5
 llama-index-vector-stores-chroma==0.5.5

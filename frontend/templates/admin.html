@@ -9,29 +9,10 @@
     <div class="config-section">
         <h3>LLM Configuration</h3>
         <div class="form-row">
-            <div class="form-group">
-                <label>Provider</label>
-                <select id="llm-provider">
-                    <option value="openai">OpenAI</option>
-                    <option value="ollama">Ollama</option>
-                </select>
-            </div>
-
             <div id="openai-config" class="form-row-contents">
                 <div class="form-group">
                     <label>Model Name</label>
                     <input type="text" id="openai-model" value="gpt-4o-mini">
-                </div>
-            </div>
-
-            <div id="ollama-config" class="form-row-contents" style="display:none;">
-                <div class="form-group">
-                    <label>Base URL</label>
-                    <input type="text" id="ollama-url" value="http://localhost:11434">
-                </div>
-                <div class="form-group">
-                    <label>Model Name</label>
-                    <input type="text" id="ollama-model" value="llama2">
                 </div>
             </div>
         </div>

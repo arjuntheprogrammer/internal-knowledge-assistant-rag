@@ -11,10 +11,7 @@ class SystemConfig:
             # Default config
             default_config = {
                 "_id": "system_config",
-                "llm_provider": "openai",  # 'openai' or 'ollama'
                 "openai_model": "gpt-4o-mini",
-                "ollama_url": "http://localhost:11434",
-                "ollama_model": "llama2",
                 "drive_folders": [],  # List of {'id': '...', 'name': '...'}
                 "updated_at": datetime.utcnow(),
             }
