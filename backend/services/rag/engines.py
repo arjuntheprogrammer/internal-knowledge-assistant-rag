@@ -129,8 +129,9 @@ def build_rag_query_engine(
     vector_retriever = index.as_retriever(**retriever_opts)
     bm25_retriever = None
     if bm25_nodes:
+        actual_bm25_top_k = min(bm25_top_k, len(bm25_nodes))
         bm25_retriever = BM25Retriever.from_defaults(
-            nodes=bm25_nodes, similarity_top_k=bm25_top_k
+            nodes=bm25_nodes, similarity_top_k=actual_bm25_top_k
         )
     hybrid_retriever = HybridRetriever(
         vector_retriever=vector_retriever,
