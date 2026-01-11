@@ -44,7 +44,7 @@ Each document is annotated with metadata (e.g., file name) and indexed.
    - `SentenceSplitter(chunk_size=512, chunk_overlap=60)` splits documents into
      manageable chunks.
 2. **Vector store**
-   - Chroma is used as the vector backend (`backend/services/rag/rag_chroma.py`).
+   - Zilliz Cloud (Milvus) is used as the vector backend (`backend/services/rag/rag_milvus.py`).
 3. **Hybrid retrieval**
    - Vector retriever + BM25 retriever are merged in `HybridRetriever`.
 4. **Reranking**

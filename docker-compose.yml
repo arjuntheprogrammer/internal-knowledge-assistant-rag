@@ -12,14 +12,3 @@ services:
     env_file:
       - .env
     command: ["sh", "-c", "flask run --host=0.0.0.0 --port=${PORT:-5001}"]
-    depends_on:
-      - chroma
-  chroma:
-    image: chromadb/chroma:1.4.0
-    ports:
-      - "${CHROMA_PORT:-8000}:${CHROMA_PORT:-8000}"
-    environment:
-      - IS_PERSISTENT=TRUE
-      - PERSIST_DIRECTORY=/chroma/chroma
-    volumes:
-      - ./chroma-data:/chroma/chroma

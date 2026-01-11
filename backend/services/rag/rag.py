@@ -20,7 +20,7 @@ from .catalog import (
     parse_list_limit,
 )
 from .engines import CasualQueryEngine, LazyRAGQueryEngine
-from .rag_chroma import get_chroma_vector_store
+from .rag_milvus import get_milvus_vector_store
 from .rag_context import get_service_context
 from .rag_formatter import RAGFormatter
 
@@ -37,7 +37,7 @@ class RAGService:
 
     @classmethod
     def get_vector_store(cls, user_id):
-        return get_chroma_vector_store(user_id=user_id)
+        return get_milvus_vector_store(user_id=user_id)
 
     @classmethod
     def get_index(cls, user_id):
