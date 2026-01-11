@@ -20,7 +20,7 @@ def create_app(config_name="default"):
 
     # Initialize extensions
     with app.app_context():
-        # Start Background Scheduler (only in main process to avoid duplicates in debug mode with reloader)
+        # Start Background Scheduler
         if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
             SchedulerService.start_polling()
 
