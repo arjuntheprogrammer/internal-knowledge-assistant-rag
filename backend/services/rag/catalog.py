@@ -5,7 +5,7 @@ import re
 def log_vector_store_count(vector_store):
     try:
         # Check for MilvusVectorStore
-        client = getattr(vector_store, "milvus_client", None)
+        client = getattr(vector_store, "client", None)
         collection_name = getattr(vector_store, "collection_name", None)
         if client is not None and collection_name:
             stats = client.get_collection_stats(collection_name)

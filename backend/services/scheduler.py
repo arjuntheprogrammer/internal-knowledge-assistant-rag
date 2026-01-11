@@ -6,8 +6,17 @@ from backend.services.rag import RAGService
 
 
 class SchedulerService:
+    _is_polling = False
+    _lock = threading.Lock()
+
     @staticmethod
     def start_polling(interval=60):
+        with SchedulerService._lock:
+            if SchedulerService._is_polling:
+                print("Scheduler already polling. Skipping start.")
+                return
+            SchedulerService._is_polling = True
+
         def poll():
             while True:
                 print("Polling for new documents...")

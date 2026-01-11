@@ -96,7 +96,7 @@ class RAGService:
             # old records for THIS user before indexing new ones to avoid duplicates.
             if vector_store:
                 try:
-                    client = getattr(vector_store, "milvus_client", None)
+                    client = getattr(vector_store, "client", None)
                     collection_name = getattr(vector_store, "collection_name", None)
                     if client and collection_name:
                         # Delete by metadata filter
@@ -104,7 +104,7 @@ class RAGService:
                             collection_name=collection_name,
                             filter=f"user_id == '{user_id}'"
                         )
-                        print(f"Cleared existing records for user {user_id} in shared collection.")
+                        print(f"Successfully cleared existing records for user {user_id} in shared collection.")
                 except Exception as del_err:
                     print(f"Warning: Could not clear existing records: {del_err}")
 
