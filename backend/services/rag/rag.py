@@ -32,8 +32,8 @@ class RAGService:
     logger = logging.getLogger(__name__)
 
     @classmethod
-    def get_service_context(cls, openai_api_key):
-        return get_service_context(openai_api_key)
+    def get_service_context(cls, openai_api_key, user_id=None):
+        return get_service_context(openai_api_key, user_id=user_id)
 
     @classmethod
     def get_vector_store(cls, user_id):
@@ -89,7 +89,9 @@ class RAGService:
         cls._document_catalog_by_user[user_id] = build_document_catalog(documents)
 
         try:
-            settings = cls.get_service_context(user_context.get("openai_api_key"))
+            settings = cls.get_service_context(
+                user_context.get("openai_api_key"), user_id=user_id
+            )
             vector_store = cls.get_vector_store(user_id)
 
             # Since we are using a shared collection, we must manually delete
@@ -139,7 +141,10 @@ class RAGService:
 
     @classmethod
     def query(cls, question, user_context):
-        settings = cls.get_service_context(user_context.get("openai_api_key"))
+        user_id = user_context.get("uid")
+        settings = cls.get_service_context(
+            user_context.get("openai_api_key"), user_id=user_id
+        )
         selector = LLMSingleSelector.from_defaults(llm=settings.llm)
 
         casual_engine = CasualQueryEngine(

@@ -6,7 +6,7 @@ from backend.services.langsmith_tracing import get_langsmith_callback_handler
 import os
 
 
-def get_service_context(openai_api_key=None):
+def get_service_context(openai_api_key=None, user_id=None):
     api_key = openai_api_key
     if not api_key:
         allow_env = os.getenv("ALLOW_ENV_OPENAI_KEY_FOR_TESTS", "").lower() in {
@@ -22,7 +22,8 @@ def get_service_context(openai_api_key=None):
     llm = OpenAI(model="gpt-4o-mini", api_key=api_key)
     embed_model = OpenAIEmbedding(model="text-embedding-3-small", api_key=api_key)
 
-    handler = get_langsmith_callback_handler()
+    metadata = {"user_id": user_id} if user_id else None
+    handler = get_langsmith_callback_handler(metadata=metadata)
     callback_manager = CallbackManager([handler]) if handler else None
 
     Settings.llm = llm

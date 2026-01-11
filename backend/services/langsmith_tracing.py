@@ -21,6 +21,8 @@ ALLOWED_EVENTS = {
     CBEventType.RETRIEVE,
     CBEventType.SYNTHESIZE,
     CBEventType.LLM,
+    CBEventType.EMBEDDING,
+    CBEventType.CHUNKING,
 }
 
 RUN_TYPE_MAP = {
@@ -28,10 +30,12 @@ RUN_TYPE_MAP = {
     CBEventType.RETRIEVE: "retriever",
     CBEventType.SYNTHESIZE: "chain",
     CBEventType.LLM: "llm",
+    CBEventType.EMBEDDING: "embedding",
+    CBEventType.CHUNKING: "chain",
 }
 
 
-def get_langsmith_callback_handler() -> Optional["LangSmithCallbackHandler"]:
+def get_langsmith_callback_handler(metadata: Optional[Dict[str, Any]] = None) -> Optional["LangSmithCallbackHandler"]:
     if Client is None:
         return None
     tracing_enabled = os.getenv("LANGCHAIN_TRACING_V2", "").lower() in {
@@ -43,19 +47,25 @@ def get_langsmith_callback_handler() -> Optional["LangSmithCallbackHandler"]:
     if not tracing_enabled or not api_key:
         return None
     endpoint = os.getenv("LANGCHAIN_ENDPOINT") or os.getenv("LANGSMITH_ENDPOINT")
-    project = os.getenv("LANGCHAIN_PROJECT") or os.getenv("LANGSMITH_PROJECT")
+    project = os.getenv("LANGCHAIN_PROJECT") or os.getenv("LANGSMITH_PROJECT") or "internal-knowledge-assistant"
     client = Client(api_key=api_key, api_url=endpoint)
-    return LangSmithCallbackHandler(client=client, project_name=project)
+    return LangSmithCallbackHandler(client=client, project_name=project, metadata=metadata)
 
 
 class LangSmithCallbackHandler(BaseCallbackHandler):
-    def __init__(self, client: "Client", project_name: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        client: "Client",
+        project_name: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
         super().__init__(
             event_starts_to_ignore=[e for e in CBEventType if e not in ALLOWED_EVENTS],
             event_ends_to_ignore=[e for e in CBEventType if e not in ALLOWED_EVENTS],
         )
         self.client = client
         self.project_name = project_name
+        self.metadata = metadata or {}
         self._run_ids: Dict[str, str] = {}
         self._trace_run_id: Optional[str] = None
         self._last_response_text: Optional[str] = None
@@ -68,11 +78,13 @@ class LangSmithCallbackHandler(BaseCallbackHandler):
         self._last_response_text = None
         self._usage_totals = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
         try:
+            # Add metadata to the root run
             run = self.client.create_run(
                 name=trace_id,
                 inputs={},
                 run_type="chain",
                 project_name=self.project_name,
+                extra={"metadata": self.metadata} if self.metadata else None,
             )
             self._trace_run_id = run.id
             self._run_ids[BASE_TRACE_EVENT] = run.id
@@ -118,6 +130,7 @@ class LangSmithCallbackHandler(BaseCallbackHandler):
                 run_type=RUN_TYPE_MAP.get(event_type, "chain"),
                 project_name=self.project_name,
                 parent_run_id=parent_run_id,
+                extra={"metadata": self.metadata} if self.metadata else None,
             )
             self._run_ids[event_id] = run.id
         except Exception as exc:
@@ -136,6 +149,8 @@ class LangSmithCallbackHandler(BaseCallbackHandler):
         if not run_id:
             return
         outputs = self._build_outputs(event_type, payload)
+        error = payload.get(EventPayload.EXCEPTION)
+
         response_text = outputs.get("response")
         if event_type in {CBEventType.QUERY, CBEventType.SYNTHESIZE} and response_text:
             self._last_response_text = response_text
@@ -154,7 +169,9 @@ class LangSmithCallbackHandler(BaseCallbackHandler):
                     "total_tokens", 0
                 )
         try:
-            self.client.update_run(run_id, outputs=outputs)
+            self.client.update_run(
+                run_id, outputs=outputs, error=str(error) if error else None
+            )
         except Exception as exc:
             logger.debug("LangSmith run end failed: %s", exc)
 
@@ -174,6 +191,12 @@ class LangSmithCallbackHandler(BaseCallbackHandler):
             top_k = payload.get(EventPayload.TOP_K)
             if top_k is not None:
                 return {"top_k": top_k}
+        if event_type == CBEventType.EMBEDDING:
+            chunks = payload.get(EventPayload.CHUNKS) or []
+            return {"num_chunks": len(chunks), "text_samples": [str(c)[:50] for c in chunks[:3]]}
+        if event_type == CBEventType.CHUNKING:
+            docs = payload.get(EventPayload.DOCUMENTS) or []
+            return {"num_documents": len(docs)}
         return {}
 
     def _build_outputs(self, event_type: CBEventType, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -193,6 +216,12 @@ class LangSmithCallbackHandler(BaseCallbackHandler):
         if event_type == CBEventType.RETRIEVE:
             nodes = payload.get(EventPayload.NODES) or []
             return {"nodes": self._serialize_nodes(nodes)}
+        if event_type == CBEventType.EMBEDDING:
+            embeddings = payload.get(EventPayload.EMBEDDINGS) or []
+            return {"num_embeddings": len(embeddings)}
+        if event_type == CBEventType.CHUNKING:
+            chunks = payload.get(EventPayload.CHUNKS) or []
+            return {"num_chunks": len(chunks)}
         return {}
 
     def _build_usage_metadata(self, payload: Dict[str, Any]) -> Optional[Dict[str, int]]:
@@ -254,10 +283,18 @@ class LangSmithCallbackHandler(BaseCallbackHandler):
             node = getattr(node_with_score, "node", None)
             if not node:
                 continue
+
             metadata = getattr(node, "metadata", {}) or {}
+            score = getattr(node_with_score, "score", None)
+            text = ""
+            if hasattr(node, "get_content"):
+                text = node.get_content()
+
             serialized.append(
                 {
                     "id": getattr(node, "node_id", None),
+                    "score": score,
+                    "text_preview": text[:200] + "..." if len(text) > 200 else text,
                     "metadata": metadata,
                 }
             )
