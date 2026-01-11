@@ -9,17 +9,18 @@ dependencies:
   - pip:
       - flask-cors==4.0.0
       - firebase-admin==6.5.0
-      - llama-index==0.14.12
-      - llama-index-readers-google==0.7.2
-      - llama-index-retrievers-bm25==0.6.5
-      - llama-index-vector-stores-milvus==0.3.4
-      - openai==2.15.0
+      - llama-index>=0.10.0
+      - llama-index-readers-google
+      - llama-index-retrievers-bm25
+      - llama-index-vector-stores-milvus
+      - openai>=1.0.0
       - python-dotenv==1.0.1
       - gunicorn==21.2.0
       - google-auth-oauthlib==1.2.0
       - google-api-python-client==2.187.0
       - pymilvus==2.5.0
-      - posthog>=2.4.0,<3
+      - posthog>=2.4.0,<4
       - langsmith>=0.1.100,<0.2
       - black==24.3.0
-      - numpy==2.2.6
+      - numpy
+      - pypdf
