@@ -8,6 +8,8 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.schema import QueryBundle
 from llama_index.retrievers.bm25 import BM25Retriever
 
+from llama_index.core.vector_stores import MetadataFilters, ExactMatchFilter
+
 from .retrievers import HybridRetriever
 
 
@@ -60,6 +62,7 @@ class LazyRAGQueryEngine(BaseQueryEngine):
             callback_manager=self._callback_manager,
             index=index,
             bm25_nodes=self._service.get_bm25_nodes(user_id),
+            user_id=user_id,
         )
         return query_engine.query(query_bundle)
 
@@ -67,7 +70,9 @@ class LazyRAGQueryEngine(BaseQueryEngine):
         return self._query(query_bundle)
 
 
-def build_rag_query_engine(query_bundle, llm, callback_manager, index, bm25_nodes):
+def build_rag_query_engine(
+    query_bundle, llm, callback_manager, index, bm25_nodes, user_id=None
+):
     query_text = query_bundle.query_str or str(query_bundle)
     is_list_query = bool(
         re.search(r"\b(list|all|show|enumerate|provide|give me)\b", query_text, re.I)
@@ -115,7 +120,13 @@ def build_rag_query_engine(query_bundle, llm, callback_manager, index, bm25_node
     rerank_top_n = 24 if is_list_query else 6
     reranker = LLMRerank(llm=llm, top_n=rerank_top_n)
 
-    vector_retriever = index.as_retriever(similarity_top_k=vector_top_k)
+    retriever_opts = {"similarity_top_k": vector_top_k}
+    if user_id:
+        retriever_opts["filters"] = MetadataFilters(
+            filters=[ExactMatchFilter(key="user_id", value=user_id)]
+        )
+
+    vector_retriever = index.as_retriever(**retriever_opts)
     bm25_retriever = None
     if bm25_nodes:
         bm25_retriever = BM25Retriever.from_defaults(

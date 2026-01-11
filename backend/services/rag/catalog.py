@@ -21,11 +21,13 @@ def log_vector_store_count(vector_store):
         print(f"Vector store count check failed: {exc}")
 
 
-def annotate_documents(documents):
+def annotate_documents(documents, user_id=None):
     for doc in documents:
         metadata = getattr(doc, "metadata", None)
         if not isinstance(metadata, dict):
             continue
+        if user_id:
+            metadata["user_id"] = user_id
         file_name = (
             metadata.get("file name")
             or metadata.get("file_name")
