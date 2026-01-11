@@ -10,21 +10,42 @@
     />
   </head>
   <body>
+    {% set is_auth_page = request.path in ["/login", "/signup"] %}
+    {% if not is_auth_page %}
     <nav>
-      <a href="/" class="logo-link">
-          <div class="logo">Knowledge Assistant</div>
-      </a>
-      <div class="nav-links">
+      <div class="nav-left">
+        <a href="/" class="logo-link">
+            <div class="logo">Knowledge Assistant</div>
+        </a>
+      </div>
+      <div class="nav-center nav-links">
         <a href="/">Chat</a>
-        <a href="/admin/dashboard" id="admin-link" style="display: none"
-          >Admin</a
-        >
+        <a href="/configure" id="config-link" style="display: none">Configure</a>
+      </div>
+      <div class="nav-right nav-links">
         <a href="/login" id="login-link">Login</a>
-        <button id="logout-link" type="button" style="display: none">Logout</button>
+        <div id="user-menu" class="user-menu" style="display: none;">
+          <button id="user-menu-btn" type="button" aria-haspopup="true" aria-expanded="false">
+            <span id="user-avatar">U</span>
+          </button>
+          <div id="user-menu-dropdown" class="user-menu-dropdown">
+            <div class="user-menu-name" id="user-name">User</div>
+            <div class="user-menu-email" id="user-email">user@example.com</div>
+            <button id="logout-link" type="button">Logout</button>
+          </div>
+        </div>
       </div>
     </nav>
+    {% endif %}
 
-    <div id="main-content" style="display: none;">{% block content %}{% endblock %}</div>
+    <div id="app-toast" class="app-toast" style="display: none;">
+      <div class="app-toast-body">
+        <span id="app-toast-message"></span>
+        <button id="app-toast-ok" type="button">OK</button>
+      </div>
+    </div>
+
+    <div id="main-content">{% block content %}{% endblock %}</div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>

@@ -1,11 +1,8 @@
 from flask import Flask
 from flask_cors import CORS
 from config import config
-from backend.services.db import Database
-from backend.models.user import User
-from backend.routes.auth import auth_bp
-from backend.routes.admin import admin_bp
 from backend.routes.chat import chat_bp
+from backend.routes.config import config_bp
 from backend.services.scheduler import SchedulerService
 from backend.logging import configure_logging
 import os
@@ -21,18 +18,14 @@ def create_app(config_name="default"):
 
     CORS(app)
 
-    # Initialize extensions and db
+    # Initialize extensions
     with app.app_context():
-        Database.initialize()
-        User.create_admin_if_not_exists()
-
         # Start Background Scheduler (only in main process to avoid duplicates in debug mode with reloader)
         if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
             SchedulerService.start_polling()
 
     # Register Blueprints
-    app.register_blueprint(auth_bp, url_prefix="/api/auth")
-    app.register_blueprint(admin_bp, url_prefix="/api/admin")
+    app.register_blueprint(config_bp, url_prefix="/api/config")
     app.register_blueprint(chat_bp, url_prefix="/api/chat")
 
     from flask import render_template
@@ -49,9 +42,9 @@ def create_app(config_name="default"):
     def signup():
         return render_template("signup.html")
 
-    @app.route("/admin/dashboard")
-    def admin_dashboard():
-        return render_template("admin.html")
+    @app.route("/configure")
+    def configure():
+        return render_template("configure.html")
 
     return app
 

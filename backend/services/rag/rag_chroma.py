@@ -22,8 +22,10 @@ def _get_chroma_port(value):
         raise ValueError("CHROMA_PORT must be an integer.") from exc
 
 
-def get_chroma_vector_store():
+def get_chroma_vector_store(user_id=None):
     collection_name = os.getenv("CHROMA_COLLECTION", "internal-knowledge-assistant")
+    if user_id:
+        collection_name = f"{collection_name}-{user_id}"
     host = os.getenv("CHROMA_HOST", "localhost")
     port = _get_chroma_port(os.getenv("CHROMA_PORT", "8000"))
     persist_dir = os.getenv("CHROMA_PERSIST_DIR")

@@ -1,111 +1,157 @@
 import { API_BASE } from "./api.js";
+import { signInWithGoogle, signOutUser, onAuthChange } from "./firebase.js";
 
-export async function handleLogin(e) {
-  e.preventDefault();
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
+async function safeJson(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    return null;
+  }
   try {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-
-    if (res.ok) {
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      window.location.href = "/";
-    } else {
-      alert(data.message);
-    }
+    return await response.json();
   } catch (err) {
-    alert("Login failed");
+    return null;
   }
 }
 
-export async function handleSignup(e) {
-  e.preventDefault();
-  const name = document.getElementById("name").value;
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  try {
-    const res = await fetch(`${API_BASE}/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+export function bindAuthButtons() {
+  const loginBtn = document.getElementById("google-login-btn");
+  if (loginBtn) {
+    loginBtn.addEventListener("click", async () => {
+      try {
+        const result = await signInWithGoogle();
+        if (result && result.idToken && result.user) {
+          localStorage.setItem("firebase_token", result.idToken);
+          localStorage.setItem(
+            "user",
+            JSON.stringify({
+              name: result.user.displayName,
+              email: result.user.email,
+            })
+          );
+          const ready = await fetchConfigReady(result.idToken);
+          window.location.href = ready ? "/" : "/configure";
+          return;
+        }
+        loginBtn.disabled = true;
+        loginBtn.textContent = "Redirecting to Google...";
+      } catch (err) {
+        const code = err?.code ? ` (${err.code})` : "";
+        alert(`Google sign-in failed${code}.`);
+      }
     });
-    const data = await res.json();
-
-    if (res.ok) {
-      alert("Signup successful! Please login.");
-      window.location.href = "/login";
-    } else {
-      alert(data.message);
-    }
-  } catch (err) {
-    alert("Signup failed");
-  }
-}
-
-export function logout() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  window.location.href = "/login";
-}
-
-export function bindAuthForms() {
-  const loginForm = document.getElementById("login-form");
-  if (loginForm) {
-    loginForm.addEventListener("submit", handleLogin);
-  }
-
-  const signupForm = document.getElementById("signup-form");
-  if (signupForm) {
-    signupForm.addEventListener("submit", handleSignup);
   }
 }
 
 export function bindLogout() {
   const logoutLink = document.getElementById("logout-link");
   if (!logoutLink) return;
-  logoutLink.addEventListener("click", (event) => {
+  logoutLink.addEventListener("click", async (event) => {
     event.preventDefault();
-    logout();
+    sessionStorage.removeItem("drive_auth_attempted");
+    await signOutUser();
   });
 }
 
+export function bindUserMenu() {
+  const menuBtn = document.getElementById("user-menu-btn");
+  const dropdown = document.getElementById("user-menu-dropdown");
+  if (!menuBtn || !dropdown) return;
+  menuBtn.addEventListener("click", () => {
+    const expanded = menuBtn.getAttribute("aria-expanded") === "true";
+    menuBtn.setAttribute("aria-expanded", String(!expanded));
+    dropdown.classList.toggle("show", !expanded);
+  });
+  document.addEventListener("click", (event) => {
+    if (!dropdown.classList.contains("show")) return;
+    if (event.target.closest("#user-menu")) return;
+    dropdown.classList.remove("show");
+    menuBtn.setAttribute("aria-expanded", "false");
+  });
+}
+
+export function initAuthState() {
+  return new Promise((resolve) => {
+    let resolved = false;
+    const fallbackTimer = setTimeout(() => {
+      if (resolved) return;
+      updateNav();
+      resolved = true;
+      resolve();
+    }, 1500);
+
+    onAuthChange(async (user) => {
+      if (user) {
+        const token = await user.getIdToken();
+        localStorage.setItem("firebase_token", token);
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            name: user.displayName,
+            email: user.email,
+          })
+        );
+      } else {
+        localStorage.removeItem("firebase_token");
+        localStorage.removeItem("user");
+        const isPublic = ["/login", "/signup"].includes(window.location.pathname);
+        if (!isPublic) {
+          window.location.href = "/login";
+        }
+      }
+      updateNav();
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(fallbackTimer);
+        resolve();
+      }
+    });
+  });
+}
+
+export function getStoredUser() {
+  const raw = localStorage.getItem("user");
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    return null;
+  }
+}
+
 export function updateNav() {
-  const user = JSON.parse(localStorage.getItem("user"));
+  const user = getStoredUser();
   const path = normalizePath(window.location.pathname);
 
   const links = document.querySelectorAll(".nav-links a");
   links.forEach((link) => {
     const href = normalizePath(link.getAttribute("href"));
-    const isAdminLink = href.startsWith("/admin");
     const isLoginLink = href === "/login";
-    const isActive = isAdminLink
-      ? path.startsWith("/admin")
-      : isLoginLink
-        ? path.startsWith("/login")
-        : href === path;
-
+    const isActive = isLoginLink ? path.startsWith("/login") : href === path;
     link.classList.toggle("active", isActive);
   });
 
+  const loginLink = document.getElementById("login-link");
+  const configLink = document.getElementById("config-link");
+  const userMenu = document.getElementById("user-menu");
+
   if (user) {
-    const loginLink = document.getElementById("login-link");
     if (loginLink) loginLink.style.display = "none";
+    if (configLink) configLink.style.display = "flex";
+    if (userMenu) userMenu.style.display = "flex";
 
-    const logoutLink = document.getElementById("logout-link");
-    if (logoutLink) logoutLink.style.display = "flex";
-
-    if (user.role === "admin") {
-      const adminLink = document.getElementById("admin-link");
-      if (adminLink) adminLink.style.display = "flex";
+    const nameEl = document.getElementById("user-name");
+    const emailEl = document.getElementById("user-email");
+    const avatarEl = document.getElementById("user-avatar");
+    if (nameEl) nameEl.textContent = user.name || "User";
+    if (emailEl) emailEl.textContent = user.email || "";
+    if (avatarEl) {
+      const initial = (user.name || user.email || "U").charAt(0).toUpperCase();
+      avatarEl.textContent = initial;
     }
+  } else {
+    if (loginLink) loginLink.style.display = "flex";
+    if (configLink) configLink.style.display = "none";
+    if (userMenu) userMenu.style.display = "none";
   }
 }
 
@@ -115,4 +161,24 @@ function normalizePath(pathname) {
     return pathname.slice(0, -1);
   }
   return pathname;
+}
+
+async function fetchConfigReady(idToken) {
+  try {
+    const res = await fetch(`${API_BASE}/config`, {
+      headers: { Authorization: `Bearer ${idToken}` },
+    });
+    if (!res.ok) return false;
+    const config = await safeJson(res);
+    if (!config) return false;
+    return Boolean(
+      config.has_openai_key &&
+        config.openai_key_valid &&
+        config.drive_folder_id &&
+        config.drive_authenticated &&
+        config.drive_test_success
+    );
+  } catch (err) {
+    return false;
+  }
 }

@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from backend.middleware.auth import token_required
+from backend.models.user_config import UserConfig
 from backend.services.rag import RAGService
 from backend.services.safety import SafetyService
 
@@ -38,12 +39,33 @@ def chat(current_user):
         return jsonify({"message": f"Safety Violation: {reason}"}), 400
 
     try:
+        user_config = UserConfig.get_user(current_user["uid"]) or {}
+        openai_key = user_config.get("openai_api_key")
+        if not openai_key:
+            return jsonify({"message": "OpenAI API key is not configured."}), 400
+
+        drive_folder_id = user_config.get("drive_folder_id")
+        google_token = user_config.get("google_token")
+        if not drive_folder_id:
+            return jsonify({"message": "Google Drive folder ID is not configured."}), 400
+        if not google_token:
+            return jsonify({"message": "Google Drive access is not authorized."}), 400
+
         # Pass user context/ACL here in future
         query_bundle = QueryBundle(
             query_str=user_message,
             custom_embedding_strs=[user_message],
         )
-        response_text = RAGService.query(query_bundle)
+        response_text = RAGService.query(
+            query_bundle,
+            {
+                "uid": current_user["uid"],
+                "email": current_user.get("email"),
+                "openai_api_key": openai_key,
+                "drive_folder_id": drive_folder_id,
+                "google_token": google_token,
+            },
+        )
 
         # Safety Check Output
         is_safe_response, reason_response = SafetyService.is_safe(response_text)

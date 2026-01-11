@@ -35,28 +35,31 @@ class CasualQueryEngine(BaseQueryEngine):
 
 
 class LazyRAGQueryEngine(BaseQueryEngine):
-    def __init__(self, llm, callback_manager, service):
+    def __init__(self, llm, callback_manager, service, user_context):
         super().__init__(callback_manager)
         self._llm = llm
         self._callback_manager = callback_manager
         self._service = service
+        self._user_context = user_context
 
     def _get_prompt_modules(self):
         return {}
 
     def _query(self, query_bundle: QueryBundle):
-        if not self._service.index:
-            self._service.initialize_index()
+        user_id = self._user_context.get("uid")
+        if not self._service.get_index(user_id):
+            self._service.initialize_index(self._user_context)
 
-        if not self._service.index:
+        index = self._service.get_index(user_id)
+        if not index:
             return Response("Knowledge base is empty. Please add documents.")
 
         query_engine = build_rag_query_engine(
             query_bundle=query_bundle,
             llm=self._llm,
             callback_manager=self._callback_manager,
-            index=self._service.index,
-            bm25_nodes=self._service.bm25_nodes,
+            index=index,
+            bm25_nodes=self._service.get_bm25_nodes(user_id),
         )
         return query_engine.query(query_bundle)
 

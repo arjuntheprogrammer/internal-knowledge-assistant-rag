@@ -1,12 +1,13 @@
-import { bindAuthForms, bindLogout } from "./js/auth.js";
+import { bindAuthButtons, bindLogout, bindUserMenu, initAuthState } from "./js/auth.js";
 import { bindChat } from "./js/chat.js";
-import { bindAdminPage } from "./js/admin.js";
+import { bindConfigPage } from "./js/config.js";
 import { checkRouteAccess } from "./js/routes.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   bindLogout();
-  bindAuthForms();
+  bindUserMenu();
+  bindAuthButtons();
   bindChat();
-  bindAdminPage();
-  checkRouteAccess();
+  bindConfigPage();
+  initAuthState().then(() => checkRouteAccess());
 });

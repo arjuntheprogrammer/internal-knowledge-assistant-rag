@@ -2,35 +2,7 @@ import json
 import os
 import time
 
-from backend.models.config import SystemConfig
-
-
-def ensure_client_secrets():
-    """Creates client_secrets.json from DB config if it doesn't exist."""
-    config = SystemConfig.get_config()
-    client_id = config.get("google_client_id")
-    client_secret = config.get("google_client_secret")
-
-    if client_id and client_secret:
-        secrets_path = os.path.join(
-            os.getcwd(), "backend", "credentials", "client_secrets.json"
-        )
-        os.makedirs(os.path.dirname(secrets_path), exist_ok=True)
-
-        secrets_data = {
-            "web": {
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                "redirect_uris": ["http://localhost"],
-            }
-        }
-        with open(secrets_path, "w") as f:
-            json.dump(secrets_data, f)
-        return secrets_path
-    return None
+from backend.models.user_config import UserConfig
 
 
 def sanitize_oauth_credentials_file(path):
@@ -71,18 +43,12 @@ def sanitize_oauth_credentials_file(path):
 
 
 def resolve_credentials_path():
-    candidates = []
-    config_path = ensure_client_secrets()
-    if config_path:
-        candidates.append(config_path)
-
-    candidates.extend(
-        [
-            os.path.join(os.getcwd(), "backend", "credentials", "client_secrets.json"),
-            os.path.join(os.getcwd(), "backend", "credentials", "credentials.json"),
-            os.path.join(os.getcwd(), "client_secrets.json"),
-        ]
-    )
+    candidates = [
+        os.getenv("GOOGLE_OAUTH_CLIENT_PATH"),
+        os.path.join(os.getcwd(), "backend", "credentials", "client_secrets.json"),
+        os.path.join(os.getcwd(), "backend", "credentials", "credentials.json"),
+        os.path.join(os.getcwd(), "client_secrets.json"),
+    ]
 
     for path in candidates:
         if path and os.path.exists(path):
@@ -187,10 +153,6 @@ def get_google_drive_reader():
 
 def ensure_pydrive_client_secrets(creds_path):
     """Ensure a valid client_secrets.json exists in CWD for PyDrive."""
-    config = SystemConfig.get_config()
-    client_id = config.get("google_client_id")
-    client_secret = config.get("google_client_secret")
-
     oauth_data = None
     if creds_path and os.path.exists(creds_path):
         try:
@@ -204,16 +166,6 @@ def ensure_pydrive_client_secrets(creds_path):
                 oauth_data = {"web": data["web"]}
             elif "installed" in data:
                 oauth_data = {"installed": data["installed"]}
-    if not oauth_data and client_id and client_secret:
-        oauth_data = {
-            "web": {
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            }
-        }
 
     if not oauth_data:
         return None
@@ -286,22 +238,23 @@ def ensure_pydrive_creds_from_token(token_path, pydrive_creds_path):
         return None
 
 
-def get_google_token_data():
-    """Helper to get google token from DB."""
-    from backend.services.db import Database
+def get_google_token_data(user_id, token_json=None):
+    """Helper to get google token from Firestore and write it to disk."""
+    token_data = token_json
+    if not token_data and user_id:
+        token_data = UserConfig.get_google_token(user_id)
+    if not token_data:
+        return None
+    if isinstance(token_data, dict):
+        token_data = json.dumps(token_data)
 
-    db = Database.get_db()
-    user = db.users.find_one({"google_token": {"$exists": True, "$ne": None}})
-    if user:
-        token_data = user.get("google_token")
-        token_path = os.path.join(
-            os.getcwd(), "backend", "credentials", "token_db.json"
-        )
-        os.makedirs(os.path.dirname(token_path), exist_ok=True)
-        with open(token_path, "w") as f:
-            f.write(token_data)
-        return token_path
-    return None
+    token_path = os.path.join(
+        os.getcwd(), "backend", "credentials", f"token_{user_id}.json"
+    )
+    os.makedirs(os.path.dirname(token_path), exist_ok=True)
+    with open(token_path, "w") as handle:
+        handle.write(token_data)
+    return token_path
 
 
 def _build_drive_loader(creds_path, token_path):
@@ -320,7 +273,7 @@ def _build_drive_loader(creds_path, token_path):
             if creds_path and os.path.exists(creds_path):
                 loader_kwargs["credentials_path"] = creds_path
             loader = GoogleDriveReader(**loader_kwargs)
-            return loader, "User OAuth (from DB)", None
+            return loader, "User OAuth", None
         except Exception as e:
             return None, None, f"Failed to init User OAuth loader: {e}"
 
@@ -335,10 +288,13 @@ def _build_drive_loader(creds_path, token_path):
     return None, None, "No OAuth token or credentials file found."
 
 
-def load_google_drive_documents():
+def load_google_drive_documents(user_id, drive_folder_id, token_json=None):
     documents = []
+    if not drive_folder_id:
+        return documents
+
     creds_path = resolve_credentials_path()
-    token_path = get_google_token_data()
+    token_path = get_google_token_data(user_id, token_json=token_json)
 
     if (token_path and os.path.exists(token_path)) or (
         creds_path and os.path.exists(creds_path)
@@ -350,16 +306,11 @@ def load_google_drive_documents():
                     print(error)
                 return documents
 
-            config = SystemConfig.get_config()
-            folder_ids = [f["id"] for f in config.get("drive_folders", [])]
-
-            for folder_id in folder_ids:
-                if folder_id:
-                    drive_docs = loader.load_data(folder_id=folder_id)
-                    documents.extend(drive_docs)
-                    print(
-                        f"Loaded {len(drive_docs)} documents from Drive folder {folder_id}."
-                    )
+            drive_docs = loader.load_data(folder_id=drive_folder_id)
+            documents.extend(drive_docs)
+            print(
+                f"Loaded {len(drive_docs)} documents from Drive folder {drive_folder_id}."
+            )
 
             if auth_type:
                 print(f"Using {auth_type}.")
@@ -369,45 +320,158 @@ def load_google_drive_documents():
     return documents
 
 
-def get_drive_file_list():
+def get_drive_file_list(user_id, drive_folder_id):
     """
     Connects to Drive using current config and returns a list of filenames
     from the configured folders for verification.
     """
     creds_path = resolve_credentials_path()
-    token_path = get_google_token_data()
+    token_path = get_google_token_data(user_id)
+
+    drive_files, list_error = _list_drive_files(token_path, drive_folder_id)
+    if list_error:
+        return {"success": False, "message": list_error}
 
     loader, auth_type, error = _build_drive_loader(creds_path, token_path)
     if not loader:
         return {"success": False, "message": error}
-
-    config = SystemConfig.get_config()
-    folder_ids = [f["id"] for f in config.get("drive_folders", []) if f.get("id")]
-
-    if not folder_ids:
+    if not drive_folder_id:
         return {
             "success": True,
             "files": [],
-            "message": f"Connected via {auth_type}, but no folders configured.",
+            "message": f"Connected via {auth_type}, but no folder configured.",
         }
 
     found_files = []
+    total_docs = 0
     try:
-        for folder_id in folder_ids[:3]:
+        for folder_id in [drive_folder_id]:
             docs = loader.load_data(folder_id=folder_id)
             count = len(docs)
+            total_docs += count
             if count > 0:
                 found_files.append(
                     f"Folder {folder_id}: Found {count} document chunks."
                 )
             else:
                 found_files.append(f"Folder {folder_id}: Empty or no access.")
-
+        success = total_docs > 0
+        display_files = _format_drive_file_list(drive_files)
+        if display_files:
+            found_files = display_files + found_files
+        message = (
+            f"Verified with {auth_type}"
+            if success
+            else f"No files found or no access (via {auth_type})."
+        )
         return {
-            "success": True,
+            "success": success,
             "files": found_files,
-            "message": f"Verified with {auth_type}",
+            "message": message,
         }
 
     except Exception as e:
         return {"success": False, "message": f"Error accessing Drive folders: {e}"}
+
+
+def _format_drive_file_list(files, limit=50):
+    if not files:
+        return []
+    summary = [f"Drive API: {len(files)} file(s) found."]
+    items = []
+    for entry in files[:limit]:
+        name = entry.get("name") or "Untitled"
+        mime = entry.get("mimeType")
+        if mime:
+            items.append(f"{name} ({mime})")
+        else:
+            items.append(name)
+    if len(files) > limit:
+        items.append(f"...and {len(files) - limit} more")
+    return summary + items
+
+
+def _list_drive_files(token_path, folder_id):
+    if not token_path or not os.path.exists(token_path):
+        return None, "Google Drive access is not authorized."
+    if not folder_id:
+        return None, "Drive folder ID not configured."
+
+    try:
+        with open(token_path, "r") as handle:
+            token_data = json.load(handle)
+    except Exception as exc:
+        return None, f"Failed to read Drive token: {exc}"
+
+    scopes = token_data.get("scopes") or [
+        "openid",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
+        "https://www.googleapis.com/auth/drive.readonly",
+    ]
+
+    try:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+        from googleapiclient.errors import HttpError
+    except Exception as exc:
+        return None, f"Missing Google API dependencies: {exc}"
+
+    try:
+        creds = Credentials.from_authorized_user_info(token_data, scopes=scopes)
+        service = build(
+            "drive",
+            "v3",
+            credentials=creds,
+            cache_discovery=False,
+        )
+        query = f"'{folder_id}' in parents and trashed=false"
+        files = []
+        page_token = None
+        while True:
+            response = (
+                service.files()
+                .list(
+                    q=query,
+                    fields="nextPageToken, files(id,name,mimeType)",
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True,
+                    pageToken=page_token,
+                    pageSize=1000,
+                )
+                .execute()
+            )
+            files.extend(response.get("files", []))
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+        return files, None
+    except HttpError as err:
+        return None, _format_drive_http_error(err)
+    except Exception as exc:
+        return None, f"Drive API error: {exc}"
+
+
+def _format_drive_http_error(err):
+    try:
+        content = err.content.decode("utf-8") if hasattr(err, "content") else ""
+        data = json.loads(content) if content else {}
+    except Exception:
+        data = {}
+    if isinstance(data, dict):
+        error = data.get("error") or {}
+        message = error.get("message")
+        details = error.get("details") or []
+        for detail in details:
+            if detail.get("@type") == "type.googleapis.com/google.rpc.ErrorInfo":
+                metadata = detail.get("metadata") or {}
+                if metadata.get("service") == "drive.googleapis.com":
+                    consumer = metadata.get("consumer") or "your project"
+                    return (
+                        "Google Drive API is disabled for "
+                        f"{consumer}. Enable Drive API in Google Cloud "
+                        "Console and retry."
+                    )
+        if message:
+            return message
+    return str(err)

@@ -1,5 +1,7 @@
 import threading
 import time
+
+from backend.models.user_config import UserConfig
 from backend.services.rag import RAGService
 
 
@@ -10,8 +12,22 @@ class SchedulerService:
             while True:
                 print("Polling for new documents...")
                 try:
-                    # In a real app, check for changes before re-indexing
-                    RAGService.initialize_index()
+                    users = UserConfig.list_users_with_drive()
+                    for user in users:
+                        user_context = {
+                            "uid": user.get("uid"),
+                            "email": user.get("email"),
+                            "openai_api_key": user.get("openai_api_key"),
+                            "drive_folder_id": user.get("drive_folder_id"),
+                            "google_token": user.get("google_token"),
+                        }
+                        if (
+                            not user_context.get("openai_api_key")
+                            or not user_context.get("drive_folder_id")
+                            or not user_context.get("google_token")
+                        ):
+                            continue
+                        RAGService.initialize_index(user_context)
                 except Exception as e:
                     print(f"Polling error: {e}")
                 time.sleep(interval)

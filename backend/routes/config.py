@@ -1,0 +1,241 @@
+import re
+
+from flask import Blueprint, request, jsonify, url_for
+from openai import OpenAI
+
+from backend.middleware.auth import token_required
+from backend.models.user_config import UserConfig
+from backend.services.google_oauth import (
+    build_google_auth_url,
+    exchange_google_oauth_code,
+)
+from backend.services.rag import RAGService
+
+
+config_bp = Blueprint("config", __name__)
+
+
+def _normalize_drive_folder_id(value):
+    if not value:
+        return None
+    text = value.strip()
+    match = re.search(
+        r"drive\\.google\\.com/drive/(?:u/\\d+/)?folders/([a-zA-Z0-9_-]+)",
+        text,
+        re.I,
+    )
+    return match.group(1) if match else text
+
+
+@config_bp.route("", methods=["GET"])
+@token_required
+def get_config(current_user):
+    user = UserConfig.get_user(current_user["uid"]) or {}
+    openai_key = user.get("openai_api_key")
+    key_last4 = openai_key[-4:] if openai_key and len(openai_key) >= 4 else None
+    openai_key_valid = bool(user.get("openai_key_valid"))
+    openai_key_validated_at = (
+        user.get("openai_key_validated_at") if openai_key_valid else None
+    )
+    drive_test_success = bool(user.get("drive_test_success"))
+    drive_folder_id = user.get("drive_folder_id")
+    drive_test_folder_id = (
+        user.get("drive_test_folder_id") if drive_test_success else None
+    )
+    drive_tested_at = (
+        user.get("drive_tested_at") if drive_test_success else None
+    )
+    if drive_test_folder_id and drive_test_folder_id != drive_folder_id:
+        drive_test_success = False
+        drive_tested_at = None
+    response = {
+        "openai_model": "gpt-4o-mini",
+        "drive_folder_id": drive_folder_id,
+        "drive_authenticated": bool(user.get("google_token")),
+        "has_openai_key": bool(openai_key),
+        "openai_key_last4": key_last4,
+        "openai_key_valid": openai_key_valid,
+        "openai_key_validated_at": _format_dt(openai_key_validated_at),
+        "drive_test_success": drive_test_success,
+        "drive_tested_at": _format_dt(drive_tested_at),
+        "drive_test_folder_id": drive_test_folder_id,
+    }
+    return jsonify(response), 200
+
+
+@config_bp.route("", methods=["PUT"])
+@token_required
+def update_config(current_user):
+    data = request.get_json() or {}
+    existing = UserConfig.get_user(current_user["uid"]) or {}
+    update_data = {}
+    openai_key = data.get("openai_api_key")
+    if openai_key:
+        update_data["openai_api_key"] = openai_key.strip()
+    drive_folder_id = _normalize_drive_folder_id(data.get("drive_folder_id"))
+    if drive_folder_id is not None:
+        update_data["drive_folder_id"] = drive_folder_id.strip() or None
+    if (
+        "openai_api_key" in update_data
+        and update_data.get("openai_api_key") != existing.get("openai_api_key")
+    ):
+        update_data["openai_key_valid"] = False
+    if (
+        "drive_folder_id" in update_data
+        and update_data.get("drive_folder_id") != existing.get("drive_folder_id")
+    ):
+        update_data["drive_test_success"] = False
+    if update_data:
+        UserConfig.update_config(current_user["uid"], update_data)
+        if (
+            update_data.get("openai_api_key") != existing.get("openai_api_key")
+            or update_data.get("drive_folder_id") != existing.get("drive_folder_id")
+        ):
+            RAGService.reset_user_cache(current_user["uid"])
+    return jsonify({"message": "Configuration updated"}), 200
+
+
+@config_bp.route("/test-openai", methods=["POST"])
+@token_required
+def test_openai(current_user):
+    data = request.get_json() or {}
+    api_key = (data.get("openai_api_key") or "").strip()
+    if not api_key:
+        return jsonify({"message": "OpenAI API key is required."}), 400
+    try:
+        client = OpenAI(api_key=api_key)
+        client.models.list()
+        UserConfig.update_config(
+            current_user["uid"],
+            {
+                "openai_api_key": api_key,
+                "openai_key_valid": True,
+                "openai_key_validated_at": _utc_now(),
+            },
+        )
+        return jsonify({"success": True}), 200
+    except Exception as exc:
+        UserConfig.update_config(
+            current_user["uid"],
+            {
+                "openai_api_key": api_key,
+                "openai_key_valid": False,
+            },
+        )
+        return jsonify({"success": False, "message": str(exc)}), 400
+
+
+@config_bp.route("/drive-auth-url", methods=["GET"])
+@token_required
+def drive_auth_url(current_user):
+    redirect_uri = url_for("config.drive_oauth_callback", _external=True)
+    origin = request.host_url.rstrip("/")
+    authorization_url, error = build_google_auth_url(
+        current_user["uid"], redirect_uri, origin
+    )
+    if error:
+        return jsonify({"message": error}), 400
+    return jsonify({"auth_url": authorization_url})
+
+
+@config_bp.route("/drive-oauth-callback")
+def drive_oauth_callback():
+    state = request.args.get("state")
+    code = request.args.get("code")
+    error = request.args.get("error")
+
+    if error:
+        return f"Error: {error}"
+
+    if not state:
+        return "Error: User context (state) missing from callback"
+
+    try:
+        redirect_uri = url_for("config.drive_oauth_callback", _external=True)
+        origin = request.host_url.rstrip("/")
+        creds, error = exchange_google_oauth_code(code, redirect_uri, origin)
+        if error:
+            return error
+
+        UserConfig.set_google_token(state, creds.to_json())
+
+        return """<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Google Auth</title>
+  </head>
+  <body>
+    <div style="font-family: Arial, sans-serif; padding: 24px;">
+      <h2 style="margin: 0 0 8px;">Authentication successful</h2>
+      <p style="margin: 0;">You can close this window and return to the app.</p>
+    </div>
+    <script>
+      try {
+        if (window.opener) {
+          window.opener.postMessage({ type: "google-auth-success" }, window.location.origin);
+          window.close();
+        } else {
+          setTimeout(() => {
+            window.location.href = "/configure";
+          }, 800);
+        }
+      } catch (e) {
+        // Ignore postMessage errors; user can close manually.
+      }
+    </script>
+  </body>
+</html>"""
+    except Exception as exc:
+        return f"Authentication failed: {exc}"
+
+
+@config_bp.route("/drive-auth-status", methods=["GET"])
+@token_required
+def drive_auth_status(current_user):
+    token = UserConfig.get_google_token(current_user["uid"])
+    return jsonify({"authenticated": bool(token)})
+
+
+@config_bp.route("/test-drive", methods=["POST"])
+@token_required
+def test_drive(current_user):
+    user = UserConfig.get_user(current_user["uid"]) or {}
+    payload = request.get_json(silent=True) or {}
+    drive_folder_id = _normalize_drive_folder_id(
+        payload.get("drive_folder_id") or user.get("drive_folder_id")
+    )
+    if not drive_folder_id:
+        return jsonify({"success": False, "message": "Drive folder ID not configured."}), 400
+    if payload.get("drive_folder_id"):
+        UserConfig.update_config(
+            current_user["uid"],
+            {"drive_folder_id": drive_folder_id, "drive_test_success": False},
+        )
+    result = RAGService.get_drive_file_list(
+        user_id=current_user["uid"],
+        drive_folder_id=drive_folder_id,
+    )
+    UserConfig.update_config(
+        current_user["uid"],
+        {
+            "drive_test_success": bool(result.get("success")),
+            "drive_tested_at": _utc_now() if result.get("success") else None,
+            "drive_test_folder_id": drive_folder_id if result.get("success") else None,
+        },
+    )
+    return jsonify(result), 200
+
+
+def _utc_now():
+    from datetime import datetime
+
+    return datetime.utcnow()
+
+
+def _format_dt(value):
+    if not value:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)

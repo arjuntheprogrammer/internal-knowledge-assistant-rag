@@ -1,14 +1,19 @@
-import { updateNav } from "./auth.js";
-import { checkAuthStatus } from "./admin.js";
+import { getStoredUser, updateNav } from "./auth.js";
+import { getConfigStatus } from "./config.js";
 
-export function checkRouteAccess() {
+export async function checkRouteAccess() {
   const path = window.location.pathname;
   const publicRoutes = ["/login", "/signup"];
-  const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user"));
+  const token = localStorage.getItem("firebase_token");
+  const user = getStoredUser();
   const mainContent = document.getElementById("main-content");
 
   if (publicRoutes.includes(path)) {
+    if (token && user) {
+      const status = await getConfigStatus();
+      window.location.href = status.ready ? "/" : "/configure";
+      return;
+    }
     if (mainContent) mainContent.style.display = "block";
     return;
   }
@@ -18,16 +23,22 @@ export function checkRouteAccess() {
     return;
   }
 
-  if (path.includes("/admin") && user.role !== "admin") {
-    alert("Access Denied: Admins only.");
-    window.location.href = "/";
-    return;
+  if (path === "/" || path === "") {
+    const status = await getConfigStatus();
+    if (!status.ready) {
+      const toast = document.getElementById("chat-redirect-toast");
+      if (toast) {
+        toast.style.display = "block";
+        setTimeout(() => {
+          window.location.href = "/configure?reason=needs_config";
+        }, 1200);
+        return;
+      }
+      window.location.href = "/configure?reason=needs_config";
+      return;
+    }
   }
 
   if (mainContent) mainContent.style.display = "block";
   updateNav();
-
-  if (path.includes("/admin")) {
-    checkAuthStatus();
-  }
 }

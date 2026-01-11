@@ -87,8 +87,8 @@ questions.
   - LLM default: `gpt-4o-mini`
   - Embeddings: `text-embedding-3-small`
 
-Configuration is in `backend/services/rag/rag_context.py` and uses values from
-`.env` via `backend/models/config.py` and `SystemConfig`.
+Configuration is in `backend/services/rag/rag_context.py` and is supplied per
+user from Firestore (OpenAI API key + Drive folder ID).
 
 ## Telemetry (LangSmith)
 
@@ -105,7 +105,7 @@ backend Docker image installs `build-essential` before installing Python deps
 ## Quick sanity checks
 
 - Start services: `docker compose up --build -d`
-- Run API tests: `conda run -n internal-knowledge-assistant python scripts/rag_api_tests.py`
+- Run API tests: `conda run -n internal-knowledge-assistant python scripts/tests/rag_api_tests.py`
 
 ## File map (entry points)
 

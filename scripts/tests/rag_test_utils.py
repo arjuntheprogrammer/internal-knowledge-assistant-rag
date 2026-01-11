@@ -49,23 +49,16 @@ def get_base_url():
 
 
 def get_auth_token(base_url):
-    token = os.environ.get("AUTH_TOKEN") or os.environ.get("JWT_TOKEN")
+    token = (
+        os.environ.get("FIREBASE_ID_TOKEN")
+        or os.environ.get("AUTH_TOKEN")
+        or os.environ.get("JWT_TOKEN")
+    )
     if token:
         return token
-    email = os.environ.get("ADMIN_EMAIL", "admin@gmail.com")
-    password = os.environ.get("ADMIN_PASSWORD", "admin@gmail.com")
-    status, payload = request_json(
-        "POST",
-        f"{base_url}/api/auth/login",
-        payload={"email": email, "password": password},
-        headers={"Content-Type": "application/json"},
+    raise RuntimeError(
+        "Set FIREBASE_ID_TOKEN (or AUTH_TOKEN) to run the tests against Firebase auth."
     )
-    if status != 200:
-        raise RuntimeError(f"Login failed ({status}): {payload}")
-    token = payload.get("token")
-    if not token:
-        raise RuntimeError("Login did not return a token.")
-    return token
 
 
 def expected_count_from_query(query):

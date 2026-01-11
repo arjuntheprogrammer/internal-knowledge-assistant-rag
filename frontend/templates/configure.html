@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container admin-page">
+    <div id="config-notice" class="config-notice" style="display: none;">
+        Please complete configuration before chatting.
+    </div>
+    <h2>Configuration</h2>
+    <div class="admin-grid">
+        <div class="admin-left">
+
+    <div class="config-section">
+        <h3>OpenAI</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">
+            Add your OpenAI API key to enable responses.
+        </p>
+        <div class="form-row">
+            <div class="form-group">
+                <label>API Key</label>
+                <input type="password" id="openai-key" placeholder="sk-..." autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label>Model</label>
+                <input type="text" value="gpt-4o-mini" disabled>
+            </div>
+        </div>
+        <div id="openai-key-status" class="form-status">Not configured</div>
+        <button id="test-openai-btn" class="btn-secondary" style="margin-top: 10px;">Test OpenAI Key</button>
+        <span id="openai-test-result" style="margin-left: 10px; font-weight: 600;"></span>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">
+            Settings save automatically when you run a test.
+        </div>
+    </div>
+
+    <div class="config-section">
+        <h3>Google Drive</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">
+            Authorize Drive access and provide a single folder ID to index.
+        </p>
+        <div id="google-auth-section" class="drive-auth-block">
+            <div class="drive-auth-row">
+                <button id="auth-btn" class="btn-secondary">Authorize Google Drive</button>
+                <span id="drive-auth-status" class="status-inline">Status: Checking...</span>
+            </div>
+            <p id="auth-hint" class="drive-auth-hint">Authorize to access your Drive.</p>
+        </div>
+        <div class="form-row" style="margin-top: 12px;">
+            <div class="form-group">
+                <label>Drive Folder ID</label>
+                <input type="text" id="drive-folder-id" placeholder="Paste Google Drive folder ID">
+            </div>
+        </div>
+        <div class="drive-auth-row" style="margin-top: 10px;">
+            <button id="verify-drive-btn" class="btn-secondary">Test Drive Connection</button>
+            <span id="drive-test-status" class="status-inline">Not tested yet.</span>
+        </div>
+        <div id="drive-test-results" class="drive-test-results" style="display: none; margin-top: 10px;">
+            <ul id="drive-files-list" style="margin: 0; padding-left: 18px; font-size: 0.9rem; line-height: 1.6;"></ul>
+        </div>
+    </div>
+
+        </div>
+
+        <div class="admin-right"></div>
+    </div>
+</div>
+
+{% endblock %}

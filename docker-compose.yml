@@ -13,15 +13,7 @@ services:
       - .env
     command: ["sh", "-c", "flask run --host=0.0.0.0 --port=${PORT:-5001}"]
     depends_on:
-      - mongo
       - chroma
-
-  mongo:
-    image: mongo:latest
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
   chroma:
     image: chromadb/chroma:1.4.0
     ports:
@@ -31,6 +23,3 @@ services:
       - PERSIST_DIRECTORY=/chroma/chroma
     volumes:
       - ./chroma-data:/chroma/chroma
-
-volumes:
-  mongo_data:

@@ -2,20 +2,10 @@
 
 {% block content %}
 <div class="auth-form">
-    <h2>Login</h2>
-    <form id="login-form">
-        <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="email" required>
-        </div>
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="password" required>
-        </div>
-        <button type="submit" style="width: 100%;">Login</button>
-    </form>
-    <p style="text-align: center; margin-top: 10px;">
-        Don't have an account? <a href="/signup">Sign up</a>
+    <h2>Continue with Google</h2>
+    <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px;">
+        Sign in with your Google account to access your knowledge base.
     </p>
+    <button id="google-login-btn" type="button" style="width: 100%;">Sign in with Google</button>
 </div>
 {% endblock %}

@@ -26,21 +26,44 @@ from .rag_formatter import RAGFormatter
 
 
 class RAGService:
-    index = None
-    bm25_nodes = None
-    document_catalog = []
+    _index_by_user = {}
+    _bm25_nodes_by_user = {}
+    _document_catalog_by_user = {}
     logger = logging.getLogger(__name__)
 
     @classmethod
-    def get_service_context(cls):
-        return get_service_context()
+    def get_service_context(cls, openai_api_key):
+        return get_service_context(openai_api_key)
 
     @classmethod
-    def get_vector_store(cls):
-        return get_chroma_vector_store()
+    def get_vector_store(cls, user_id):
+        return get_chroma_vector_store(user_id=user_id)
 
     @classmethod
-    def initialize_index(cls):
+    def get_index(cls, user_id):
+        return cls._index_by_user.get(user_id)
+
+    @classmethod
+    def get_bm25_nodes(cls, user_id):
+        return cls._bm25_nodes_by_user.get(user_id)
+
+    @classmethod
+    def get_document_catalog(cls, user_id):
+        return cls._document_catalog_by_user.get(user_id, [])
+
+    @classmethod
+    def reset_user_cache(cls, user_id):
+        if not user_id:
+            return
+        cls._index_by_user.pop(user_id, None)
+        cls._bm25_nodes_by_user.pop(user_id, None)
+        cls._document_catalog_by_user.pop(user_id, None)
+
+    @classmethod
+    def initialize_index(cls, user_context):
+        user_id = user_context.get("uid")
+        if not user_id:
+            return
         documents = []
 
         data_dir = os.path.join(os.getcwd(), "backend", "data")
@@ -52,18 +75,22 @@ class RAGService:
         except Exception:
             pass
 
-        drive_docs = rag_google_drive.load_google_drive_documents()
+        drive_docs = rag_google_drive.load_google_drive_documents(
+            user_id=user_id,
+            drive_folder_id=user_context.get("drive_folder_id"),
+            token_json=user_context.get("google_token"),
+        )
         documents.extend(drive_docs)
 
         if not documents:
             print("No documents found. Index will be empty.")
             return
         annotate_documents(documents)
-        cls.document_catalog = build_document_catalog(documents)
+        cls._document_catalog_by_user[user_id] = build_document_catalog(documents)
 
         try:
-            settings = cls.get_service_context()
-            vector_store = cls.get_vector_store()
+            settings = cls.get_service_context(user_context.get("openai_api_key"))
+            vector_store = cls.get_vector_store(user_id)
             storage_context = None
             if vector_store:
                 storage_context = StorageContext.from_defaults(
@@ -71,8 +98,10 @@ class RAGService:
                 )
 
             splitter = SentenceSplitter(chunk_size=512, chunk_overlap=60)
-            cls.bm25_nodes = splitter.get_nodes_from_documents(documents)
-            cls.index = VectorStoreIndex.from_documents(
+            cls._bm25_nodes_by_user[user_id] = splitter.get_nodes_from_documents(
+                documents
+            )
+            cls._index_by_user[user_id] = VectorStoreIndex.from_documents(
                 documents,
                 callback_manager=settings.callback_manager,
                 storage_context=storage_context,
@@ -85,12 +114,15 @@ class RAGService:
             print(f"Index initialization error: {e}")
 
     @classmethod
-    def get_drive_file_list(cls):
-        return rag_google_drive.get_drive_file_list()
+    def get_drive_file_list(cls, user_id, drive_folder_id):
+        return rag_google_drive.get_drive_file_list(
+            user_id=user_id,
+            drive_folder_id=drive_folder_id,
+        )
 
     @classmethod
-    def query(cls, question):
-        settings = cls.get_service_context()
+    def query(cls, question, user_context):
+        settings = cls.get_service_context(user_context.get("openai_api_key"))
         selector = LLMSingleSelector.from_defaults(llm=settings.llm)
 
         casual_engine = CasualQueryEngine(
@@ -100,6 +132,7 @@ class RAGService:
             llm=settings.llm,
             callback_manager=settings.callback_manager,
             service=cls,
+            user_context=user_context,
         )
 
         tools = [
@@ -172,6 +205,7 @@ class RAGService:
 
         if 1 in selected_inds:
             formatted = RAGFormatter.format_markdown_response(response)
+            user_catalog = cls.get_document_catalog(user_context.get("uid"))
             is_list_query = bool(
                 re.search(
                     r"\b(list|all|show|enumerate|provide|give me|top)\b",
@@ -189,13 +223,13 @@ class RAGService:
             )
             bullet_count = extract_bullet_count(formatted)
             if is_list_query and (
-                is_catalog_query or (cls.document_catalog and bullet_count == 0)
+                is_catalog_query or (user_catalog and bullet_count == 0)
             ):
-                if not cls.document_catalog:
+                if not user_catalog:
                     return formatted
                 requested = parse_list_limit(query_text or "")
                 list_all = bool(re.search(r"\ball\b", query_text or "", re.I))
-                catalog_count = len(cls.document_catalog)
+                catalog_count = len(user_catalog)
                 needs_fallback = bullet_count == 0
                 if requested:
                     needs_fallback = needs_fallback or bullet_count != requested
@@ -203,7 +237,7 @@ class RAGService:
                     needs_fallback = True
                 if needs_fallback:
                     return format_document_catalog_response(
-                        cls.document_catalog, limit=requested
+                        user_catalog, limit=requested
                     )
             return formatted
         if isinstance(response, Response):

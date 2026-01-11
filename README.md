@@ -10,7 +10,7 @@ This is a simple AI-powered internal knowledge assistant that can be used to ans
 2. Backend: Flask
 3. Frontend: HTML, CSS, JS
 4. RAG: LlamaIndex
-5. Database: MongoDB
+5. Database: Firestore
 6. Vector Store: Chroma
 7. Chat Model: OpenAI
 8. Knowledge Base: Google Drive folder
@@ -19,12 +19,12 @@ This is a simple AI-powered internal knowledge assistant that can be used to ans
 
 ## Workflow
 
-1. User authentication and authorization: user signup (full name, email, password) and login (email, password).
-2. Admin configures Google Drive folders and the OpenAI model in the Admin UI.
+1. User signs in with Google via Firebase Auth.
+2. User is redirected to Configure to set their OpenAI API key, authorize Drive access, and add a single Drive folder ID.
 3. Frontend chat interface: user enters a question.
-4. Backend receives the question, applies a basic safety term check, and builds a `QueryBundle`.
+4. Backend verifies the Firebase ID token and loads user config from Firestore.
 5. Router selects between casual chat or knowledge-base retrieval.
-6. For retrieval, the backend loads local files and Google Drive docs (with download retries/backoff) and annotates metadata.
+6. For retrieval, the backend loads local files and the user's Google Drive folder (with retries/backoff) and annotates metadata.
 7. Documents are chunked (SentenceSplitter) and indexed into Chroma; BM25 nodes are prepared for hybrid retrieval.
 8. Hybrid retrieval (BM25 + vector) runs with higher recall for list queries.
 9. LLM reranking refines the top retrieved nodes.
@@ -32,9 +32,9 @@ This is a simple AI-powered internal knowledge assistant that can be used to ans
 11. Responses are formatted as Markdown with sources, and list queries fall back to a document catalog if needed.
 12. Backend returns the response to the frontend, and the UI renders Markdown with safe links.
 13. Feedback endpoint accepts thumbs up/down and logs to the backend.
-14. Background scheduler re-indexes Google Drive content every 60 seconds.
+14. Background scheduler re-indexes configured Drive folders every 60 seconds.
 15. LangSmith tracing captures query/retrieve/synthesize/LLM events when enabled.
-16. Optional: run end-to-end API tests via `scripts/rag_api_tests.py`.
+16. Optional: run end-to-end API tests via `scripts/tests/rag_api_tests.py`.
 
 For a deeper RAG implementation overview, see [RAG.md](RAG.md).
 
@@ -54,24 +54,25 @@ For a deeper RAG implementation overview, see [RAG.md](RAG.md).
 
 ## Knowledge Base Connector
 
-> Note: Admin only (username: admin@gmail.com, password: admin@gmail.com).
-
 ### Configure Google Drive Connector (UI)
 
-1. Add a new Google Drive folder.
-2. Provide access to the Google Drive folder.
-3. Automatic: poll the Google Drive folder for new documents and update the vector store.
-4. Preview the discovered documents in the Admin UI.
+1. Authorize Google Drive access for the signed-in user.
+2. Add a single Google Drive folder ID.
+3. Test the Drive connection from the Configure page.
+4. The backend polls the Drive folder for updates every 60 seconds.
 
 ### Configure LLM (OpenAI) in UI
 
-1. Provide the OpenAI API key in `.env`.
-2. Choose the OpenAI model name in the Admin UI (default: `gpt-4o-mini`).
+1. Add your OpenAI API key in the Configure page.
+2. Use the "Test OpenAI Key" button to validate the key.
+3. Model is fixed to `gpt-4o-mini`.
 
 ## Notes
 
-- User authentication: JWT token.
-- User document access: retrieval from Google Drive is implemented.
+- User authentication: Firebase ID tokens verified server-side.
+- User configuration: stored per-user in Firestore.
+- OpenAI API keys are stored per user (not in `.env`).
+- User document access: retrieval from the user's Google Drive folder is implemented.
 - Feedback and rating capture: API endpoint logs to backend stdout.
 - Analytics and monitoring: LangSmith tracing is supported.
 - Background: the background process updates the vector store every 60 seconds.
@@ -82,7 +83,6 @@ For a deeper RAG implementation overview, see [RAG.md](RAG.md).
 
 - Docker and Docker Compose
 - Python 3.9+ (for local development)
-- MongoDB (if running locally without Docker)
 
 ### 1. Clone the repository
 
@@ -101,14 +101,45 @@ PORT=5001
 FLASK_APP=app.py
 FLASK_ENV=development
 FLASK_DEBUG=1
-MONGO_URI=mongodb://mongo:27017/internal_knowledge_db # use localhost when running without Docker
-OPENAI_API_KEY=your_openai_api_key
+FIREBASE_ADMIN_CREDENTIALS_PATH=backend/credentials/internal-knowledge-assistant-firebase-adminsdk-fbsvc-61b18bef66.json
+FIRESTORE_DB=internal-knowledge-assistant
+GOOGLE_OAUTH_CLIENT_PATH=backend/credentials/credentials.json
+ALLOW_ENV_OPENAI_KEY_FOR_TESTS=false
 CHROMA_HOST=chroma # use localhost when running without Docker
 CHROMA_PORT=8000
 CHROMA_COLLECTION=internal-knowledge-assistant
 ```
 
-### 3. Run with Docker (Recommended)
+Frontend Firebase config lives in `frontend/static/js/firebase.js`.
+
+### 3. Firebase + GCP Setup (Required)
+
+#### 3.1 Firebase Auth + Firestore
+
+1. Create or select your Firebase project.
+2. Enable Google sign-in under Firebase Auth.
+3. Create a Firestore database (Native mode). Use the database ID shown in the console.
+4. Download the Firebase Admin SDK JSON for your Firebase project.
+5. Place it in `backend/credentials/` (gitignored).
+6. Point `FIREBASE_ADMIN_CREDENTIALS_PATH` to that file.
+7. If you use a non-default Firestore database, set `FIRESTORE_DB` to its ID.
+8. Copy your Firebase Web config into `frontend/static/js/firebase.js`.
+
+#### 3.2 Google OAuth (Drive access)
+
+1. In Google Cloud Console, enable the Google Drive API for your OAuth project.
+2. Configure the OAuth consent screen:
+   - Publishing status: Testing (add your Gmail to Test users).
+   - Scopes: `openid`, `userinfo.email`, `userinfo.profile`, `drive.readonly`.
+3. Create an OAuth Client ID (Web application):
+   - Authorized redirect URI: `http://localhost:5001/api/config/drive-oauth-callback`
+   - Add your production redirect URI if deployed.
+4. Download the OAuth client JSON and save it as `backend/credentials/credentials.json`.
+5. Set `GOOGLE_OAUTH_CLIENT_PATH=backend/credentials/credentials.json`.
+
+Note: if you just enabled the Drive API, wait a few minutes for propagation before testing.
+
+### 4. Run with Docker (Recommended)
 
 ```bash
 docker compose up --build
@@ -116,7 +147,7 @@ docker compose up --build
 
 The backend API will be available at `http://localhost:${PORT}`.
 
-### 4. Run Locally (with Conda) - Recommended for Local Dev
+### 5. Run Locally (with Conda) - Recommended for Local Dev
 
 1. Create and activate the Conda environment:
 
@@ -125,14 +156,13 @@ The backend API will be available at `http://localhost:${PORT}`.
    conda activate internal-knowledge-assistant
    ```
 
-2. Start MongoDB (ensure it's running on port 27017).
-3. Run the application:
+2. Run the application:
 
    ```bash
    python app.py
    ```
 
-### 5. Chroma Vector Store (Docker)
+### 6. Chroma Vector Store (Docker)
 
 Chroma runs as a local service. The `docker-compose.yml` includes a `chroma` container that the backend connects to.
 
@@ -158,17 +188,6 @@ CHROMA_HOST=localhost
 CHROMA_PORT=8000
 CHROMA_COLLECTION=internal-knowledge-assistant
 ```
-
-### 6. Google Drive Configuration
-
-To enable the Google Drive connector:
-
-1. Enable the Google Drive API in your Google Cloud Console.
-2. Create a Service Account or OAuth credentials.
-3. Download the JSON key file.
-4. Rename `backend/credentials/credentials.template.json` to `backend/credentials/credentials.json` and paste your content there (or just save your downloaded file as `credentials.json` in that folder).
-   Note: `credentials.json` is gitignored to secure your secrets.
-5. Run the application; it will automatically detect the credentials and attempt to load documents from folders configured in the Admin Dashboard.
 
 ### 7. Analytics and Monitoring (LangSmith)
 
