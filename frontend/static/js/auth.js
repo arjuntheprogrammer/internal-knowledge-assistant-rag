@@ -27,6 +27,7 @@ export function bindAuthButtons() {
             JSON.stringify({
               name: result.user.displayName,
               email: result.user.email,
+              photoURL: result.user.photoURL,
             })
           );
           const ready = await fetchConfigReady(result.idToken);
@@ -89,6 +90,7 @@ export function initAuthState() {
           JSON.stringify({
             name: user.displayName,
             email: user.email,
+            photoURL: user.photoURL,
           })
         );
       } else {
@@ -148,8 +150,16 @@ export function updateNav() {
     if (nameEl) nameEl.textContent = user.name || "User";
     if (emailEl) emailEl.textContent = user.email || "";
     if (avatarEl) {
-      const initial = (user.name || user.email || "U").charAt(0).toUpperCase();
-      avatarEl.textContent = initial;
+      if (user.photoURL) {
+        avatarEl.innerHTML = `<img src="${user.photoURL}" alt="${user.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        avatarEl.style.background = "none";
+      } else {
+        const initial = (user.name || user.email || "U")
+          .charAt(0)
+          .toUpperCase();
+        avatarEl.textContent = initial;
+        avatarEl.style.background = "rgba(59, 130, 246, 0.12)";
+      }
     }
   } else {
     if (loginLink) loginLink.style.display = "flex";
