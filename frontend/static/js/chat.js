@@ -1,4 +1,5 @@
 import { API_BASE, authHeaders } from "./api.js";
+import { showToast } from "./toast.js";
 
 export function handleEnter(e) {
   if (e.key === "Enter") sendMessage();
@@ -122,7 +123,7 @@ async function sendFeedback(messageId, rating) {
       headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ message_id: messageId, rating }),
     });
-    alert("Thanks for your feedback!");
+    showToast("Thanks for your feedback!", "success");
   } catch (err) {
     console.error("Feedback failed");
   }

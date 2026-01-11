@@ -1,5 +1,6 @@
 import { API_BASE } from "./api.js";
 import { signInWithGoogle, signOutUser, onAuthChange } from "./firebase.js";
+import { showToast } from "./toast.js";
 
 async function safeJson(response) {
   const contentType = response.headers.get("content-type") || "";
@@ -36,7 +37,7 @@ export function bindAuthButtons() {
         loginBtn.textContent = "Redirecting to Google...";
       } catch (err) {
         const code = err?.code ? ` (${err.code})` : "";
-        alert(`Google sign-in failed${code}.`);
+        showToast(`Google sign-in failed${code}.`);
       }
     });
   }
@@ -93,7 +94,9 @@ export function initAuthState() {
       } else {
         localStorage.removeItem("firebase_token");
         localStorage.removeItem("user");
-        const isPublic = ["/login", "/signup"].includes(window.location.pathname);
+        const isPublic = ["/login", "/signup"].includes(
+          window.location.pathname
+        );
         if (!isPublic) {
           window.location.href = "/login";
         }

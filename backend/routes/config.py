@@ -32,7 +32,8 @@ def _normalize_drive_folder_id(value):
 def get_config(current_user):
     user = UserConfig.get_user(current_user["uid"]) or {}
     openai_key = user.get("openai_api_key")
-    key_last4 = openai_key[-4:] if openai_key and len(openai_key) >= 4 else None
+    key_first4 = openai_key[:4] if openai_key and len(openai_key) >= 8 else None
+    key_last4 = openai_key[-4:] if openai_key and len(openai_key) >= 8 else None
     openai_key_valid = bool(user.get("openai_key_valid"))
     openai_key_validated_at = (
         user.get("openai_key_validated_at") if openai_key_valid else None
@@ -53,6 +54,7 @@ def get_config(current_user):
         "drive_folder_id": drive_folder_id,
         "drive_authenticated": bool(user.get("google_token")),
         "has_openai_key": bool(openai_key),
+        "openai_key_first4": key_first4,
         "openai_key_last4": key_last4,
         "openai_key_valid": openai_key_valid,
         "openai_key_validated_at": _format_dt(openai_key_validated_at),

@@ -14,7 +14,7 @@
 }
 
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 html {
@@ -24,7 +24,7 @@ html {
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
   margin: 0;
   padding: 0;
   background-color: var(--background-bg);
@@ -81,19 +81,19 @@ nav {
 }
 
 .logo-link {
-    text-decoration: none;
-    display: flex;
-    align-items: center;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
 }
 
 .logo {
-    font-size: 1.4rem;
-    font-weight: 800;
-    color: transparent;
-    background: linear-gradient(135deg, var(--primary-color), #8b5cf6);
-    -webkit-background-clip: text;
-    background-clip: text;
-    letter-spacing: -0.03em;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: transparent;
+  background: linear-gradient(135deg, var(--primary-color), #8b5cf6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  letter-spacing: -0.03em;
 }
 
 .nav-links {
@@ -137,8 +137,8 @@ nav {
 }
 
 #logout-link:hover {
-    color: #ef4444;
-    background-color: rgba(239, 68, 68, 0.06);
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.06);
 }
 
 .user-menu {
@@ -228,10 +228,10 @@ nav {
 
 /* Page Containers */
 #main-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .container {
@@ -350,7 +350,6 @@ nav {
   gap: 1rem;
 }
 
-
 .admin-save-panel {
   background: white;
   border: 1px solid #e2e8f0;
@@ -435,8 +434,14 @@ nav {
 }
 
 @keyframes slideUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .user-message {
@@ -575,31 +580,38 @@ button:active {
   font-weight: 600;
 }
 
+.config-notice.success {
+  background: #dcfce7;
+  color: #166534;
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
 .form-group {
-    margin-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .form-group label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    margin-bottom: 0.5rem;
-    display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  display: block;
 }
 
-.form-group input, .form-group select {
-    width: 100%;
-    padding: 0.8rem 1rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    font-size: 0.95rem;
-    background: #fcfcfc;
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  background: #fcfcfc;
 }
 
 .form-group input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
 
 /* Config Section */
@@ -612,52 +624,126 @@ button:active {
 }
 
 .config-section h3 {
-    margin-top: 0;
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #f1f5f9;
+  margin-top: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .app-toast {
   position: fixed;
   inset: 0;
   display: none;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  background: rgba(15, 23, 42, 0.35);
-  z-index: 1400;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 2000;
+  padding-top: 5vh;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .app-toast-body {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  padding: 14px 18px;
-  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--text-main);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  padding: 20px;
+  border-radius: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  max-width: 480px;
+  width: calc(100% - 40px);
+  transform: translateY(0);
+  animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.app-toast-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  box-shadow: var(--shadow-md);
-  max-width: 420px;
-  width: calc(100% - 32px);
+  justify-content: center;
+  border-radius: 12px;
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.app-toast-body.success .app-toast-icon {
+  background: #dcfce7;
+  color: #22c55e;
+}
+
+.app-toast-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.app-toast-content {
+  flex: 1;
+  padding-top: 2px;
+}
+
+#app-toast-message {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  font-weight: 500;
+  color: #1e293b;
+  display: block;
 }
 
 .app-toast-body button {
-  background: #ef4444;
-  color: #fff;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.85rem;
   cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: none;
+  align-self: center;
 }
 
 .app-toast-body button:hover {
-  background: #dc2626;
-  transform: none;
-  box-shadow: none;
+  background: #e2e8f0;
+  color: #1e293b;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-toast-body button:active {
+  transform: translateY(0);
+}
+
+/* Specific error styling for message if needed */
+.app-toast-body:not(.success) {
+  border-left: 4px solid #ef4444;
+}
+
+.app-toast-body.success {
+  border-left: 4px solid #22c55e;
 }
 
 /* Google Drive Folder Row */
@@ -672,7 +758,7 @@ button:active {
 .folder-row:hover {
   background: #fff;
   border-color: var(--primary-color);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .folder-row input:disabled {
@@ -684,9 +770,9 @@ button:active {
 }
 
 #drive-folders-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .drive-test-results ul,
 .drive-test-results li {

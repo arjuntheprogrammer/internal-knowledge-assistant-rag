@@ -10,22 +10,29 @@
     />
   </head>
   <body>
-    {% set is_auth_page = request.path in ["/login", "/signup"] %}
-    {% if not is_auth_page %}
+    {% set is_auth_page = request.path in ["/login", "/signup"] %} {% if not
+    is_auth_page %}
     <nav>
       <div class="nav-left">
         <a href="/" class="logo-link">
-            <div class="logo">Knowledge Assistant</div>
+          <div class="logo">Knowledge Assistant</div>
         </a>
       </div>
       <div class="nav-center nav-links">
         <a href="/">Chat</a>
-        <a href="/configure" id="config-link" style="display: none">Configure</a>
+        <a href="/configure" id="config-link" style="display: none"
+          >Configure</a
+        >
       </div>
       <div class="nav-right nav-links">
         <a href="/login" id="login-link">Login</a>
-        <div id="user-menu" class="user-menu" style="display: none;">
-          <button id="user-menu-btn" type="button" aria-haspopup="true" aria-expanded="false">
+        <div id="user-menu" class="user-menu" style="display: none">
+          <button
+            id="user-menu-btn"
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+          >
             <span id="user-avatar">U</span>
           </button>
           <div id="user-menu-dropdown" class="user-menu-dropdown">
@@ -38,9 +45,12 @@
     </nav>
     {% endif %}
 
-    <div id="app-toast" class="app-toast" style="display: none;">
+    <div id="app-toast" class="app-toast" style="display: none">
       <div class="app-toast-body">
-        <span id="app-toast-message"></span>
+        <div class="app-toast-icon" id="app-toast-icon"></div>
+        <div class="app-toast-content">
+          <span id="app-toast-message"></span>
+        </div>
         <button id="app-toast-ok" type="button">OK</button>
       </div>
     </div>
@@ -49,6 +59,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
-    <script type="module" src="{{ url_for('static', filename='app.js') }}"></script>
+    <script
+      type="module"
+      src="{{ url_for('static', filename='app.js') }}"
+    ></script>
   </body>
 </html>

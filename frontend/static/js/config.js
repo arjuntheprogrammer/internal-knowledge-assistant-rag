@@ -1,4 +1,5 @@
 import { API_BASE, authHeaders } from "./api.js";
+import { showToast } from "./toast.js";
 
 async function safeJson(response) {
   const contentType = response.headers.get("content-type") || "";
@@ -83,14 +84,14 @@ export async function checkAuthStatus() {
     const authenticated = Boolean(data.authenticated);
 
     if (authenticated) {
-      statusDiv.textContent = "Status: Connected";
+      statusDiv.textContent = "Connected";
       statusDiv.style.color = "#059669";
       statusDiv.classList.add("status-valid");
       btn.textContent = "Re-authorize";
       document.getElementById("auth-hint").textContent =
         "Your Google Drive access is active.";
     } else {
-      statusDiv.textContent = "Status: Not Connected";
+      statusDiv.textContent = "Not Connected";
       statusDiv.style.color = "#dc2626";
       statusDiv.classList.remove("status-valid");
       btn.textContent = "Authorize Google Drive";
@@ -99,7 +100,7 @@ export async function checkAuthStatus() {
     }
     return authenticated;
   } catch (e) {
-    statusDiv.textContent = "Status: Unknown";
+    statusDiv.textContent = "Unknown";
     statusDiv.style.color = "#d97706";
     statusDiv.classList.remove("status-valid");
     btn.textContent = "Retry";
@@ -156,10 +157,10 @@ export async function handleGoogleAuth(autoRedirect = false) {
       }, 1000);
     } else {
       const message = data?.message || "Could not get auth URL";
-      alert("Error: " + message);
+      showToast("Error: " + message);
     }
   } catch (e) {
-    alert("Failed to initiate auth: " + e);
+    showToast("Failed to initiate auth: " + e);
   }
 }
 
@@ -175,15 +176,14 @@ export async function loadConfig() {
     const openAiStatus = document.getElementById("openai-key-status");
     const openAiResult = document.getElementById("openai-test-result");
     if (openAiStatus) {
-      if (config.has_openai_key) {
-        const last4 = config.openai_key_last4 ? `****${config.openai_key_last4}` : "Configured";
-        if (config.openai_key_valid) {
-          openAiStatus.textContent = `Validated (${last4})`;
-          openAiStatus.style.color = "#059669";
-        } else {
-          openAiStatus.textContent = `Configured (${last4})`;
-          openAiStatus.style.color = "#059669";
-        }
+      if (config.has_openai_key && config.openai_key_valid) {
+        const first4 = config.openai_key_first4 || "****";
+        const last4 = config.openai_key_last4 || "****";
+        openAiStatus.textContent = `Configured (${first4}...${last4})`;
+        openAiStatus.style.color = "#059669";
+      } else if (config.has_openai_key) {
+        openAiStatus.textContent = "Invalid or not tested";
+        openAiStatus.style.color = "#dc2626";
       } else {
         openAiStatus.textContent = "Not configured";
         openAiStatus.style.color = "var(--text-muted)";
@@ -222,6 +222,7 @@ export async function loadConfig() {
         driveStatus.classList.remove("status-valid");
       }
     }
+    showConfigNotice(config);
   } catch (err) {
     console.error("Failed to load config");
   }
@@ -261,17 +262,17 @@ export async function saveConfig(options = {}) {
     });
     const result = await res.json().catch(() => ({}));
     if (!res.ok) {
-      alert(result.message || "Failed to save config");
+      showToast(result.message || "Failed to save config");
       return false;
     }
 
     if (showAlert) {
-      alert("Configuration saved!");
+      showToast("Configuration saved!", "success");
     }
     await loadConfig();
     return true;
   } catch (err) {
-    alert("Failed to save config");
+    showToast("Failed to save config");
     return false;
   }
 }
@@ -281,7 +282,7 @@ export async function testOpenAIKey() {
   const resultEl = document.getElementById("openai-test-result");
   const apiKey = keyInput?.value?.trim();
   if (!apiKey) {
-    alert("Enter an OpenAI API key to test.");
+    showToast("Enter an OpenAI API key to test.");
     return;
   }
 
@@ -318,7 +319,7 @@ export async function testOpenAIKey() {
         resultEl.style.color = "#dc2626";
         resultEl.classList.remove("status-valid");
       }
-      alert(data.message || "OpenAI key validation failed.");
+      showToast(data.message || "OpenAI key validation failed.");
       await loadConfig();
     }
   } catch (err) {
@@ -327,7 +328,7 @@ export async function testOpenAIKey() {
       resultEl.style.color = "#dc2626";
       resultEl.classList.remove("status-valid");
     }
-    alert("OpenAI key validation failed.");
+    showToast("OpenAI key validation failed.");
     await loadConfig();
   }
 }
@@ -342,7 +343,7 @@ export async function verifyDriveConnection() {
 
   const saved = await saveConfig({ showAlert: false });
   if (!saved) {
-    ul.innerHTML = "<li style=\"color: red\">Failed to save Drive settings.</li>";
+    ul.innerHTML = '<li style="color: red">Failed to save Drive settings.</li>';
     return;
   }
 
@@ -377,7 +378,9 @@ export async function verifyDriveConnection() {
 
     if (data.files && data.files.length > 0) {
       const summary =
-        findDriveSummary(data.files) || data.message || "Drive verification complete.";
+        findDriveSummary(data.files) ||
+        data.message ||
+        "Drive verification complete.";
       ul.innerHTML = `<li>${summary}</li>`;
     } else {
       ul.innerHTML = `<li>${data.message || "No files found."}</li>`;
@@ -420,12 +423,41 @@ function findDriveSummary(items) {
   return items[0] || "";
 }
 
-function showConfigNotice() {
+function showConfigNotice(config = null) {
   const notice = document.getElementById("config-notice");
   if (!notice) return;
+
   const params = new URLSearchParams(window.location.search);
-  if (params.get("reason") === "needs_config") {
+  const needsConfigParam = params.get("reason") === "needs_config";
+
+  if (!config) {
+    if (needsConfigParam) {
+      notice.style.display = "block";
+      notice.textContent = "Please complete configuration before chatting.";
+      notice.classList.remove("success");
+    } else {
+      notice.style.display = "none";
+    }
+    return;
+  }
+
+  const ready = Boolean(
+    config.has_openai_key &&
+      config.openai_key_valid &&
+      config.drive_folder_id &&
+      config.drive_authenticated &&
+      config.drive_test_success
+  );
+
+  if (ready) {
     notice.style.display = "block";
+    notice.innerHTML =
+      'Configuration Completed. <a href="/" style="color: inherit; text-decoration: underline; margin-left: 8px;">Go to Chat</a>';
+    notice.classList.add("success");
+  } else if (needsConfigParam) {
+    notice.style.display = "block";
+    notice.textContent = "Please complete configuration before chatting.";
+    notice.classList.remove("success");
   } else {
     notice.style.display = "none";
   }
