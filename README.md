@@ -25,6 +25,20 @@ This is a premium AI-powered internal knowledge assistant designed to help you a
 5. Large Language Model (OpenAI) synthesizes the answer from the retrieved context.
 6. Responsive answers are returned with clickable citations and sources.
 
+## Not Implemented Yet
+
+1. **Platform & Ops**
+   - API gateway rate limiting.
+   - Feedback storage/analytics (feedback is logged only).
+   - Advanced evaluation/metrics (accuracy, drift, hallucination scoring).
+2. **Retrieval & Access**
+   - Per-user ACL filtering in retrieval/indexing.
+   - Change detection for Drive updates (currently re-indexes on schedule).
+3. **LLM & Safety**
+   - Context history, compression, and caching.
+   - Additional LLM optimizations (context window management, caching, usage dashboards/alerting).
+   - Full safety pipeline (policy checks, PII detection, prompt injection prevention, moderation, redaction).
+
 ---
 
 ## Installation & Local Development
