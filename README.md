@@ -149,7 +149,29 @@ gcloud secrets add-iam-policy-binding google-oauth-creds \
 # Grant access to Firestore
 gcloud projects add-iam-policy-binding [PROJECT_ID] \
   --member="serviceAccount:knowledge-assistant-runner@[PROJECT_ID].iam.gserviceaccount.com" \
-  --role="roles/datastore.user"
+  --role="roles/datastore.user" \
+  --condition=None
+
+# Additional roles for Cloud Build (if using this account as the build service account)
+gcloud projects add-iam-policy-binding [PROJECT_ID] \
+  --member="serviceAccount:knowledge-assistant-runner@[PROJECT_ID].iam.gserviceaccount.com" \
+  --role="roles/artifactregistry.writer" \
+  --condition=None
+
+gcloud projects add-iam-policy-binding [PROJECT_ID] \
+  --member="serviceAccount:knowledge-assistant-runner@[PROJECT_ID].iam.gserviceaccount.com" \
+  --role="roles/run.admin" \
+  --condition=None
+
+gcloud projects add-iam-policy-binding [PROJECT_ID] \
+  --member="serviceAccount:knowledge-assistant-runner@[PROJECT_ID].iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountUser" \
+  --condition=None
+
+gcloud projects add-iam-policy-binding [PROJECT_ID] \
+  --member="serviceAccount:knowledge-assistant-runner@[PROJECT_ID].iam.gserviceaccount.com" \
+  --role="roles/logging.logWriter" \
+  --condition=None
 ```
 
 ---
