@@ -15,7 +15,7 @@ class RAGFormatter:
         answer_text = cls._strip_leading_markdown_noise(answer_text)
         answer_text, _ = cls._split_sources(answer_text)
         if not answer_text:
-            answer_text = "Insufficient information"
+            answer_text = "I'm sorry, I couldn't find any information about that in your connected documents."
 
         sources_block = cls._format_sources(response, sources_text)
         if re.search(r"(?m)^\s*([-*]|\d+\.)\s+", answer_text):

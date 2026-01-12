@@ -84,7 +84,7 @@ def build_rag_query_engine(
     default_text_qa_template = PromptTemplate(
         "Context: {context_str}\n"
         "Answer the question based ONLY on the context. "
-        "If unsure, say 'Insufficient information'. "
+        "If unsure, say 'I'm sorry, I couldn't find that information in your documents. I'm only able to answer questions based on the knowledge base you've provided.' "
         "Format as Markdown with:\n"
         "**Answer:** [response]\n"
         "**Sources:** bullet list of citations\n"
@@ -94,7 +94,7 @@ def build_rag_query_engine(
     list_text_qa_template = PromptTemplate(
         "Context: {context_str}\n"
         "Answer the question based ONLY on the context. "
-        "If unsure, say 'Insufficient information'. "
+        "If unsure, say 'I'm sorry, I couldn't find any relevant lists or documents in your knowledge base regarding this.' "
         "The user asked for a list. Enumerate every unique item mentioned "
         "in the context; do not stop early. "
         "If the context seems incomplete, add: '(List may be incomplete)'. "
