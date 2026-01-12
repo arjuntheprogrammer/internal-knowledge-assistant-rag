@@ -97,52 +97,38 @@ The app will be available at `http://localhost:5001`.
 
 ## Production Deployment (GCP Cloud Run)
 
-### 1. Build & Push Container
+This project is configured for automated deployment using **Google Cloud Build** and **Cloud Run**.
 
-Build the container using the root `Dockerfile`:
+### 1. Automated CI/CD
+The repository includes a `cloudbuild.yaml` file that:
+- Builds the Docker image on every push to the `master` branch.
+- Pushes the image to **Artifact Registry**.
+- Deploys the container to **Cloud Run** in the `us-west1` region.
 
+### 2. Secret Management
+Sensitive credentials are not stored in the container. Instead, they are managed via **GCP Secret Manager** and mounted as volumes at runtime:
+- `firebase-admin-creds`: Mounted at `/secrets/firebase/creds.json`
+- `google-oauth-creds`: Mounted at `/secrets/google/creds.json`
+
+### 3. Deployment Command (Manual)
+To trigger a manual build and deployment:
 ```bash
-gcloud builds submit --tag gcr.io/[PROJECT_ID]/knowledge-assistant
+gcloud builds submit --config cloudbuild.yaml . --substitutions SHORT_SHA=$(git rev-parse --short HEAD)
 ```
 
-### 2. Deploy to Cloud Run
+### 4. Custom Domain & Firebase
+The application is accessible at your custom domain: `https://knowledge-assistant.arjuntheprogrammer.com`.
 
-Deploy the service to Cloud Run:
+**Important**: Ensure `https://knowledge-assistant.arjuntheprogrammer.com` is added to:
+1. **Firebase Console**: Auth > Settings > Authorized Domains.
+2. **Google Cloud Console**: APIs & Services > Credentials > OAuth 2.0 Client IDs (Update Redirect URIs).
 
-```bash
-gcloud run deploy knowledge-assistant \
-  --image gcr.io/[PROJECT_ID]/knowledge-assistant \
-  --platform managed \
-  --region [REGION] \
-  --allow-unauthenticated
-```
+## Analytics and Monitoring (LangSmith & PostHog)
 
-### 3. Custom Domain Mapping
+### LangSmith
+Tracing is enabled by default in production. Monitor your AI pipeline at [smith.langchain.com](https://smith.langchain.com).
 
-To use your domain `knowledge-assistant.arjuntheprogrammer.com`:
-
-1. In the Google Cloud Console, navigate to **Cloud Run** > **Manage Custom Domains**.
-2. Click **Add Mapping** and select the service.
-3. Enter your domain and follow the instructions to update your DNS records (CNAME).
-4. SSL certificates will be automatically provisioned by GCP.
-
-### 4. Firebase Configuration for Production
-
-1. Update the **Authorized Domains** in Firebase Auth to include `knowledge-assistant.arjuntheprogrammer.com`.
-2. Update the **Redirect URI** in Google Cloud Console (OAuth Client) to:
-   `https://knowledge-assistant.arjuntheprogrammer.com/api/config/drive-oauth-callback`
-
----
-
-## Analytics and Monitoring (LangSmith)
-
-To enable tracing, add these to your `.env`:
-
-```bash
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
-LANGCHAIN_API_KEY=your_langchain_api_key
-LANGCHAIN_PROJECT=internal-knowledge-assistant
-```
-
-The application will automatically log traces to your LangSmith project.
+### PostHog (Coming Soon)
+Token usage (Input, Thinking, Output) and user behavior analytics are integrated via PostHog.
+To enable, add your API key to the Cloud Run environment variables:
+`POSTHOG_API_KEY=your_key_here`
