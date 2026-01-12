@@ -3,7 +3,7 @@ import { getConfigStatus } from "./config.js";
 
 export async function checkRouteAccess() {
   const path = window.location.pathname;
-  const publicRoutes = ["/login", "/signup"];
+  const publicRoutes = ["/login", "/signup", "/privacy", "/terms"];
   const token = localStorage.getItem("firebase_token");
   const user = getStoredUser();
   const mainContent = document.getElementById("main-content");

@@ -96,7 +96,7 @@ export function initAuthState() {
       } else {
         localStorage.removeItem("firebase_token");
         localStorage.removeItem("user");
-        const isPublic = ["/login", "/signup"].includes(
+        const isPublic = ["/login", "/signup", "/privacy", "/terms"].includes(
           window.location.pathname
         );
         if (!isPublic) {
@@ -136,11 +136,13 @@ export function updateNav() {
   });
 
   const loginLink = document.getElementById("login-link");
+  const chatLink = document.getElementById("chat-link");
   const configLink = document.getElementById("config-link");
   const userMenu = document.getElementById("user-menu");
 
   if (user) {
     if (loginLink) loginLink.style.display = "none";
+    if (chatLink) chatLink.style.display = "flex";
     if (configLink) configLink.style.display = "flex";
     if (userMenu) userMenu.style.display = "flex";
 
@@ -163,6 +165,7 @@ export function updateNav() {
     }
   } else {
     if (loginLink) loginLink.style.display = "flex";
+    if (chatLink) chatLink.style.display = "none";
     if (configLink) configLink.style.display = "none";
     if (userMenu) userMenu.style.display = "none";
   }
