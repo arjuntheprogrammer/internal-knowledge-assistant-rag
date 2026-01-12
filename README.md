@@ -95,6 +95,64 @@ The app will be available at `http://localhost:5001`.
 
 ---
 
+## GCP Initial Project Setup (One-Time)
+
+If you are setting up this project in a new Google Cloud Project, follow these steps to initialize the environment:
+
+### 1. Enable Required APIs
+```bash
+gcloud services enable \
+  run.googleapis.com \
+  cloudbuild.googleapis.com \
+  artifactregistry.googleapis.com \
+  firestore.googleapis.com \
+  iam.googleapis.com \
+  secretmanager.googleapis.com
+```
+
+### 2. Create Artifact Registry
+```bash
+gcloud artifacts repositories create knowledge-assistant \
+  --repository-format=docker \
+  --location=us-west1 \
+  --description="Docker repository for Internal Knowledge Assistant"
+```
+
+### 3. Configure Secret Manager
+Create and upload your credentials safely:
+```bash
+# Create the secrets
+gcloud secrets create firebase-admin-creds --replication-policy="automatic"
+gcloud secrets create google-oauth-creds --replication-policy="automatic"
+
+# Add the data versions
+gcloud secrets versions add firebase-admin-creds --data-file=backend/credentials/firebase-admin.json
+gcloud secrets versions add google-oauth-creds --data-file=backend/credentials/google-credentials.json
+```
+
+### 4. Setup IAM Permissions
+Create a dedicated service account and grant it the minimum required permissions:
+```bash
+# Create service account
+gcloud iam service-accounts create knowledge-assistant-runner
+
+# Grant access to Secret Manager
+gcloud secrets add-iam-policy-binding firebase-admin-creds \
+  --member="serviceAccount:knowledge-assistant-runner@[PROJECT_ID].iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding google-oauth-creds \
+  --member="serviceAccount:knowledge-assistant-runner@[PROJECT_ID].iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+# Grant access to Firestore
+gcloud projects add-iam-policy-binding [PROJECT_ID] \
+  --member="serviceAccount:knowledge-assistant-runner@[PROJECT_ID].iam.gserviceaccount.com" \
+  --role="roles/datastore.user"
+```
+
+---
+
 ## Production Deployment (GCP Cloud Run)
 
 This project is configured for automated deployment using **Google Cloud Build** and **Cloud Run**.
