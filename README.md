@@ -107,7 +107,8 @@ gcloud services enable \
   artifactregistry.googleapis.com \
   firestore.googleapis.com \
   iam.googleapis.com \
-  secretmanager.googleapis.com
+  secretmanager.googleapis.com \
+  drive.googleapis.com
 ```
 
 ### 2. Create Artifact Registry
