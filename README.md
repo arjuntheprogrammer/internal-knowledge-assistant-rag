@@ -117,11 +117,23 @@ gcloud builds submit --config cloudbuild.yaml . --substitutions SHORT_SHA=$(git 
 ```
 
 ### 4. Custom Domain & Firebase
-The application is accessible at your custom domain: `https://knowledge-assistant.arjuntheprogrammer.com`.
+The application is live at: [https://internal-knowledge-assistant-cp35zlfwgq-uw.a.run.app/](https://internal-knowledge-assistant-cp35zlfwgq-uw.a.run.app/)
 
-**Important**: Ensure `https://knowledge-assistant.arjuntheprogrammer.com` is added to:
+**Troubleshooting (403 Forbidden)**:
+If you receive a 403 error when accessing the URL, ensure the service is public by running:
+```bash
+gcloud run services add-iam-policy-binding internal-knowledge-assistant \
+  --member="allUsers" \
+  --role="roles/run.invoker" \
+  --region=us-west1
+```
+
+**Custom Domain**:
+Update your DNS records to point `knowledge-assistant.arjuntheprogrammer.com` to the Cloud Run service.
+
+**Important**: Ensure the production URL is added to:
 1. **Firebase Console**: Auth > Settings > Authorized Domains.
-2. **Google Cloud Console**: APIs & Services > Credentials > OAuth 2.0 Client IDs (Update Redirect URIs).
+2. **Google Cloud Console**: APIs & Services > Credentials > OAuth 2.0 Client IDs (Update Redirect URIs to include `/api/config/drive-oauth-callback`).
 
 ## Analytics and Monitoring (LangSmith & PostHog)
 
