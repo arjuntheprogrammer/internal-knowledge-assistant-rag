@@ -9,7 +9,8 @@ export async function checkRouteAccess() {
   const mainContent = document.getElementById("main-content");
 
   if (publicRoutes.includes(path)) {
-    if (token && user) {
+    const authRoutes = ["/login", "/signup"];
+    if (authRoutes.includes(path) && token && user) {
       const status = await getConfigStatus();
       window.location.href = status.ready ? "/" : "/configure";
       return;
