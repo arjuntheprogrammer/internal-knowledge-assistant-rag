@@ -36,9 +36,9 @@ steps:
       - "--service-account"
       - "knowledge-assistant-runner@$PROJECT_ID.iam.gserviceaccount.com"
       - "--set-env-vars"
-      - "FLASK_CONFIG=production,FIRESTORE_DB=internal-knowledge-assistant,MILVUS_URI=https://in03-955a82bbe424026.api.gcp-us-west1.zillizcloud.com,MILVUS_COLLECTION=internal_knowledge_assistant,FIREBASE_ADMIN_CREDENTIALS_PATH=/secrets/firebase/creds.json,GOOGLE_OAUTH_CLIENT_PATH=/secrets/google/creds.json,MILVUS_TOKEN=INTERNAL_MILVUS_TOKEN_REDACTED,LANGCHAIN_TRACING_V2=true,LANGCHAIN_ENDPOINT=https://api.smith.langchain.com,LANGCHAIN_API_KEY=INTERNAL_LANGCHAIN_API_KEY_REDACTED,LANGCHAIN_PROJECT=internal-knowledge-assistant"
+      - "FLASK_CONFIG=production,FIRESTORE_DB=internal-knowledge-assistant,MILVUS_URI=https://in03-955a82bbe424026.api.gcp-us-west1.zillizcloud.com,MILVUS_COLLECTION=internal_knowledge_assistant,FIREBASE_ADMIN_CREDENTIALS_PATH=/secrets/firebase/creds.json,GOOGLE_OAUTH_CLIENT_PATH=/secrets/google/creds.json,LANGCHAIN_TRACING_V2=true,LANGCHAIN_ENDPOINT=https://api.smith.langchain.com,LANGCHAIN_PROJECT=internal-knowledge-assistant"
       - "--update-secrets"
-      - "/secrets/firebase/creds.json=firebase-admin-creds:latest,/secrets/google/creds.json=google-oauth-creds:latest"
+      - "/secrets/firebase/creds.json=firebase-admin-creds:latest,/secrets/google/creds.json=google-oauth-creds:latest,MILVUS_TOKEN=milvus-token:latest,LANGCHAIN_API_KEY=langchain-api-key:latest"
 
 images:
   - "us-west1-docker.pkg.dev/$PROJECT_ID/knowledge-assistant/app:$SHORT_SHA"

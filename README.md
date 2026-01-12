@@ -125,10 +125,15 @@ Create and upload your credentials safely:
 # Create the secrets
 gcloud secrets create firebase-admin-creds --replication-policy="automatic"
 gcloud secrets create google-oauth-creds --replication-policy="automatic"
+gcloud secrets create milvus-token --replication-policy="automatic"
+gcloud secrets create langchain-api-key --replication-policy="automatic"
 
 # Add the data versions
 gcloud secrets versions add firebase-admin-creds --data-file=backend/credentials/firebase-admin.json
 gcloud secrets versions add google-oauth-creds --data-file=backend/credentials/google-credentials.json
+# For the strings below, you can pass the strings directly
+echo -n "your_milvus_token" | gcloud secrets versions add milvus-token --data-file=-
+echo -n "your_langchain_api_key" | gcloud secrets versions add langchain-api-key --data-file=-
 ```
 
 ### 4. Setup IAM Permissions
@@ -138,13 +143,12 @@ Create a dedicated service account and grant it the minimum required permissions
 gcloud iam service-accounts create knowledge-assistant-runner
 
 # Grant access to Secret Manager
-gcloud secrets add-iam-policy-binding firebase-admin-creds \
-  --member="serviceAccount:knowledge-assistant-runner@[PROJECT_ID].iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding google-oauth-creds \
-  --member="serviceAccount:knowledge-assistant-runner@[PROJECT_ID].iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
+for secret in firebase-admin-creds google-oauth-creds milvus-token langchain-api-key; do
+  gcloud secrets add-iam-policy-binding $secret \
+    --member="serviceAccount:knowledge-assistant-runner@[PROJECT_ID].iam.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor" \
+    --condition=None
+done
 
 # Grant access to Firestore
 gcloud projects add-iam-policy-binding [PROJECT_ID] \
