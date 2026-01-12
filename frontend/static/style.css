@@ -593,6 +593,22 @@ button:active {
   margin-bottom: 2.5rem;
 }
 
+.nav-logo {
+  height: 32px;
+  width: 32px;
+  margin-right: 12px;
+  border-radius: 8px;
+}
+
+.auth-logo-img {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+  display: block;
+  border-radius: 16px;
+  box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.4);
+}
+
 .google-btn {
   width: 100%;
   display: flex;

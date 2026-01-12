@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Internal Knowledge Assistant</title>
     <link
+      rel="icon"
+      type="image/x-icon"
+      href="{{ url_for('static', filename='favicon.ico') }}"
+    />
+    <link
       rel="stylesheet"
       href="{{ url_for('static', filename='style.css') }}"
     />
@@ -15,6 +20,11 @@
     <nav>
       <div class="nav-left">
         <a href="/" class="logo-link">
+          <img
+            src="{{ url_for('static', filename='logo.png') }}"
+            alt="Knowledge Assistant Logo"
+            class="nav-logo"
+          />
           <div class="logo">Knowledge Assistant</div>
         </a>
       </div>
