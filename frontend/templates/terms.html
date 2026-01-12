@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container admin-page">
+    <div class="config-section">
+        <h2>Terms of Service</h2>
+        <p>Last updated: January 12, 2026</p>
+
+        <h3>1. Acceptance of Terms</h3>
+        <p>By using the Internal Knowledge Assistant, you agree to these terms. If you do not agree, please do not use the service.</p>
+
+        <h3>2. Description of Service</h3>
+        <p>The Internal Knowledge Assistant provides a RAG (Retrieval-Augmented Generation) based interface to query your internal documents and Google Drive folders.</p>
+
+        <h3>3. User Responsibilities</h3>
+        <p>You are responsible for the documents you index and the queries you perform. You must ensure you have the right to index any documents you upload or connect via Google Drive.</p>
+
+        <h3>4. Limitation of Liability</h3>
+        <p>The service is provided "as is". We are not liable for any inaccuracies in the generated responses or any data loss.</p>
+
+        <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+            <a href="/" class="button-link" style="text-decoration: none; display: inline-block;">
+                <button type="button">Back to Chat</button>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

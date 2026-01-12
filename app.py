@@ -46,6 +46,14 @@ def create_app(config_name="default"):
     def configure():
         return render_template("configure.html")
 
+    @app.route("/privacy")
+    def privacy():
+        return render_template("privacy.html")
+
+    @app.route("/terms")
+    def terms():
+        return render_template("terms.html")
+
     return app
 
 
