@@ -8,14 +8,9 @@ import {
   signOut,
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-const currentHost = window.location.hostname;
-const isLocal = currentHost === "localhost" || currentHost === "127.0.0.1";
-
 const firebaseConfig = {
   apiKey: "[REMOVED]",
-  authDomain: isLocal
-    ? "internal-knowledge-assistant.firebaseapp.com"
-    : currentHost,
+  authDomain: "internal-knowledge-assistant.firebaseapp.com",
   projectId: "internal-knowledge-assistant",
   storageBucket: "internal-knowledge-assistant.firebasestorage.app",
   messagingSenderId: "472638866088",
