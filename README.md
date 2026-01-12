@@ -32,7 +32,6 @@ This is a premium AI-powered internal knowledge assistant designed to help you a
 - **Hybrid Retrieval Engine**: Combines **Vector Search** (for semantic meaning) and **BM25 Search** (for keyword exact matches) to provide the most accurate context.
 - **Advanced Observability**: Full integration with **LangSmith** enables detailed tracing of the AI pipeline, including cost tracking, latency monitoring, and per-user analytics.
 - **Automated Synchronization**: Background scheduler periodically polls your Google Drive to keep the knowledge base up-to-date.
-- **Premium UI/UX**: A glassmorphic, responsive chat interface designed for a professional enterprise experience.
 
 ## Not Implemented Yet
 
