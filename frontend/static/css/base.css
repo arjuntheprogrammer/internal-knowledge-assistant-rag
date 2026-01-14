@@ -29,6 +29,12 @@ body {
   width: 100%;
 }
 
+@media (max-width: 640px) {
+  .container {
+    padding: 1.5rem 1rem;
+  }
+}
+
 #main-content {
   flex: 1;
   display: flex;

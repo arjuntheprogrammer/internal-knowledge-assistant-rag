@@ -2,28 +2,93 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Internal Knowledge Assistant</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>{% block page_title %}Knowledge Assistant | AI-Powered Internal Search{% endblock %}</title>
+
+    <!-- SEO Metadata -->
+    <meta
+      name="description"
+      content="Secure, AI-powered internal knowledge assistant. Index your Google Drive and find answers instantly from your private documents."
+    />
+    <meta
+      name="keywords"
+      content="AI assistant, knowledge base, RAG, internal search, Google Drive indexing, semantic search"
+    />
+    <meta name="author" content="Arjun Gupta" />
+    <link rel="canonical" href="{{ request.url }}" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="{{ request.url }}" />
+    <meta
+      property="og:title"
+      content="Knowledge Assistant | AI-Powered Internal Search"
+    />
+    <meta
+      property="og:description"
+      content="Secure, AI-powered internal knowledge assistant. Index your Google Drive and find answers instantly from your private documents."
+    />
+    <meta
+      property="og:image"
+      content="{{ url_for('static', filename='img/logo.png', _external=True) }}"
+    />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="{{ request.url }}" />
+    <meta
+      property="twitter:title"
+      content="Knowledge Assistant | AI-Powered Internal Search"
+    />
+    <meta
+      property="twitter:description"
+      content="Secure, AI-powered internal knowledge assistant. Index your Google Drive and find answers instantly from your private documents."
+    />
+    <meta
+      property="twitter:image"
+      content="{{ url_for('static', filename='img/logo.png', _external=True) }}"
+    />
+
     <link
       rel="icon"
       type="image/x-icon"
       href="{{ url_for('static', filename='img/favicon.ico') }}"
     />
     <!-- CSS Modules -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/variables.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/config.css') }}" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/variables.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/base.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/layout.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/components.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/auth.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/chat.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/config.css') }}"
+    />
   </head>
   <body>
-    {% set is_auth_page = request.path in ["/login", "/signup"] %}
-    {% set protected_routes = ['/', '/configure'] %}
-    {% set is_protected = request.path in protected_routes %}
-    {% if not is_auth_page %}
-    <nav id="main-nav" {% if is_protected %}style="display: none;"{% endif %}>
+    {% set is_auth_page = request.path in ["/login", "/signup"] %} {% set
+    protected_routes = ['/', '/configure'] %} {% set is_protected = request.path
+    in protected_routes %} {% if not is_auth_page %}
+    <nav id="main-nav" {% if is_protected %}style="display: none;" {% endif %}>
       <div class="nav-left">
         <a href="/" class="logo-link">
           <img
@@ -78,13 +143,28 @@
           <span id="app-confirm-message"></span>
         </div>
         <div class="app-toast-buttons">
-          <button id="app-confirm-yes" type="button" class="btn-danger">Yes, Remove</button>
-          <button id="app-confirm-dismiss" type="button" class="btn-secondary">Dismiss</button>
+          <button id="app-confirm-yes" type="button" class="btn-danger">
+            Yes, Remove
+          </button>
+          <button id="app-confirm-dismiss" type="button" class="btn-secondary">
+            Dismiss
+          </button>
         </div>
       </div>
     </div>
 
-    <div id="main-content" {% if is_protected %}style="display: none;"{% endif %}>{% block content %}{% endblock %}</div>
+    <div
+      id="main-content"
+      {%
+      if
+      is_protected
+      %}style="display: none;"
+      {%
+      endif
+      %}
+    >
+      {% block content %}{% endblock %}
+    </div>
 
     <footer class="app-footer">
       <div class="footer-content">

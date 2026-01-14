@@ -191,12 +191,16 @@ export async function sendMessage() {
   appendMessage("user", text);
   input.value = "";
 
+  showTypingIndicator();
+
   try {
     const res = await fetch(`${API_BASE}/chat/message`, {
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ message: text }),
     });
+
+    removeTypingIndicator();
 
     const data = await res.json();
 
@@ -233,7 +237,31 @@ export async function sendMessage() {
       }
     }
   } catch (err) {
+    removeTypingIndicator();
     appendMessage("bot", "Network error. Please try again.");
+  }
+}
+
+function showTypingIndicator() {
+  const history = document.getElementById("chat-history");
+  if (!history) return;
+
+  const indicator = document.createElement("div");
+  indicator.id = "typing-indicator";
+  indicator.className = "typing-indicator";
+  indicator.innerHTML = `
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+  `;
+  history.appendChild(indicator);
+  history.scrollTop = history.scrollHeight;
+}
+
+function removeTypingIndicator() {
+  const indicator = document.getElementById("typing-indicator");
+  if (indicator) {
+    indicator.remove();
   }
 }
 

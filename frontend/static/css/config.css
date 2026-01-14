@@ -87,10 +87,29 @@
   border: 1px solid rgba(34, 197, 94, 0.4);
   border-radius: 12px;
   margin-bottom: 12px;
+  flex-wrap: wrap;
 }
-.folder-icon { font-size: 1.25rem; }
-.selected-folder-name { flex: 1; font-weight: 600; font-size: 0.95rem; color: #166534; }
-.folder-display-actions { display: flex; align-items: center; gap: 4px; }
+.folder-icon { font-size: 1.25rem; flex-shrink: 0; }
+.selected-folder-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #166534;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 100px;
+}
+.folder-display-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+@media (max-width: 480px) {
+  .folder-display-actions {
+    width: 100%;
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(34, 197, 94, 0.2);
+    justify-content: flex-end;
+  }
+}
 .action-divider { color: #cbd5e1; font-size: 0.8rem; user-select: none; }
 .folder-picker-actions { display: flex; gap: 10px; }
 
@@ -116,3 +135,23 @@
 }
 
 @media (max-width: 900px) { .admin-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+  .folder-picker-actions {
+    flex-direction: column;
+  }
+  .folder-picker-actions button {
+    width: 100%;
+  }
+  .drive-auth-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .drive-auth-row button {
+    width: 100%;
+  }
+  #openai-test-result {
+    display: block;
+    margin-left: 0 !important;
+    margin-top: 8px;
+  }
+}

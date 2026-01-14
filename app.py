@@ -63,6 +63,12 @@ def create_app(config_name="default"):
     def terms():
         return render_template("terms.html")
 
+    @app.route("/robots.txt")
+    @app.route("/sitemap.xml")
+    def static_from_root():
+        from flask import send_from_directory
+        return send_from_directory(app.static_folder, request.path[1:])
+
     return app
 
 
