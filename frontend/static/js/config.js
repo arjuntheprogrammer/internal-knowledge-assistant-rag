@@ -790,6 +790,7 @@ function createPicker(config) {
     )
     .setOAuthToken(config.accessToken)
     .setDeveloperKey(config.apiKey)
+    .setAppId(config.clientId)
     .setOrigin(window.location.origin)
     .setCallback(pickerCallback)
     .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
