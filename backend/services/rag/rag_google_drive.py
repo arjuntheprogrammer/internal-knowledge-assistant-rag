@@ -475,3 +475,88 @@ def _format_drive_http_error(err):
         if message:
             return message
     return str(err)
+
+
+def get_folder_checksum(user_id, drive_folder_id, token_json=None):
+    """
+    Generate a checksum based on file IDs and modified times from the Drive folder.
+    This is used to detect changes without downloading files.
+
+    Returns:
+        str: A hash string representing the current state of the folder.
+              Returns None if the folder cannot be accessed.
+    """
+    import hashlib
+
+    if not drive_folder_id:
+        return None
+
+    token_path = get_google_token_data(user_id, token_json=token_json)
+    if not token_path or not os.path.exists(token_path):
+        return None
+
+    try:
+        with open(token_path, "r") as handle:
+            token_data = json.load(handle)
+    except Exception:
+        return None
+
+    scopes = token_data.get("scopes") or [
+        "openid",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
+        "https://www.googleapis.com/auth/drive.readonly",
+    ]
+
+    try:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+    except Exception:
+        return None
+
+    try:
+        creds = Credentials.from_authorized_user_info(token_data, scopes=scopes)
+        service = build(
+            "drive",
+            "v3",
+            credentials=creds,
+            cache_discovery=False,
+        )
+
+        # Fetch file IDs and modified times
+        query = f"'{drive_folder_id}' in parents and trashed=false"
+        files = []
+        page_token = None
+        while True:
+            response = (
+                service.files()
+                .list(
+                    q=query,
+                    fields="nextPageToken, files(id,modifiedTime)",
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True,
+                    pageToken=page_token,
+                    pageSize=1000,
+                )
+                .execute()
+            )
+            files.extend(response.get("files", []))
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+
+        # Sort for consistent ordering
+        files.sort(key=lambda f: f.get("id", ""))
+
+        # Build a string of id:modifiedTime pairs
+        checksum_data = "|".join(
+            f"{f.get('id')}:{f.get('modifiedTime', '')}"
+            for f in files
+        )
+
+        # Return MD5 hash
+        return hashlib.md5(checksum_data.encode()).hexdigest()
+
+    except Exception as e:
+        print(f"Error getting folder checksum: {e}")
+        return None
