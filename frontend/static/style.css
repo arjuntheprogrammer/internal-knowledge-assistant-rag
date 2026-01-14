@@ -905,3 +905,221 @@ button:active {
     gap: 1rem;
   }
 }
+
+/* Indexing Section Styles */
+.indexing-status-container {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.indexing-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.indexing-status-label {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.indexing-status-text {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.indexing-status-text.pending {
+  color: var(--text-muted);
+}
+
+.indexing-status-text.indexing {
+  color: #f59e0b;
+}
+
+.indexing-status-text.ready {
+  color: #059669;
+}
+
+.indexing-status-text.failed {
+  color: #dc2626;
+}
+
+.indexing-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.indexing-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.indexing-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-color), #8b5cf6);
+  border-radius: 999px;
+  transition: width 0.3s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.indexing-progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.indexing-progress-text {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  min-width: 40px;
+  text-align: right;
+}
+
+.indexing-message {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.indexing-document-count {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.indexing-document-count span {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.indexing-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#start-indexing-btn {
+  min-width: 140px;
+}
+
+#start-indexing-btn:disabled,
+#reindex-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+#start-indexing-btn:disabled:hover,
+#reindex-btn:disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+}
+
+/* Chat indexing banner */
+.chat-indexing-banner {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border: 1px solid rgba(234, 179, 8, 0.5);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-indexing-banner.indexing {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-color: rgba(234, 179, 8, 0.5);
+}
+
+.chat-indexing-banner.needs-indexing {
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.chat-indexing-banner-icon {
+  font-size: 1.5rem;
+}
+
+.chat-indexing-banner-content {
+  flex: 1;
+}
+
+.chat-indexing-banner-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.chat-indexing-banner-message {
+  font-size: 0.85rem;
+  color: #78350f;
+}
+
+.chat-indexing-banner.needs-indexing .chat-indexing-banner-message {
+  color: #991b1b;
+}
+
+.chat-indexing-banner-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chat-indexing-banner-progress .indexing-progress-bar {
+  max-width: 200px;
+}
+
+.chat-indexing-banner a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* Inline indexing status (shown in Drive section) */
+.indexing-status-inline {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.indexing-inline-text {
+  font-weight: 600;
+  font-size: 0.85rem;
+}

@@ -15,6 +15,118 @@ export function bindChat() {
   if (sendBtn) {
     sendBtn.addEventListener("click", sendMessage);
   }
+
+  // Check indexing status and show banner if needed
+  checkAndShowIndexingBanner();
+}
+
+async function checkAndShowIndexingBanner() {
+  try {
+    const res = await fetch(`${API_BASE}/config/indexing-ready`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const chatContainer = document.getElementById("chat-container");
+    const existingBanner = document.getElementById("indexing-banner");
+
+    if (existingBanner) {
+      existingBanner.remove();
+    }
+
+    if (!data.ready) {
+      const banner = createIndexingBanner(data);
+      if (chatContainer && banner) {
+        chatContainer.insertBefore(banner, chatContainer.firstChild);
+      }
+
+      // Start polling if indexing is in progress
+      if (data.status === "INDEXING") {
+        startChatIndexingPoll();
+      }
+    }
+  } catch (err) {
+    console.error("Failed to check indexing status:", err);
+  }
+}
+
+function createIndexingBanner(data) {
+  const banner = document.createElement("div");
+  banner.id = "indexing-banner";
+  banner.className = `chat-indexing-banner ${
+    data.status === "INDEXING" ? "indexing" : "needs-indexing"
+  }`;
+
+  const icon = document.createElement("div");
+  icon.className = "chat-indexing-banner-icon";
+  icon.textContent = data.status === "INDEXING" ? "⏳" : "📚";
+
+  const content = document.createElement("div");
+  content.className = "chat-indexing-banner-content";
+
+  const title = document.createElement("div");
+  title.className = "chat-indexing-banner-title";
+
+  const message = document.createElement("div");
+  message.className = "chat-indexing-banner-message";
+
+  if (data.status === "INDEXING") {
+    title.textContent = "Indexing in Progress";
+    message.innerHTML = `${
+      data.message || "Processing your documents..."
+    } <br>Please wait or check back in a few minutes.`;
+  } else if (data.status === "PENDING") {
+    title.textContent = "Documents Not Indexed";
+    message.innerHTML = `Your documents haven't been indexed yet. <a href="/configure">Go to Settings</a> to start indexing.`;
+  } else if (data.status === "FAILED") {
+    title.textContent = "Indexing Failed";
+    message.innerHTML = `${
+      data.message || "Something went wrong."
+    } <a href="/configure">Go to Settings</a> to retry.`;
+  }
+
+  content.appendChild(title);
+  content.appendChild(message);
+
+  banner.appendChild(icon);
+  banner.appendChild(content);
+
+  return banner;
+}
+
+let chatIndexingPollInterval = null;
+
+function startChatIndexingPoll() {
+  if (chatIndexingPollInterval) return;
+
+  chatIndexingPollInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/config/indexing-ready`, {
+        headers: authHeaders(),
+      });
+      if (!res.ok) return;
+
+      const data = await res.json();
+
+      if (data.ready) {
+        clearInterval(chatIndexingPollInterval);
+        chatIndexingPollInterval = null;
+
+        const banner = document.getElementById("indexing-banner");
+        if (banner) {
+          banner.remove();
+        }
+
+        showToast(
+          "Indexing complete! You can now chat with your documents.",
+          "success"
+        );
+      }
+    } catch (err) {
+      // Ignore polling errors
+    }
+  }, 3000);
 }
 
 export async function sendMessage() {
@@ -33,13 +145,39 @@ export async function sendMessage() {
     });
 
     const data = await res.json();
+
+    // Handle indexing in progress (202 response)
+    if (res.status === 202 && data.indexing) {
+      appendMessage(
+        "bot",
+        `⏳ **Indexing in Progress** (${data.progress || 0}% complete)\n\n${
+          data.message
+        }\n\nPlease wait a moment and try again.`
+      );
+      return;
+    }
+
     if (res.ok) {
       appendMessage("bot", data.response, data.message_id);
     } else {
-      appendMessage(
-        "bot",
-        "Error: " + (data.message || "Failed to get response")
-      );
+      // Handle needs_indexing and failed states
+      if (data.needs_indexing) {
+        appendMessage(
+          "bot",
+          "📚 **Documents Not Indexed**\n\nYour documents haven't been indexed yet. Please go to [Settings](/configure) and click **Start Indexing** to begin."
+        );
+      } else if (data.failed) {
+        appendMessage(
+          "bot",
+          "❌ **Indexing Failed**\n\n" +
+            (data.message || "Please go to Settings to retry indexing.")
+        );
+      } else {
+        appendMessage(
+          "bot",
+          "Error: " + (data.message || "Failed to get response")
+        );
+      }
     }
   } catch (err) {
     appendMessage("bot", "Network error. Please try again.");

@@ -49,12 +49,15 @@ class LazyRAGQueryEngine(BaseQueryEngine):
 
     def _query(self, query_bundle: QueryBundle):
         user_id = self._user_context.get("uid")
-        if not self._service.get_index(user_id):
-            self._service.initialize_index(self._user_context)
 
+        # Get the index - it should have been built by IndexingService
+        # If not, return an error message instead of blocking
         index = self._service.get_index(user_id)
         if not index:
-            return Response("Knowledge base is empty. Please add documents.")
+            return Response(
+                "Your documents are not yet indexed. "
+                "Please go to Settings and click 'Start Indexing' to process your documents."
+            )
 
         query_engine = build_rag_query_engine(
             query_bundle=query_bundle,

@@ -34,6 +34,7 @@ export function bindConfigPage() {
   }
 
   loadConfig();
+  loadIndexingStatusInline();
   showConfigNotice();
   checkAuthStatus().then((authenticated) => {
     if (!authenticated && !sessionStorage.getItem("drive_auth_attempted")) {
@@ -55,14 +56,29 @@ export async function getConfigStatus() {
     if (!config) {
       return { ready: false };
     }
-    const ready = Boolean(
+
+    // Also check indexing status
+    const indexingRes = await fetch(`${API_BASE}/config/indexing-ready`, {
+      headers: authHeaders(),
+    });
+    const indexingData = indexingRes.ok ? await safeJson(indexingRes) : null;
+    const indexingReady = indexingData?.ready || false;
+
+    const configReady = Boolean(
       config.has_openai_key &&
         config.openai_key_valid &&
         config.drive_folder_id &&
         config.drive_authenticated &&
         config.drive_test_success
     );
-    return { ready };
+
+    // Both config and indexing must be ready
+    return {
+      ready: configReady && indexingReady,
+      configReady,
+      indexingReady,
+      indexingStatus: indexingData?.status || "PENDING",
+    };
   } catch (err) {
     return { ready: false };
   }
@@ -222,7 +238,7 @@ export async function loadConfig() {
         driveStatus.classList.remove("status-valid");
       }
     }
-    showConfigNotice(config);
+    await showConfigNotice(config);
   } catch (err) {
     console.error("Failed to load config");
   }
@@ -385,6 +401,14 @@ export async function verifyDriveConnection() {
     } else {
       ul.innerHTML = `<li>${data.message || "No files found."}</li>`;
     }
+
+    // Check if indexing was auto-started
+    if (data.indexing_started) {
+      showToast("Drive connected! Indexing your documents...", "success");
+      showIndexingStatusInline("Indexing documents...");
+      startIndexingPoll();
+    }
+
     await loadConfig();
   } catch (e) {
     ul.innerHTML = `<li style="color: red">Verification request failed: ${e}</li>`;
@@ -423,7 +447,7 @@ function findDriveSummary(items) {
   return items[0] || "";
 }
 
-function showConfigNotice(config = null) {
+async function showConfigNotice(config = null) {
   const notice = document.getElementById("config-notice");
   if (!notice) return;
 
@@ -441,7 +465,7 @@ function showConfigNotice(config = null) {
     return;
   }
 
-  const ready = Boolean(
+  const configReady = Boolean(
     config.has_openai_key &&
       config.openai_key_valid &&
       config.drive_folder_id &&
@@ -449,11 +473,27 @@ function showConfigNotice(config = null) {
       config.drive_test_success
   );
 
-  if (ready) {
+  // Also check if indexing is complete
+  let indexingReady = false;
+  if (configReady) {
+    try {
+      const indexingStatus = await getIndexingStatus();
+      indexingReady = indexingStatus?.status === "READY";
+    } catch (err) {
+      // If we can't check, assume not ready
+      indexingReady = false;
+    }
+  }
+
+  // Only show "completed" if both config AND indexing are ready
+  if (configReady && indexingReady) {
     notice.style.display = "block";
     notice.innerHTML =
       'Configuration Completed. <a href="/" style="color: inherit; text-decoration: underline; margin-left: 8px;">Go to Chat</a>';
     notice.classList.add("success");
+  } else if (configReady && !indexingReady) {
+    // Config is done but indexing is not - show nothing or show indexing message
+    notice.style.display = "none";
   } else if (needsConfigParam) {
     notice.style.display = "block";
     notice.textContent = "Please complete configuration before chatting.";
@@ -462,3 +502,117 @@ function showConfigNotice(config = null) {
     notice.style.display = "none";
   }
 }
+
+// ============ Indexing Functions (Simplified - Auto-triggered by Drive test) ============
+
+let indexingPollInterval = null;
+
+export async function getIndexingStatus() {
+  try {
+    const res = await fetch(`${API_BASE}/config/indexing-status`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) return null;
+    return await safeJson(res);
+  } catch (err) {
+    console.error("Failed to get indexing status:", err);
+    return null;
+  }
+}
+
+// Load and display inline indexing status (shown in Drive section)
+async function loadIndexingStatusInline() {
+  const status = await getIndexingStatus();
+  if (!status) return;
+
+  if (status.status === "INDEXING") {
+    showIndexingStatusInline(
+      `Indexing documents... (${status.progress || 0}%)`
+    );
+    startIndexingPoll();
+  } else if (status.status === "READY" && status.document_count > 0) {
+    showIndexingStatusInline(
+      `✓ ${status.document_count} documents indexed and ready`,
+      true
+    );
+  } else if (status.status === "FAILED") {
+    showIndexingStatusInline(
+      `✗ Indexing failed: ${status.message || "Unknown error"}`,
+      false,
+      true
+    );
+  }
+}
+
+function showIndexingStatusInline(message, isSuccess = false, isError = false) {
+  const container = document.getElementById("indexing-status-inline");
+  const textEl = document.getElementById("indexing-inline-text");
+
+  if (!container || !textEl) return;
+
+  container.style.display = "block";
+  textEl.textContent = message;
+
+  if (isSuccess) {
+    textEl.style.color = "#059669";
+  } else if (isError) {
+    textEl.style.color = "#dc2626";
+  } else {
+    textEl.style.color = "#f59e0b";
+  }
+}
+
+function hideIndexingStatusInline() {
+  const container = document.getElementById("indexing-status-inline");
+  if (container) {
+    container.style.display = "none";
+  }
+}
+
+function startIndexingPoll() {
+  if (indexingPollInterval) return;
+
+  indexingPollInterval = setInterval(async () => {
+    const status = await getIndexingStatus();
+    if (status) {
+      if (status.status === "INDEXING") {
+        showIndexingStatusInline(
+          `Indexing documents... (${status.progress || 0}%)`
+        );
+      } else if (status.status !== "INDEXING") {
+        // Stop polling when done
+        clearInterval(indexingPollInterval);
+        indexingPollInterval = null;
+
+        if (status.status === "READY") {
+          showIndexingStatusInline(
+            `✓ ${status.document_count || 0} documents indexed and ready`,
+            true
+          );
+          showToast(
+            "Indexing complete! You can now chat with your documents.",
+            "success"
+          );
+          // Update the config notice
+          showConfigNotice({
+            has_openai_key: true,
+            openai_key_valid: true,
+            drive_folder_id: true,
+            drive_authenticated: true,
+            drive_test_success: true,
+          });
+        } else if (status.status === "FAILED") {
+          showIndexingStatusInline(
+            `✗ Indexing failed: ${status.message || "Unknown error"}`,
+            false,
+            true
+          );
+          showToast("Indexing failed. Please try again.");
+        }
+      }
+    }
+  }, 2000); // Poll every 2 seconds
+}
+
+// Export for use in chat.js
+export { getIndexingStatus as checkIndexingReady };

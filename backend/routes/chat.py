@@ -3,6 +3,7 @@ from backend.middleware.auth import token_required
 from backend.models.user_config import UserConfig
 from backend.services.rag import RAGService
 from backend.services.safety import SafetyService
+from backend.services.indexing_service import IndexingService, IndexingStatus
 
 from llama_index.core.schema import QueryBundle
 
@@ -50,6 +51,34 @@ def chat(current_user):
             return jsonify({"message": "Google Drive folder ID is not configured."}), 400
         if not google_token:
             return jsonify({"message": "Google Drive access is not authorized."}), 400
+
+        # Check indexing status before allowing queries
+        indexing_status = IndexingService.get_status(current_user["uid"])
+        status = indexing_status.get("status")
+
+        if status == IndexingStatus.INDEXING:
+            progress = indexing_status.get("progress", 0)
+            message = indexing_status.get("message", "Processing documents...")
+            return jsonify({
+                "message": f"Documents are still being indexed ({progress}% complete). {message}",
+                "indexing": True,
+                "progress": progress,
+            }), 202  # 202 Accepted - request understood but processing not complete
+
+        if status == IndexingStatus.PENDING:
+            return jsonify({
+                "message": "Your documents haven't been indexed yet. Please go to Settings and click 'Start Indexing' to begin.",
+                "indexing": False,
+                "needs_indexing": True,
+            }), 400
+
+        if status == IndexingStatus.FAILED:
+            error_message = indexing_status.get("message", "Unknown error")
+            return jsonify({
+                "message": f"Document indexing failed: {error_message}. Please try re-indexing from Settings.",
+                "indexing": False,
+                "failed": True,
+            }), 400
 
         # Pass user context/ACL here in future
         query_bundle = QueryBundle(

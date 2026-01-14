@@ -10,6 +10,7 @@ from backend.services.google_oauth import (
     exchange_google_oauth_code,
 )
 from backend.services.rag import RAGService
+from backend.services.indexing_service import IndexingService, IndexingStatus
 
 
 config_bp = Blueprint("config", __name__)
@@ -226,6 +227,26 @@ def test_drive(current_user):
             "drive_test_folder_id": drive_folder_id if result.get("success") else None,
         },
     )
+
+    # Auto-start indexing if Drive test was successful
+    indexing_started = False
+    if result.get("success"):
+        # Get fresh user config with updated values
+        updated_user = UserConfig.get_user(current_user["uid"]) or {}
+        openai_key = updated_user.get("openai_api_key")
+
+        if openai_key:
+            user_context = {
+                "uid": current_user["uid"],
+                "email": current_user.get("email"),
+                "openai_api_key": openai_key,
+                "drive_folder_id": drive_folder_id,
+                "google_token": updated_user.get("google_token"),
+            }
+            indexing_result = IndexingService.start_indexing(user_context)
+            indexing_started = indexing_result.get("success", False)
+
+    result["indexing_started"] = indexing_started
     return jsonify(result), 200
 
 
@@ -241,3 +262,79 @@ def _format_dt(value):
     if hasattr(value, "isoformat"):
         return value.isoformat()
     return str(value)
+
+
+@config_bp.route("/indexing-status", methods=["GET"])
+@token_required
+def get_indexing_status(current_user):
+    """Get the current indexing status for the user."""
+    status = IndexingService.get_status(current_user["uid"])
+    return jsonify(status), 200
+
+
+@config_bp.route("/start-indexing", methods=["POST"])
+@token_required
+def start_indexing(current_user):
+    """
+    Start background document indexing.
+
+    This triggers the indexing process in a background thread.
+    The client should poll /indexing-status to monitor progress.
+    """
+    user_config = UserConfig.get_user(current_user["uid"]) or {}
+
+    user_context = {
+        "uid": current_user["uid"],
+        "email": current_user.get("email"),
+        "openai_api_key": user_config.get("openai_api_key"),
+        "drive_folder_id": user_config.get("drive_folder_id"),
+        "google_token": user_config.get("google_token"),
+    }
+
+    result = IndexingService.start_indexing(user_context)
+    status_code = 200 if result.get("success") else 400
+    return jsonify(result), status_code
+
+
+@config_bp.route("/indexing-ready", methods=["GET"])
+@token_required
+def is_indexing_ready(current_user):
+    """Quick check if the index is ready for queries."""
+    is_ready = IndexingService.is_ready(current_user["uid"])
+    status = IndexingService.get_status(current_user["uid"])
+    return jsonify({
+        "ready": is_ready,
+        "status": status["status"],
+        "message": status["message"],
+        "document_count": status["document_count"],
+    }), 200
+
+
+@config_bp.route("/re-index", methods=["POST"])
+@token_required
+def re_index(current_user):
+    """
+    Force a re-index of all documents.
+
+    This clears the in-memory cache and starts fresh indexing.
+    """
+    user_id = current_user["uid"]
+
+    # Clear the in-memory cache
+    RAGService.reset_user_cache(user_id)
+
+    # Get user config and start indexing
+    user_config = UserConfig.get_user(user_id) or {}
+
+    user_context = {
+        "uid": user_id,
+        "email": current_user.get("email"),
+        "openai_api_key": user_config.get("openai_api_key"),
+        "drive_folder_id": user_config.get("drive_folder_id"),
+        "google_token": user_config.get("google_token"),
+    }
+
+    result = IndexingService.start_indexing(user_context)
+    status_code = 200 if result.get("success") else 400
+    return jsonify(result), status_code
+
