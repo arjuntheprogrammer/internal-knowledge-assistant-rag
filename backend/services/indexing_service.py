@@ -116,7 +116,7 @@ class IndexingService:
         cls._update_status(
             user_id,
             IndexingStatus.INDEXING,
-            "Starting document indexing...",
+            "Getting your documents ready...",
             progress=0
         )
         UserConfig.update_config(user_id, {"indexing_started_at": datetime.utcnow()})

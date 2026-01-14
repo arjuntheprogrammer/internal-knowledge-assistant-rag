@@ -10,7 +10,7 @@ class SchedulerService:
     _lock = threading.Lock()
 
     @staticmethod
-    def start_polling(interval=60):
+    def start_polling(interval=300):
         with SchedulerService._lock:
             if SchedulerService._is_polling:
                 print("Scheduler already polling. Skipping start.")

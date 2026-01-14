@@ -56,18 +56,21 @@ def chat(current_user):
         indexing_status = IndexingService.get_status(current_user["uid"])
         status = indexing_status.get("status")
 
-        if status == IndexingStatus.INDEXING:
+        # Only block if we are indexing AND we don't have a previous successful connection.
+        # This allows silent background syncs (from the scheduler) to happen without interrupting the chat.
+        indexing_completed_at = user_config.get("indexing_completed_at")
+        if status == IndexingStatus.INDEXING and not indexing_completed_at:
             progress = indexing_status.get("progress", 0)
             message = indexing_status.get("message", "Processing documents...")
             return jsonify({
-                "message": f"Documents are still being indexed ({progress}% complete). {message}",
+                "message": f"We're still getting your documents ready ({progress}% complete). {message}",
                 "indexing": True,
                 "progress": progress,
-            }), 202  # 202 Accepted - request understood but processing not complete
+            }), 202
 
         if status == IndexingStatus.PENDING:
             return jsonify({
-                "message": "Your documents haven't been indexed yet. Please go to Settings and click 'Start Indexing' to begin.",
+                "message": "We haven't connected your documents yet. Please go to Settings and click 'Connect Google Drive' to begin.",
                 "indexing": False,
                 "needs_indexing": True,
             }), 400
@@ -75,7 +78,7 @@ def chat(current_user):
         if status == IndexingStatus.FAILED:
             error_message = indexing_status.get("message", "Unknown error")
             return jsonify({
-                "message": f"Document indexing failed: {error_message}. Please try re-indexing from Settings.",
+                "message": f"We ran into an issue getting your documents ready: {error_message}. Please check your connection in Settings.",
                 "indexing": False,
                 "failed": True,
             }), 400

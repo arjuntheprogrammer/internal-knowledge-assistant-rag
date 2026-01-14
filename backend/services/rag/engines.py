@@ -55,8 +55,8 @@ class LazyRAGQueryEngine(BaseQueryEngine):
         index = self._service.get_index(user_id)
         if not index:
             return Response(
-                "Your documents are not yet indexed. "
-                "Please go to Settings and click 'Start Indexing' to process your documents."
+                "I'm sorry, I'm still connecting to your documents. "
+                "Please go to Settings and click 'Connect Google Drive' to finish the setup."
             )
 
         query_engine = build_rag_query_engine(
