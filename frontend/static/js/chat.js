@@ -1,6 +1,9 @@
 import { API_BASE, authHeaders } from "./api.js";
 import { showToast } from "./toast.js";
 
+let chatIndexingPollInterval = null;
+let chatMessages = []; // Persistent history across SPA navigation
+
 export function handleEnter(e) {
   if (e.key === "Enter") sendMessage();
 }
@@ -17,6 +20,21 @@ export function bindChat() {
   const sendBtn = document.getElementById("send-btn");
   if (sendBtn) {
     sendBtn.addEventListener("click", sendMessage);
+  }
+
+  // Restore history if any
+  const history = document.getElementById("chat-history");
+  if (history) {
+    if (chatMessages.length === 0) {
+      // Seed with initial message from index.html if we want to track it
+      chatMessages.push({
+        sender: "bot",
+        text: "Hello! I am your Internal Knowledge Assistant. How can I help you today?",
+      });
+    } else {
+      history.innerHTML = "";
+      chatMessages.forEach((m) => renderMessage(m.sender, m.text, m.messageId));
+    }
   }
 
   // Check indexing status and show banner if needed
@@ -130,8 +148,6 @@ function createIndexingBanner(data) {
   return banner;
 }
 
-let chatIndexingPollInterval = null;
-
 function startChatIndexingPoll() {
   if (chatIndexingPollInterval) return;
 
@@ -222,7 +238,14 @@ export async function sendMessage() {
 }
 
 function appendMessage(sender, text, messageId = null) {
+  chatMessages.push({ sender, text, messageId });
+  renderMessage(sender, text, messageId);
+}
+
+function renderMessage(sender, text, messageId = null) {
   const history = document.getElementById("chat-history");
+  if (!history) return;
+
   const msg = document.createElement("div");
   msg.className = `message ${sender}-message`;
 
