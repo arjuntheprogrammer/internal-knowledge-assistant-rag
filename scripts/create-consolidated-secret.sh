@@ -7,6 +7,14 @@ set -e
 PROJECT_ID="internal-knowledge-assistant"
 SECRET_NAME="app-secrets"
 
+# Check for required environment variable
+if [ -z "$GOOGLE_PICKER_API_KEY" ]; then
+  echo "❌ Error: GOOGLE_PICKER_API_KEY environment variable is not set."
+  echo "   Please set it before running this script:"
+  echo "   export GOOGLE_PICKER_API_KEY=your_api_key_here"
+  exit 1
+fi
+
 echo "Fetching existing secrets..."
 
 # Fetch existing secrets
@@ -30,7 +38,7 @@ CONSOLIDATED=$(cat <<EOF
   "LANGCHAIN_TRACING_V2": "true",
   "LANGCHAIN_ENDPOINT": "https://api.smith.langchain.com",
   "LANGCHAIN_PROJECT": "internal-knowledge-assistant",
-  "GOOGLE_PICKER_API_KEY": "REDACTED_GOOGLE_PICKER_API_KEY",
+  "GOOGLE_PICKER_API_KEY": "$GOOGLE_PICKER_API_KEY",
   "SECRET_KEY": "$(openssl rand -hex 32)",
   "FIRESTORE_DB": "internal-knowledge-assistant"
 }
@@ -55,3 +63,4 @@ echo "✅ Consolidated secret '$SECRET_NAME' created successfully!"
 echo ""
 echo "To verify, run:"
 echo "  gcloud secrets versions access latest --secret=$SECRET_NAME --project=$PROJECT_ID | jq ."
+
