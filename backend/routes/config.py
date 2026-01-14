@@ -104,7 +104,10 @@ def test_openai(current_user):
     data = request.get_json() or {}
     api_key = (data.get("openai_api_key") or "").strip()
     if not api_key:
-        return jsonify({"message": "OpenAI API key is required."}), 400
+        user = UserConfig.get_user(current_user["uid"]) or {}
+        api_key = user.get("openai_api_key")
+        if not api_key:
+            return jsonify({"message": "OpenAI API key is required."}), 400
     try:
         client = OpenAI(api_key=api_key)
         client.models.list()

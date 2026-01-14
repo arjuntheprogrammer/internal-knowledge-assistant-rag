@@ -23,6 +23,15 @@ export function bindConfigPage() {
     authBtn.addEventListener("click", handleGoogleAuth);
   }
 
+  const openAiInput = document.getElementById("openai-key");
+  if (openAiInput) {
+    openAiInput.addEventListener("focus", () => {
+      if (openAiInput.value.includes("*")) {
+        openAiInput.value = "";
+      }
+    });
+  }
+
   const verifyBtn = document.getElementById("verify-drive-btn");
   if (verifyBtn) {
     verifyBtn.addEventListener("click", verifyDriveConnection);
@@ -244,6 +253,17 @@ export async function loadConfig() {
       }
     }
 
+    const openAiInput = document.getElementById("openai-key");
+    if (openAiInput && config.has_openai_key) {
+      const first4 = config.openai_key_first4 || "";
+      const last4 = config.openai_key_last4 || "";
+      if (first4 && last4) {
+        openAiInput.value = `${first4}${"*".repeat(20)}${last4}`;
+      } else {
+        openAiInput.value = "************************";
+      }
+    }
+
     const driveInput = document.getElementById("drive-folder-id");
     if (driveInput) {
       driveInput.value = config.drive_folder_id || "";
@@ -302,7 +322,7 @@ export async function saveConfig(options = {}) {
   const payload = {};
   if (includeOpenAIKey) {
     const openaiKey = openAiKeyInput?.value?.trim();
-    if (openaiKey) {
+    if (openaiKey && !openaiKey.includes("*")) {
       payload.openai_api_key = openaiKey;
     }
   }
@@ -358,10 +378,15 @@ export async function testOpenAIKey() {
   }
 
   try {
+    const body = {};
+    if (apiKey && !apiKey.includes("*")) {
+      body.openai_api_key = apiKey;
+    }
+
     const res = await fetch(`${API_BASE}/config/test-openai`, {
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ openai_api_key: apiKey }),
+      body: JSON.stringify(body),
     });
     const data = await safeJson(res);
     if (!data) {
