@@ -60,12 +60,12 @@ class IndexingService:
                         elapsed = time.time() - started_at.timestamp()
                     else:
                         elapsed = 0
-                    if elapsed > 600:  # 10 minutes
+                    if elapsed > 1800:  # 30 minutes
                         status = IndexingStatus.FAILED
                         cls._update_status(
                             user_id,
                             IndexingStatus.FAILED,
-                            "Indexing timed out or server restarted"
+                            "Indexing timed out"
                         )
                 except Exception:
                     pass
@@ -266,7 +266,7 @@ class IndexingService:
         cls._update_status(
             user_id,
             IndexingStatus.INDEXING,
-            "Generating embeddings...",
+            f"Analyzing document structure ({total_docs} files)...",
             progress=50
         )
 
@@ -304,8 +304,8 @@ class IndexingService:
         cls._update_status(
             user_id,
             IndexingStatus.INDEXING,
-            "Building search index...",
-            progress=65
+            "Preparing nodes for embedding...",
+            progress=60
         )
 
         # Chunk documents
@@ -315,8 +315,8 @@ class IndexingService:
         cls._update_status(
             user_id,
             IndexingStatus.INDEXING,
-            "Uploading to vector store...",
-            progress=80
+            "Generating embeddings and uploading (this may take a few minutes)...",
+            progress=75
         )
 
         # Create the index

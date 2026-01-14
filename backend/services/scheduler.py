@@ -36,7 +36,10 @@ class SchedulerService:
                             or not user_context.get("google_token")
                         ):
                             continue
-                        RAGService.initialize_index(user_context)
+
+                        # Use IndexingService to ensure status is tracked and jobs are locked
+                        from backend.services.indexing_service import IndexingService
+                        IndexingService.start_indexing(user_context)
                 except Exception as e:
                     print(f"Polling error: {e}")
                 time.sleep(interval)

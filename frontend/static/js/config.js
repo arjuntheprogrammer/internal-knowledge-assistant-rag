@@ -483,7 +483,15 @@ async function showConfigNotice(config = null) {
   const params = new URLSearchParams(window.location.search);
   const needsConfigParam = params.get("reason") === "needs_config";
 
-  if (!config) {
+  let currentConfig = config;
+  if (!currentConfig) {
+    try {
+      const res = await fetch(`${API_BASE}/config`, { headers: authHeaders() });
+      if (res.ok) currentConfig = await safeJson(res);
+    } catch (e) {}
+  }
+
+  if (!currentConfig) {
     if (needsConfigParam) {
       notice.style.display = "block";
       notice.textContent = "Please complete configuration before chatting.";
@@ -495,11 +503,11 @@ async function showConfigNotice(config = null) {
   }
 
   const configReady = Boolean(
-    config.has_openai_key &&
-      config.openai_key_valid &&
-      config.drive_folder_id &&
-      config.drive_authenticated &&
-      config.drive_test_success
+    currentConfig.has_openai_key &&
+      currentConfig.openai_key_valid &&
+      currentConfig.drive_folder_id &&
+      currentConfig.drive_authenticated &&
+      currentConfig.drive_test_success
   );
 
   // Also check if indexing is complete
@@ -525,6 +533,7 @@ async function showConfigNotice(config = null) {
     notice.style.display = "block";
     let msg = "Document indexing in progress... Chat will be enabled shortly.";
     try {
+      // Fetch fresh status if not provided or to get latest message
       const indexingStatus = await getIndexingStatus();
       if (indexingStatus && indexingStatus.message) {
         msg = indexingStatus.message;
