@@ -9,6 +9,11 @@ import os
 
 
 def create_app(config_name="default"):
+    # Load production secrets first (before other initialization)
+    if config_name == "production" or os.getenv("FLASK_CONFIG") == "production":
+        from backend.services.secrets import setup_production_environment
+        setup_production_environment()
+
     configure_logging()
     app = Flask(
         __name__, static_folder="frontend/static", template_folder="frontend/templates"
