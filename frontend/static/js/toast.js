@@ -46,3 +46,47 @@ export function showToast(message, type = "error") {
     }
   };
 }
+
+export function showConfirmToast(message) {
+  return new Promise((resolve) => {
+    const toast = document.getElementById("app-confirm-toast");
+    const toastMessage = document.getElementById("app-confirm-message");
+    const yesBtn = document.getElementById("app-confirm-yes");
+    const dismissBtn = document.getElementById("app-confirm-dismiss");
+
+    if (!toast || !toastMessage || !yesBtn || !dismissBtn) {
+      // Fallback to native confirm
+      resolve(confirm(message));
+      return;
+    }
+
+    toastMessage.textContent = message;
+    toast.style.display = "flex";
+
+    const cleanup = () => {
+      toast.style.display = "none";
+      yesBtn.onclick = null;
+      dismissBtn.onclick = null;
+      toast.onclick = null;
+    };
+
+    yesBtn.onclick = (e) => {
+      e.stopPropagation();
+      cleanup();
+      resolve(true);
+    };
+
+    dismissBtn.onclick = (e) => {
+      e.stopPropagation();
+      cleanup();
+      resolve(false);
+    };
+
+    toast.onclick = (e) => {
+      if (e.target === toast) {
+        cleanup();
+        resolve(false);
+      }
+    };
+  });
+}

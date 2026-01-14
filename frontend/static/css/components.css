@@ -168,3 +168,45 @@ button:disabled:hover {
 .app-toast-body button:hover { background: #e2e8f0; transform: translateY(-1px); }
 .app-toast-body:not(.success) { border-left: 4px solid #ef4444; }
 .app-toast-body.success { border-left: 4px solid #22c55e; }
+
+/* Confirmation toast styles */
+.app-toast-body.confirm {
+  flex-direction: column;
+  align-items: stretch;
+  border-left: 4px solid #f59e0b;
+}
+
+.app-toast-body.confirm .app-toast-icon {
+  background: #fef3c7;
+  color: #f59e0b;
+  font-size: 1.5rem;
+  align-self: center;
+}
+
+.app-toast-body.confirm .app-toast-content {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.app-toast-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.app-toast-body .btn-danger {
+  background: #dc2626;
+  color: white;
+  border: none;
+}
+
+.app-toast-body .btn-danger:hover {
+  background: #b91c1c;
+}
+
+.app-toast-body .btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}

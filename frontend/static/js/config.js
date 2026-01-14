@@ -1,5 +1,5 @@
 import { API_BASE, authHeaders } from "./api.js";
-import { showToast } from "./toast.js";
+import { showToast, showConfirmToast } from "./toast.js";
 
 async function safeJson(response) {
   const contentType = response.headers.get("content-type") || "";
@@ -842,11 +842,10 @@ function setSelectedFolder(folderId, folderName) {
 }
 
 async function removeDriveFolder() {
-  if (
-    !confirm(
-      "Are you sure you want to remove this folder? This will delete the search index and all associated data for this folder."
-    )
-  ) {
+  const confirmed = await showConfirmToast(
+    "Are you sure you want to remove this folder? This will delete the search index and all associated data."
+  );
+  if (!confirmed) {
     return;
   }
 
