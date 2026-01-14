@@ -42,8 +42,14 @@ class UserConfig:
 
     @classmethod
     def update_config(cls, uid, data):
+        from google.cloud.firestore_v1 import DELETE_FIELD
         db = get_firestore_client()
-        update_data = {k: v for k, v in data.items() if v is not None}
+        update_data = {}
+        for k, v in data.items():
+            if v is None:
+                update_data[k] = DELETE_FIELD
+            else:
+                update_data[k] = v
         update_data["updated_at"] = datetime.utcnow()
         db.collection(cls.COLLECTION).document(uid).set(update_data, merge=True)
         return update_data
