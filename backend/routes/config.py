@@ -383,7 +383,8 @@ def start_indexing(current_user):
         "google_token": user_config.get("google_token"),
     }
 
-    result = IndexingService.start_indexing(user_context)
+    # Don't force re-indexing if already READY
+    result = IndexingService.start_indexing(user_context, force=False)
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
 
@@ -426,7 +427,8 @@ def re_index(current_user):
         "google_token": user_config.get("google_token"),
     }
 
-    result = IndexingService.start_indexing(user_context)
+    # Force indexing even if already READY
+    result = IndexingService.start_indexing(user_context, force=True)
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
 

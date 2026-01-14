@@ -81,15 +81,14 @@ class IndexingService:
         }
 
     @classmethod
-    def start_indexing(cls, user_context: dict) -> dict:
+    def start_indexing(cls, user_context: dict, force: bool = False, silent: bool = False) -> dict:
         """
         Start background indexing for a user.
 
         Args:
             user_context: Dict containing uid, openai_api_key, drive_folder_id, google_token
-
-        Returns:
-            dict with success status and message
+            force: If True, re-index even if already READY.
+            silent: If True, don't update status to INDEXING if already READY.
         """
         user_id = user_context.get("uid")
         if not user_id:
@@ -104,6 +103,18 @@ class IndexingService:
                     "status": IndexingStatus.INDEXING
                 }
 
+        # Check if already indexed and not forced
+        current_status = cls.get_status(user_id)
+        if current_status["status"] == IndexingStatus.READY and not force:
+            if not silent:
+                # Manual request shouldn't re-index if already done
+                return {
+                    "success": True,
+                    "message": "Documents already connected",
+                    "status": IndexingStatus.READY
+                }
+            # Silent background sync: Proceed to cross-check files without updating status
+
         # Validate required fields
         if not user_context.get("openai_api_key"):
             return {"success": False, "message": "OpenAI API key is required"}
@@ -112,19 +123,21 @@ class IndexingService:
         if not user_context.get("google_token"):
             return {"success": False, "message": "Google Drive is not authorized"}
 
-        # Update status to INDEXING
-        cls._update_status(
-            user_id,
-            IndexingStatus.INDEXING,
-            "Getting your documents ready...",
-            progress=0
-        )
+        # Update status to INDEXING (unless silent and already ready)
+        if not (silent and current_status["status"] == IndexingStatus.READY):
+            cls._update_status(
+                user_id,
+                IndexingStatus.INDEXING,
+                "Getting your documents ready...",
+                progress=0
+            )
+
         UserConfig.update_config(user_id, {"indexing_started_at": datetime.utcnow()})
 
         # Start background thread
         thread = threading.Thread(
             target=cls._run_indexing,
-            args=(user_context.copy(),),
+            args=(user_context.copy(), silent),
             daemon=True,
             name=f"indexing-{user_id}"
         )
@@ -133,7 +146,7 @@ class IndexingService:
             cls._active_jobs[user_id] = thread
 
         thread.start()
-        cls.logger.info("Started background indexing for user %s", user_id)
+        cls.logger.info("Started %s indexing for user %s", "silent" if silent else "standard", user_id)
 
         return {
             "success": True,
@@ -142,7 +155,7 @@ class IndexingService:
         }
 
     @classmethod
-    def _run_indexing(cls, user_context: dict):
+    def _run_indexing(cls, user_context: dict, silent: bool = False):
         """
         Run the indexing process in a background thread.
 
@@ -166,7 +179,7 @@ class IndexingService:
             )
 
             # Run the actual indexing
-            cls._run_indexing_with_progress(user_context, user_id)
+            cls._run_indexing_with_progress(user_context, user_id, silent=silent)
 
             # Mark as complete
             cls._update_status(
@@ -191,7 +204,7 @@ class IndexingService:
                 cls._active_jobs.pop(user_id, None)
 
     @classmethod
-    def _run_indexing_with_progress(cls, user_context: dict, user_id: str):
+    def _run_indexing_with_progress(cls, user_context: dict, user_id: str, silent: bool = False):
         """
         Run indexing with progress updates.
         """
@@ -207,15 +220,17 @@ class IndexingService:
             log_vector_store_count,
         )
 
+        def notify(msg, progress):
+            if not silent:
+                cls._update_status(user_id, IndexingStatus.INDEXING, msg, progress=progress)
+            else:
+                # Still log but don't update progress in DB to avoid UI flicker
+                cls.logger.info(f"Silent indexing user {user_id}: {msg} ({progress}%)")
+
         documents = []
 
         # Load local documents
-        cls._update_status(
-            user_id,
-            IndexingStatus.INDEXING,
-            "Loading local documents...",
-            progress=15
-        )
+        notify("Loading local documents...", 15)
 
         data_dir = os.path.join(os.getcwd(), "backend", "data")
         os.makedirs(data_dir, exist_ok=True)
@@ -227,12 +242,7 @@ class IndexingService:
             pass
 
         # Load Google Drive documents
-        cls._update_status(
-            user_id,
-            IndexingStatus.INDEXING,
-            "Downloading documents from Google Drive...",
-            progress=25
-        )
+        notify("Downloading documents from Google Drive...", 25)
 
         drive_docs = rag_google_drive.load_google_drive_documents(
             user_id=user_id,
@@ -252,23 +262,13 @@ class IndexingService:
             UserConfig.update_config(user_id, {"indexed_document_count": 0})
             return
 
-        cls._update_status(
-            user_id,
-            IndexingStatus.INDEXING,
-            f"Processing {total_docs} documents...",
-            progress=40
-        )
+        notify(f"Processing {total_docs} documents...", 40)
 
         # Annotate documents
         annotate_documents(documents, user_id=user_id)
         RAGService._document_catalog_by_user[user_id] = build_document_catalog(documents)
 
-        cls._update_status(
-            user_id,
-            IndexingStatus.INDEXING,
-            f"Analyzing document structure ({total_docs} files)...",
-            progress=50
-        )
+        notify(f"Analyzing document structure ({total_docs} files)...", 50)
 
         # Get service context and vector store
         settings = RAGService.get_service_context(
@@ -277,12 +277,7 @@ class IndexingService:
         vector_store = RAGService.get_vector_store(user_id)
 
         # Clear existing records for this user
-        cls._update_status(
-            user_id,
-            IndexingStatus.INDEXING,
-            "Clearing old index data...",
-            progress=55
-        )
+        notify("Clearing old index data...", 55)
 
         if vector_store:
             try:
@@ -301,23 +296,13 @@ class IndexingService:
         if vector_store:
             storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-        cls._update_status(
-            user_id,
-            IndexingStatus.INDEXING,
-            "Preparing nodes for embedding...",
-            progress=60
-        )
+        notify("Preparing nodes for embedding...", 60)
 
         # Chunk documents
         splitter = SentenceSplitter(chunk_size=512, chunk_overlap=60)
         RAGService._bm25_nodes_by_user[user_id] = splitter.get_nodes_from_documents(documents)
 
-        cls._update_status(
-            user_id,
-            IndexingStatus.INDEXING,
-            "Generating embeddings and uploading (this may take a few minutes)...",
-            progress=75
-        )
+        notify("Generating embeddings and uploading (this may take a few minutes)...", 75)
 
         # Create the index
         RAGService._index_by_user[user_id] = VectorStoreIndex.from_documents(
@@ -327,12 +312,7 @@ class IndexingService:
             transformations=[splitter],
         )
 
-        cls._update_status(
-            user_id,
-            IndexingStatus.INDEXING,
-            "Finalizing...",
-            progress=95
-        )
+        notify("Finalizing...", 95)
 
         # Log vector store count
         if vector_store:

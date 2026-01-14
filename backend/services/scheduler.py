@@ -38,8 +38,10 @@ class SchedulerService:
                             continue
 
                         # Use IndexingService to ensure status is tracked and jobs are locked
+                        # We use silent=True so that if the user is already READY, it doesn't
+                        # reset their progress to 0 and show the "Connecting" banner.
                         from backend.services.indexing_service import IndexingService
-                        IndexingService.start_indexing(user_context)
+                        IndexingService.start_indexing(user_context, silent=True)
                 except Exception as e:
                     print(f"Polling error: {e}")
                 time.sleep(interval)
