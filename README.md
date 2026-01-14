@@ -1,7 +1,5 @@
 # Internal Knowledge Assistant
 
-[![Internal Knowledge Assistant Walkthrough](assets/img.jpeg)](https://youtu.be/mf2SiJLMSDY)
-
 ## About
 
 This is a premium AI-powered internal knowledge assistant designed to help you answer questions based on your Google Drive files using Retrieval Augmented Generation (RAG).
@@ -289,5 +287,7 @@ To enable, add your API key to the Cloud Run environment variables:
 ---
 
 🎥 **YouTube Walkthrough**: https://youtu.be/mf2SiJLMSDY
+
+[![Internal Knowledge Assistant Walkthrough](assets/img.jpeg)](https://youtu.be/mf2SiJLMSDY)
 
 🔗 **Live Demo Link**: https://knowledge-assistant.arjuntheprogrammer.com
