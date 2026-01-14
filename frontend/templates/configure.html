@@ -1,22 +1,21 @@
 {% extends "base.html" %} {% block content %}
 <div class="container admin-page">
-  <div id="config-notice" class="config-notice" style="display: none">
-    Please complete configuration before chatting.
-  </div>
-  <h2>Configuration</h2>
   <div class="admin-grid">
+    <div id="config-notice" class="config-notice" style="display: none">
+      Please complete configuration before chatting.
+    </div>
+    <h2>Configuration</h2>
     <div class="admin-left">
       <div class="config-section">
         <h3>OpenAI</h3>
-        <p
-          style="
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-          "
-        >
-          Add your OpenAI API key to enable responses.
-        </p>
+        <div style="margin-bottom: 12px; line-height: 1.6;">
+          <div style="font-size: 0.85rem; color: var(--text-muted);">
+            Using model <span style="color: var(--primary-color); font-weight: 800; background: rgba(59, 130, 246, 0.08); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.15);">gpt-4o-mini</span>
+          </div>
+          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+            Add your OpenAI API key below.
+          </div>
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label>API Key</label>
@@ -26,10 +25,6 @@
               placeholder="sk-..."
               autocomplete="off"
             />
-          </div>
-          <div class="form-group">
-            <label>Model</label>
-            <input type="text" value="gpt-4o-mini" disabled />
           </div>
         </div>
         <div id="openai-key-status" class="form-status">Not configured</div>
@@ -75,22 +70,38 @@
             Authorize to access your Drive.
           </p>
         </div>
-        <div class="form-row" style="margin-top: 12px">
-          <div class="form-group">
-            <label>Drive Folder ID</label>
-            <input
-              type="text"
-              id="drive-folder-id"
-              placeholder="Paste Google Drive folder ID"
-            />
+
+        <!-- Folder Selection -->
+        <div class="folder-picker-section" style="margin-top: 16px;">
+          <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 8px;">
+            Select Folder to Index
+          </label>
+
+          <div id="selected-folder-display" class="selected-folder-display" style="display: none;">
+            <span class="folder-icon">📁</span>
+            <span id="selected-folder-name" class="selected-folder-name">No folder selected</span>
+            <div class="folder-display-actions">
+              <button id="change-folder-btn" type="button" class="btn-link">Change</button>
+              <span class="action-divider">|</span>
+              <button id="remove-folder-btn" type="button" class="btn-link btn-link-danger">Remove</button>
+            </div>
           </div>
+
+          <div id="folder-picker-actions" class="folder-picker-actions">
+            <button id="select-folder-btn" type="button" class="btn-primary">
+              📁 Select Folder from Drive
+            </button>
+          </div>
+
+          <input type="hidden" id="drive-folder-id" value="" />
         </div>
-        <div class="drive-auth-row" style="margin-top: 10px">
-          <button id="verify-drive-btn" class="btn-secondary">
-            Test Drive Connection
+
+        <div class="drive-auth-row" style="margin-top: 16px;">
+          <button id="verify-drive-btn" class="btn-primary">
+            Connect Google Drive
           </button>
           <span id="drive-test-status" class="status-inline"
-            >Not tested yet.</span
+            >Not connected yet.</span
           >
         </div>
         <div

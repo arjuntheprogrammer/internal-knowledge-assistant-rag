@@ -33,6 +33,22 @@ export function bindConfigPage() {
     testOpenAiBtn.addEventListener("click", testOpenAIKey);
   }
 
+  // Folder picker bindings
+  const selectFolderBtn = document.getElementById("select-folder-btn");
+  if (selectFolderBtn) {
+    selectFolderBtn.addEventListener("click", openFolderPicker);
+  }
+
+  const changeFolderBtn = document.getElementById("change-folder-btn");
+  if (changeFolderBtn) {
+    changeFolderBtn.addEventListener("click", openFolderPicker);
+  }
+
+  const removeFolderBtn = document.getElementById("remove-folder-btn");
+  if (removeFolderBtn) {
+    removeFolderBtn.addEventListener("click", removeDriveFolder);
+  }
+
   loadConfig();
   loadIndexingStatusInline();
   showConfigNotice();
@@ -45,6 +61,11 @@ export function bindConfigPage() {
 }
 
 export async function getConfigStatus() {
+  const token = localStorage.getItem("firebase_token");
+  if (!token) {
+    return { ready: false };
+  }
+
   try {
     const res = await fetch(`${API_BASE}/config`, {
       headers: authHeaders(),
@@ -221,19 +242,37 @@ export async function loadConfig() {
       driveInput.value = config.drive_folder_id || "";
     }
 
+    // Update folder picker display if a folder is already configured
+    if (config.drive_folder_id) {
+      const storedName = localStorage.getItem("selected_folder_name");
+      const displayName = storedName || config.drive_folder_id;
+
+      const selectBtn = document.getElementById("folder-picker-actions");
+      const displayDiv = document.getElementById("selected-folder-display");
+      const nameSpan = document.getElementById("selected-folder-name");
+
+      if (displayDiv && nameSpan) {
+        nameSpan.textContent = displayName;
+        displayDiv.style.display = "flex";
+      }
+      if (selectBtn) {
+        selectBtn.style.display = "none";
+      }
+    }
+
     const driveStatus = document.getElementById("drive-test-status");
     if (driveStatus) {
       if (config.drive_test_success && config.drive_tested_at) {
         const when = formatDate(config.drive_tested_at);
-        driveStatus.textContent = `Last verified: ${when}`;
+        driveStatus.textContent = `Connected: ${when}`;
         driveStatus.style.color = "#059669";
         driveStatus.classList.add("status-valid");
       } else if (config.drive_test_success) {
-        driveStatus.textContent = "Drive verified.";
+        driveStatus.textContent = "Connected";
         driveStatus.style.color = "#059669";
         driveStatus.classList.add("status-valid");
       } else {
-        driveStatus.textContent = "Not tested yet.";
+        driveStatus.textContent = "Not connected yet.";
         driveStatus.style.color = "var(--text-muted)";
         driveStatus.classList.remove("status-valid");
       }
@@ -416,16 +455,6 @@ export async function verifyDriveConnection() {
   }
 }
 
-function normalizeDriveFolderId(value) {
-  const trimmed = (value || "").trim();
-  if (!trimmed) return "";
-  const folderMatch = trimmed.match(
-    /drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/i
-  );
-  if (folderMatch) return folderMatch[1];
-  return trimmed;
-}
-
 function formatDate(value) {
   try {
     const date = new Date(value);
@@ -489,11 +518,24 @@ async function showConfigNotice(config = null) {
   if (configReady && indexingReady) {
     notice.style.display = "block";
     notice.innerHTML =
-      'Configuration Completed. <a href="/" style="color: inherit; text-decoration: underline; margin-left: 8px;">Go to Chat</a>';
+      'Configuration Completed. <a href="/" style="color: inherit; font-weight: 700; text-decoration: underline; margin-left: 8px;">Go to Chat →</a>';
     notice.classList.add("success");
   } else if (configReady && !indexingReady) {
-    // Config is done but indexing is not - show nothing or show indexing message
-    notice.style.display = "none";
+    // Config is done but indexing is not - show the actual status message and progress
+    notice.style.display = "block";
+    let msg = "Document indexing in progress... Chat will be enabled shortly.";
+    try {
+      const indexingStatus = await getIndexingStatus();
+      if (indexingStatus && indexingStatus.message) {
+        msg = indexingStatus.message;
+        if (indexingStatus.progress) {
+          msg += ` (${indexingStatus.progress}%)`;
+        }
+      }
+    } catch (e) {}
+
+    notice.textContent = msg;
+    notice.classList.remove("success");
   } else if (needsConfigParam) {
     notice.style.display = "block";
     notice.textContent = "Please complete configuration before chatting.";
@@ -579,6 +621,8 @@ function startIndexingPoll() {
         showIndexingStatusInline(
           `Indexing documents... (${status.progress || 0}%)`
         );
+        // Also update the top banner
+        showConfigNotice();
       } else if (status.status !== "INDEXING") {
         // Stop polling when done
         clearInterval(indexingPollInterval);
@@ -590,17 +634,11 @@ function startIndexingPoll() {
             true
           );
           showToast(
-            "Indexing complete! You can now chat with your documents.",
+            'Indexing complete! <a href="/" style="color: white; text-weight: bold; margin-left:8px;">Go to Chat</a>',
             "success"
           );
           // Update the config notice
-          showConfigNotice({
-            has_openai_key: true,
-            openai_key_valid: true,
-            drive_folder_id: true,
-            drive_authenticated: true,
-            drive_test_success: true,
-          });
+          showConfigNotice();
         } else if (status.status === "FAILED") {
           showIndexingStatusInline(
             `✗ Indexing failed: ${status.message || "Unknown error"}`,
@@ -612,6 +650,198 @@ function startIndexingPoll() {
       }
     }
   }, 2000); // Poll every 2 seconds
+}
+
+// ============ Google Folder Picker Functions ============
+
+let pickerApiLoaded = false;
+let pickerConfig = null;
+
+async function getPickerConfig() {
+  if (pickerConfig) return pickerConfig;
+
+  try {
+    const res = await fetch(`${API_BASE}/config/picker-config`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      const data = await safeJson(res);
+      throw new Error(data?.error || "Failed to get picker config");
+    }
+    pickerConfig = await safeJson(res);
+    return pickerConfig;
+  } catch (err) {
+    console.error("Failed to get picker config:", err);
+    throw err;
+  }
+}
+
+async function openFolderPicker() {
+  try {
+    // First check if Drive is authorized
+    const authStatus = await checkAuthStatus();
+    if (!authStatus) {
+      showToast("Please authorize Google Drive first.");
+      return;
+    }
+
+    // Get picker configuration
+    const config = await getPickerConfig();
+    if (!config || !config.apiKey || !config.accessToken) {
+      showToast("Unable to load folder picker. Please try again.");
+      return;
+    }
+
+    // Load the Picker API if not already loaded
+    if (!pickerApiLoaded) {
+      await loadPickerApi();
+    }
+
+    // Create and show the picker
+    createPicker(config);
+  } catch (err) {
+    console.error("Folder picker error:", err);
+    showToast("Failed to open folder picker: " + err.message);
+  }
+}
+
+function loadPickerApi() {
+  return new Promise((resolve, reject) => {
+    if (pickerApiLoaded) {
+      resolve();
+      return;
+    }
+
+    // Check if gapi is available
+    if (typeof gapi === "undefined") {
+      reject(new Error("Google API not loaded. Please refresh the page."));
+      return;
+    }
+
+    gapi.load("picker", {
+      callback: () => {
+        pickerApiLoaded = true;
+        resolve();
+      },
+      onerror: () => {
+        reject(new Error("Failed to load Google Picker API"));
+      },
+    });
+  });
+}
+
+function createPicker(config) {
+  const picker = new google.picker.PickerBuilder()
+    .setTitle("Select a folder to index")
+    .addView(
+      new google.picker.DocsView()
+        .setIncludeFolders(true)
+        .setSelectFolderEnabled(true)
+        .setMimeTypes("application/vnd.google-apps.folder")
+    )
+    .addView(
+      new google.picker.DocsView()
+        .setIncludeFolders(true)
+        .setSelectFolderEnabled(true)
+        .setMimeTypes("application/vnd.google-apps.folder")
+        .setEnableTeamDrives(true)
+        .setLabel("Shared Drives")
+    )
+    .setOAuthToken(config.accessToken)
+    .setDeveloperKey(config.apiKey)
+    .setCallback(pickerCallback)
+    .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
+    .build();
+
+  picker.setVisible(true);
+}
+
+function pickerCallback(data) {
+  if (data.action === google.picker.Action.PICKED) {
+    const folder = data.docs[0];
+    if (folder) {
+      setSelectedFolder(folder.id, folder.name);
+      showToast(`Selected folder: ${folder.name}`, "success");
+    }
+  } else if (data.action === google.picker.Action.CANCEL) {
+    // User cancelled, do nothing
+  }
+}
+
+function setSelectedFolder(folderId, folderName) {
+  // Update the hidden input
+  const folderIdInput = document.getElementById("drive-folder-id");
+  if (folderIdInput) {
+    folderIdInput.value = folderId;
+  }
+
+  // Show the selected folder display
+  const selectBtn = document.getElementById("folder-picker-actions");
+  const displayDiv = document.getElementById("selected-folder-display");
+  const nameSpan = document.getElementById("selected-folder-name");
+
+  if (displayDiv && nameSpan) {
+    nameSpan.textContent = folderName || folderId;
+    displayDiv.style.display = "flex";
+  }
+  if (selectBtn) {
+    selectBtn.style.display = "none";
+  }
+
+  // Store folder name for display
+  localStorage.setItem("selected_folder_name", folderName || "");
+}
+
+async function removeDriveFolder() {
+  if (
+    !confirm(
+      "Are you sure you want to remove this folder? This will delete the search index and all associated data for this folder."
+    )
+  ) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/config/remove-drive`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+
+    if (!res.ok) {
+      const data = await safeJson(res);
+      showToast(data?.message || "Failed to remove folder");
+      return;
+    }
+
+    // Reset UI
+    const folderIdInput = document.getElementById("drive-folder-id");
+    if (folderIdInput) folderIdInput.value = "";
+    localStorage.removeItem("selected_folder_name");
+
+    const selectBtn = document.getElementById("folder-picker-actions");
+    const displayDiv = document.getElementById("selected-folder-display");
+    if (displayDiv) displayDiv.style.display = "none";
+    if (selectBtn) selectBtn.style.display = "flex";
+
+    // Hide indexing status
+    hideIndexingStatusInline();
+
+    showToast("Remove successful", "success");
+    await loadConfig();
+  } catch (err) {
+    console.error("Remove folder error:", err);
+    showToast("Failed to remove folder");
+  }
+}
+
+function normalizeDriveFolderId(value) {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return "";
+  const folderMatch = trimmed.match(
+    /drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/i
+  );
+  if (folderMatch) return folderMatch[1];
+  return trimmed;
 }
 
 // Export for use in chat.js

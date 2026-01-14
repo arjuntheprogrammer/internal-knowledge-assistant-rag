@@ -9,15 +9,21 @@
       type="image/x-icon"
       href="{{ url_for('static', filename='favicon.ico') }}"
     />
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}"
-    />
+    <!-- CSS Modules -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/variables.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/config.css') }}" />
   </head>
   <body>
-    {% set is_auth_page = request.path in ["/login", "/signup"] %} {% if not
-    is_auth_page %}
-    <nav>
+    {% set is_auth_page = request.path in ["/login", "/signup"] %}
+    {% set protected_routes = ['/', '/configure'] %}
+    {% set is_protected = request.path in protected_routes %}
+    {% if not is_auth_page %}
+    <nav id="main-nav" {% if is_protected %}style="display: none;"{% endif %}>
       <div class="nav-left">
         <a href="/" class="logo-link">
           <img
@@ -65,7 +71,7 @@
       </div>
     </div>
 
-    <div id="main-content">{% block content %}{% endblock %}</div>
+    <div id="main-content" {% if is_protected %}style="display: none;"{% endif %}>{% block content %}{% endblock %}</div>
 
     <footer class="app-footer">
       <div class="footer-content">
@@ -82,6 +88,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
     <script
       type="module"
       src="{{ url_for('static', filename='app.js') }}"

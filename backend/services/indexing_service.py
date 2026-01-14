@@ -393,3 +393,20 @@ class IndexingService:
                 return {"success": True, "message": "Indexing cancelled"}
 
         return {"success": False, "message": "No active indexing job found"}
+
+    @classmethod
+    def reset_indexing(cls, user_id: str):
+        """
+        Reset indexing status and clear all indexing metadata for a user.
+        """
+        cls._update_status(
+            user_id,
+            IndexingStatus.PENDING,
+            "No documents indexed.",
+            progress=0
+        )
+        UserConfig.update_config(user_id, {
+            "indexing_started_at": None,
+            "indexing_completed_at": None,
+            "indexed_document_count": 0
+        })

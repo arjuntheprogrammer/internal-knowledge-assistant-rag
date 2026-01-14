@@ -6,6 +6,9 @@ export function handleEnter(e) {
 }
 
 export function bindChat() {
+  const token = localStorage.getItem("firebase_token");
+  if (!token) return;
+
   const input = document.getElementById("user-input");
   if (input) {
     input.addEventListener("keypress", handleEnter);
@@ -36,6 +39,9 @@ async function checkAndShowIndexingBanner() {
     }
 
     if (!data.ready) {
+      // Disable input if not ready
+      toggleChatInput(false, getDisabledMessage(data.status));
+
       const banner = createIndexingBanner(data);
       if (chatContainer && banner) {
         chatContainer.insertBefore(banner, chatContainer.firstChild);
@@ -45,10 +51,32 @@ async function checkAndShowIndexingBanner() {
       if (data.status === "INDEXING") {
         startChatIndexingPoll();
       }
+    } else {
+      // Enable input if ready
+      toggleChatInput(true);
     }
   } catch (err) {
     console.error("Failed to check indexing status:", err);
   }
+}
+
+function toggleChatInput(enabled, placeholder = "Type your message...") {
+  const input = document.getElementById("user-input");
+  const sendBtn = document.getElementById("send-btn");
+  if (input) {
+    input.disabled = !enabled;
+    input.placeholder = placeholder;
+  }
+  if (sendBtn) {
+    sendBtn.disabled = !enabled;
+  }
+}
+
+function getDisabledMessage(status) {
+  if (status === "INDEXING") return "Indexing in progress... Please wait.";
+  if (status === "PENDING") return "Please finish configuration in settings.";
+  if (status === "FAILED") return "Indexing failed. Check settings.";
+  return "Chat disabled.";
 }
 
 function createIndexingBanner(data) {
@@ -117,6 +145,9 @@ function startChatIndexingPoll() {
         if (banner) {
           banner.remove();
         }
+
+        // Re-enable input
+        toggleChatInput(true);
 
         showToast(
           "Indexing complete! You can now chat with your documents.",

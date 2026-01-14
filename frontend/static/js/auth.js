@@ -153,7 +153,7 @@ export function updateNav() {
     if (emailEl) emailEl.textContent = user.email || "";
     if (avatarEl) {
       if (user.photoURL) {
-        avatarEl.innerHTML = `<img src="${user.photoURL}" alt="${user.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        avatarEl.innerHTML = `<img src="${user.photoURL}" alt="${user.name}" referrerpolicy="no-referrer" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
         avatarEl.style.background = "none";
       } else {
         const initial = (user.name || user.email || "U")

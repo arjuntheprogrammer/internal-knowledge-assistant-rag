@@ -200,6 +200,57 @@ def drive_auth_status(current_user):
     return jsonify({"authenticated": bool(token)})
 
 
+@config_bp.route("/picker-config", methods=["GET"])
+@token_required
+def get_picker_config(current_user):
+    """
+    Get configuration needed for Google Picker.
+    Returns the API key and user's OAuth access token.
+    """
+    import os
+    import json
+
+    api_key = os.getenv("GOOGLE_PICKER_API_KEY")
+    if not api_key:
+        return jsonify({"error": "Picker API key not configured"}), 500
+
+    # Get the user's OAuth token
+    token_json = UserConfig.get_google_token(current_user["uid"])
+    if not token_json:
+        return jsonify({"error": "Google Drive not authorized"}), 400
+
+    # Parse the token to get the access_token
+    try:
+        if isinstance(token_json, str):
+            token_data = json.loads(token_json)
+        else:
+            token_data = token_json
+        access_token = token_data.get("token")
+    except Exception:
+        return jsonify({"error": "Invalid token format"}), 400
+
+    if not access_token:
+        return jsonify({"error": "No access token available"}), 400
+
+    # Get the OAuth client ID from credentials file
+    client_id = None
+    creds_path = os.getenv("GOOGLE_OAUTH_CLIENT_PATH")
+    if creds_path and os.path.exists(creds_path):
+        try:
+            with open(creds_path, "r") as f:
+                creds = json.load(f)
+                web_creds = creds.get("web") or creds.get("installed") or {}
+                client_id = web_creds.get("client_id")
+        except Exception:
+            pass
+
+    return jsonify({
+        "apiKey": api_key,
+        "accessToken": access_token,
+        "clientId": client_id,
+    })
+
+
 @config_bp.route("/test-drive", methods=["POST"])
 @token_required
 def test_drive(current_user):
@@ -248,6 +299,47 @@ def test_drive(current_user):
 
     result["indexing_started"] = indexing_started
     return jsonify(result), 200
+
+
+@config_bp.route("/remove-drive", methods=["POST"])
+@token_required
+def remove_drive(current_user):
+    """
+    Remove the Google Drive folder configuration and clear associated manual data.
+    """
+    user_id = current_user["uid"]
+
+    # 1. Clear Drive config in Firestore
+    UserConfig.update_config(user_id, {
+        "drive_folder_id": None,
+        "drive_test_success": False,
+        "drive_tested_at": None,
+        "drive_test_folder_id": None
+    })
+
+    # 2. Reset indexing status
+    IndexingService.reset_indexing(user_id)
+
+    # 3. Clear in-memory RAG cache (Index, Catalog, BM25)
+    from backend.services.rag import RAGService
+    RAGService.reset_user_cache(user_id)
+
+    # 4. Attempt to clear vector store records
+    try:
+        vector_store = RAGService.get_vector_store(user_id)
+        if vector_store:
+            client = getattr(vector_store, "client", None)
+            collection_name = getattr(vector_store, "collection_name", None)
+            if client and collection_name:
+                client.delete(
+                    collection_name=collection_name,
+                    filter=f"user_id == '{user_id}'"
+                )
+    except Exception:
+        # Ignore errors if vector store is not available
+        pass
+
+    return jsonify({"success": True, "message": "Drive folder and associated data removed."}), 200
 
 
 def _utc_now():
