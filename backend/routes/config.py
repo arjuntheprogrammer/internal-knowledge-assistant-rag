@@ -237,6 +237,7 @@ def get_picker_config(current_user):
 
     # Get the OAuth client ID from credentials file
     client_id = None
+    app_id = None
     creds_path = os.getenv("GOOGLE_OAUTH_CLIENT_PATH")
     if creds_path and os.path.exists(creds_path):
         try:
@@ -244,6 +245,9 @@ def get_picker_config(current_user):
                 creds = json.load(f)
                 web_creds = creds.get("web") or creds.get("installed") or {}
                 client_id = web_creds.get("client_id")
+                # Extract numeric app ID from client_id (format: 123456789-xxx.apps.googleusercontent.com)
+                if client_id and "-" in client_id:
+                    app_id = client_id.split("-")[0]
         except Exception:
             pass
 
@@ -251,6 +255,7 @@ def get_picker_config(current_user):
         "apiKey": api_key,
         "accessToken": access_token,
         "clientId": client_id,
+        "appId": app_id,
     })
 
 

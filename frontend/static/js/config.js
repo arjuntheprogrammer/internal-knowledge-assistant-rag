@@ -270,13 +270,13 @@ export async function loadConfig() {
     }
 
     // Update folder picker display if a folder is already configured
+    const selectBtn = document.getElementById("folder-picker-actions");
+    const displayDiv = document.getElementById("selected-folder-display");
+    const nameSpan = document.getElementById("selected-folder-name");
+
     if (config.drive_folder_id) {
       const storedName = localStorage.getItem("selected_folder_name");
       const displayName = storedName || config.drive_folder_id;
-
-      const selectBtn = document.getElementById("folder-picker-actions");
-      const displayDiv = document.getElementById("selected-folder-display");
-      const nameSpan = document.getElementById("selected-folder-name");
 
       if (displayDiv && nameSpan) {
         nameSpan.textContent = displayName;
@@ -284,6 +284,14 @@ export async function loadConfig() {
       }
       if (selectBtn) {
         selectBtn.style.display = "none";
+      }
+    } else {
+      // No folder configured - show the picker button, hide the display
+      if (displayDiv) {
+        displayDiv.style.display = "none";
+      }
+      if (selectBtn) {
+        selectBtn.style.display = "flex";
       }
     }
 
@@ -790,8 +798,6 @@ function createPicker(config) {
     )
     .setOAuthToken(config.accessToken)
     .setDeveloperKey(config.apiKey)
-    .setAppId(config.clientId)
-    .setOrigin(window.location.origin)
     .setCallback(pickerCallback)
     .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
     .build();
@@ -865,6 +871,20 @@ async function removeDriveFolder() {
     const displayDiv = document.getElementById("selected-folder-display");
     if (displayDiv) displayDiv.style.display = "none";
     if (selectBtn) selectBtn.style.display = "flex";
+
+    // Clear drive test results
+    const listContainer = document.getElementById("drive-test-results");
+    const ul = document.getElementById("drive-files-list");
+    if (listContainer) listContainer.style.display = "none";
+    if (ul) ul.innerHTML = "";
+
+    // Reset drive status text
+    const driveStatus = document.getElementById("drive-test-status");
+    if (driveStatus) {
+      driveStatus.textContent = "Not connected yet.";
+      driveStatus.style.color = "var(--text-muted)";
+      driveStatus.classList.remove("status-valid");
+    }
 
     // Hide indexing status
     hideIndexingStatusInline();
