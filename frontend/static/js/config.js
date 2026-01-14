@@ -675,7 +675,7 @@ function startIndexingPoll() {
             true
           );
           showToast(
-            'Indexing complete! <a href="/" style="color: white; text-weight: bold; margin-left:8px;">Go to Chat</a>',
+            'Indexing complete! <a href="/" style="color: white; font-weight: 700; text-decoration: underline; margin-left: 8px;">Go to Chat →</a>',
             "success"
           );
           // Update the config notice

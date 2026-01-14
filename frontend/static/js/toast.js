@@ -14,7 +14,7 @@ export function showToast(message, type = "error") {
     return;
   }
 
-  toastMessage.textContent = message;
+  toastMessage.innerHTML = message;
 
   if (type === "success") {
     toastBody.classList.add("success");
