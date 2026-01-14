@@ -45,6 +45,8 @@ Each document is annotated with metadata (e.g., file name) and indexed.
      manageable chunks.
 2. **Vector store**
    - Zilliz Cloud (Milvus) is used as the vector backend (`backend/services/rag/rag_milvus.py`).
+   - Multi-tenancy is achieved via a shared collection with `user_id` metadata filtering.
+   - Each user's documents are tagged with their `user_id` and queries filter by this field.
 3. **Hybrid retrieval**
    - Vector retriever + BM25 retriever are merged in `HybridRetriever`.
 4. **Reranking**
