@@ -41,30 +41,25 @@ Each document is annotated with metadata (e.g., file name) and indexed.
 
 ```mermaid
 flowchart TD
-    subgraph Indexing["📥 Indexing"]
-        A[Google Drive Files] --> B[SentenceSplitter]
-        B --> C[Chunks]
-        C --> D[Embeddings]
-        D --> E[(Zilliz Cloud)]
-    end
+    %% Nodes
+    Docs[📥 Google Drive] --> Split[✂️ Chunk & Embed]
+    Split --> Milvus[(🗄️ Zilliz Milvus)]
 
-    subgraph Retrieval["🔍 Retrieval"]
-        F[User Query] --> G[Vector Search]
-        F --> H[BM25 Search]
-        G --> I[HybridRetriever]
-        H --> I
-        I --> J[LLM Rerank]
-    end
+    User([❓ User Query]) --> Hybrid{🔍 Hybrid Search}
 
-    subgraph Synthesis["💬 Synthesis"]
-        J --> K[Top Chunks]
-        K --> L[LLM + Prompt]
-        L --> M[Answer + Sources]
-    end
+    Milvus -.->|Vector| Hybrid
+    Split -.->|BM25| Hybrid
 
-    E --> G
-    C --> H
+    Hybrid --> Rank[🎯 LLM Rerank]
+    Rank --> Synth[✍️ Refine & Synthesize]
+    Synth --> Ans([✅ Answer + Sources])
+
+    %% Styling
+    style Milvus fill:#fff9c4,stroke:#fbc02d
+    style Ans fill:#e8f5e9,stroke:#2e7d32
+    style User fill:#e1f5fe,stroke:#0288d1
 ```
+
 
 
 1. **Chunking**
