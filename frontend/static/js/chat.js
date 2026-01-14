@@ -73,9 +73,9 @@ function toggleChatInput(enabled, placeholder = "Type your message...") {
 }
 
 function getDisabledMessage(status) {
-  if (status === "INDEXING") return "Indexing in progress... Please wait.";
-  if (status === "PENDING") return "Please finish configuration in settings.";
-  if (status === "FAILED") return "Indexing failed. Check settings.";
+  if (status === "INDEXING") return "Getting documents ready... Please wait.";
+  if (status === "PENDING") return "Please finish setup in settings.";
+  if (status === "FAILED") return "Setup incomplete. Check settings.";
   return "Chat disabled.";
 }
 
@@ -100,18 +100,18 @@ function createIndexingBanner(data) {
   message.className = "chat-indexing-banner-message";
 
   if (data.status === "INDEXING") {
-    title.textContent = "Indexing in Progress";
+    title.textContent = "Connecting to Documents";
     message.innerHTML = `${
       data.message || "Processing your documents..."
-    } <br>Please wait or check back in a few minutes.`;
+    } <br>Please wait while we get everything ready.`;
   } else if (data.status === "PENDING") {
-    title.textContent = "Documents Not Indexed";
-    message.innerHTML = `Your documents haven't been indexed yet. <a href="/configure">Go to Settings</a> to start indexing.`;
+    title.textContent = "No Documents Connected";
+    message.innerHTML = `We haven't processed your documents yet. <a href="/configure">Go to Settings</a> to finish the setup.`;
   } else if (data.status === "FAILED") {
-    title.textContent = "Indexing Failed";
+    title.textContent = "Setup Incomplete";
     message.innerHTML = `${
-      data.message || "Something went wrong."
-    } <a href="/configure">Go to Settings</a> to retry.`;
+      data.message || "We ran into an issue."
+    } <a href="/configure">Go to Settings</a> to retry connecting your folder.`;
   }
 
   content.appendChild(title);
@@ -150,7 +150,7 @@ function startChatIndexingPoll() {
         toggleChatInput(true);
 
         showToast(
-          "Indexing complete! You can now chat with your documents.",
+          "Great! Your documents are now connected and ready to chat.",
           "success"
         );
       }
@@ -177,13 +177,12 @@ export async function sendMessage() {
 
     const data = await res.json();
 
-    // Handle indexing in progress (202 response)
     if (res.status === 202 && data.indexing) {
       appendMessage(
         "bot",
-        `⏳ **Indexing in Progress** (${data.progress || 0}% complete)\n\n${
+        `⏳ **Getting Ready** (${data.progress || 0}% complete)\n\n${
           data.message
-        }\n\nPlease wait a moment and try again.`
+        }\n\nPlease wait a moment while we finish connecting your documents.`
       );
       return;
     }
@@ -195,13 +194,13 @@ export async function sendMessage() {
       if (data.needs_indexing) {
         appendMessage(
           "bot",
-          "📚 **Documents Not Indexed**\n\nYour documents haven't been indexed yet. Please go to [Settings](/configure) and click **Start Indexing** to begin."
+          "📚 **No Documents Connected**\n\nYour documents haven't been processed yet. Please go to [Settings](/configure) and click **Connect Google Drive** to begin."
         );
       } else if (data.failed) {
         appendMessage(
           "bot",
-          "❌ **Indexing Failed**\n\n" +
-            (data.message || "Please go to Settings to retry indexing.")
+          "❌ **Setup Incomplete**\n\n" +
+            (data.message || "Please go to Settings to reconnect your folder.")
         );
       } else {
         appendMessage(
