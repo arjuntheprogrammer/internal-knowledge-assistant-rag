@@ -288,3 +288,4 @@ To enable, add your API key to the Cloud Run environment variables:
 ---
 
 🎥 **YouTube Walkthrough**: https://youtu.be/mf2SiJLMSDY
+🔗 **Live Demo Link**: https://knowledge-assistant.arjuntheprogrammer.com
