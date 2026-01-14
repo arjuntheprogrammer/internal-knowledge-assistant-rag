@@ -1,5 +1,6 @@
 # Internal Knowledge Assistant
 
+![Internal Knowledge Assistant Thumbnail](assets/img.jpeg)
 ## About
 
 This is a premium AI-powered internal knowledge assistant designed to help you answer questions based on your Google Drive files using Retrieval Augmented Generation (RAG).
@@ -283,3 +284,7 @@ Tracing is enabled by default in production. Monitor your AI pipeline at [smith.
 Token usage (Input, Thinking, Output) and user behavior analytics are integrated via PostHog.
 To enable, add your API key to the Cloud Run environment variables:
 `POSTHOG_API_KEY=your_key_here`
+
+---
+
+🎥 **YouTube Walkthrough**: https://youtu.be/mf2SiJLMSDY
