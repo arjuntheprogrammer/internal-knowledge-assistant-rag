@@ -39,6 +39,33 @@ Each document is annotated with metadata (e.g., file name) and indexed.
 
 ## Retrieval pipeline
 
+```mermaid
+flowchart LR
+    subgraph Indexing["📥 Indexing"]
+        A[Google Drive Files] --> B[SentenceSplitter]
+        B --> C[Chunks]
+        C --> D[Embeddings]
+        D --> E[(Zilliz Cloud)]
+    end
+
+    subgraph Retrieval["🔍 Retrieval"]
+        F[User Query] --> G[Vector Search]
+        F --> H[BM25 Search]
+        G --> I[HybridRetriever]
+        H --> I
+        I --> J[LLM Rerank]
+    end
+
+    subgraph Synthesis["💬 Synthesis"]
+        J --> K[Top Chunks]
+        K --> L[LLM + Prompt]
+        L --> M[Answer + Sources]
+    end
+
+    E --> G
+    C --> H
+```
+
 1. **Chunking**
    - `SentenceSplitter(chunk_size=512, chunk_overlap=60)` splits documents into
      manageable chunks.

@@ -18,6 +18,31 @@ This is a premium AI-powered internal knowledge assistant designed to help you a
 
 ## Workflow
 
+```mermaid
+flowchart TD
+    subgraph Auth["🔐 Authentication"]
+        A[User] --> B[Google Sign-In]
+        B --> C[Firebase Auth]
+    end
+
+    subgraph Setup["⚙️ Configuration"]
+        C --> D[Enter OpenAI API Key]
+        D --> E[Select Google Drive Folder]
+        E --> F[Index Documents]
+    end
+
+    subgraph Chat["💬 Chat"]
+        F --> G[Ask Question]
+        G --> H{Router}
+        H -->|Casual| I[Direct LLM Response]
+        H -->|Knowledge| J[Hybrid Retrieval]
+        J --> K[Rerank & Synthesize]
+        K --> L[Answer + Citations]
+    end
+
+    L --> G
+```
+
 1. User signs in with Google via Firebase Auth.
 2. User configures OpenAI API key and Google Drive folder ID.
 3. User asks a question in the chat interface.
