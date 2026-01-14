@@ -6,9 +6,10 @@ import {
 } from "./js/auth.js";
 import { bindChat } from "./js/chat.js";
 import { bindConfigPage } from "./js/config.js";
-import { checkRouteAccess } from "./js/routes.js";
+import { checkRouteAccess, initSPANavigation } from "./js/routes.js";
 
 document.addEventListener("DOMContentLoaded", () => {
+  initSPANavigation();
   bindLogout();
   bindUserMenu();
   bindAuthButtons();

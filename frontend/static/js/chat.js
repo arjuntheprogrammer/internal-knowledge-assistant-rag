@@ -23,6 +23,13 @@ export function bindChat() {
   checkAndShowIndexingBanner();
 }
 
+export function unbindChat() {
+  if (chatIndexingPollInterval) {
+    clearInterval(chatIndexingPollInterval);
+    chatIndexingPollInterval = null;
+  }
+}
+
 async function checkAndShowIndexingBanner() {
   try {
     const res = await fetch(`${API_BASE}/config/indexing-ready`, {

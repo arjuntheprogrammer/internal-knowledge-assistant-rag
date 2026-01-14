@@ -60,6 +60,13 @@ export function bindConfigPage() {
   });
 }
 
+export function unbindConfigPage() {
+  if (indexingPollInterval) {
+    clearInterval(indexingPollInterval);
+    indexingPollInterval = null;
+  }
+}
+
 export async function getConfigStatus() {
   const token = localStorage.getItem("firebase_token");
   if (!token) {
