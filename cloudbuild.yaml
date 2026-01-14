@@ -37,7 +37,7 @@ steps:
       - "knowledge-assistant-runner@$PROJECT_ID.iam.gserviceaccount.com"
       - "--set-env-vars"
       - "FLASK_CONFIG=production,APP_SECRETS_PATH=/secrets/app/secrets.json"
-      - "--update-secrets"
+      - "--set-secrets"
       - "/secrets/app/secrets.json=app-secrets:latest"
 
 images:
