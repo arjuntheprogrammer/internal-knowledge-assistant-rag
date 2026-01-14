@@ -40,7 +40,7 @@ Each document is annotated with metadata (e.g., file name) and indexed.
 ## Retrieval pipeline
 
 ```mermaid
-flowchart LR
+flowchart TD
     subgraph Indexing["📥 Indexing"]
         A[Google Drive Files] --> B[SentenceSplitter]
         B --> C[Chunks]
@@ -65,6 +65,7 @@ flowchart LR
     E --> G
     C --> H
 ```
+
 
 1. **Chunking**
    - `SentenceSplitter(chunk_size=512, chunk_overlap=60)` splits documents into
