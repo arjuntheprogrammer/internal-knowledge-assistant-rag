@@ -67,6 +67,7 @@ Create a `.env` file in the root directory:
 SECRET_KEY=your_secret_key
 PORT=5001
 FLASK_APP=app.py
+FLASK_CONFIG=development
 
 # Vector Store (Zilliz Cloud / Milvus)
 MILVUS_URI=https://your-endpoint.zillizcloud.com
@@ -79,6 +80,14 @@ FIRESTORE_DB=(default)
 
 # Google Drive OAuth
 GOOGLE_OAUTH_CLIENT_PATH=backend/credentials/google-credentials.json
+
+# Google Picker API (for folder selection UI)
+GOOGLE_PICKER_API_KEY=your_picker_api_key
+
+# LangSmith Tracing (optional)
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=your_langchain_api_key
+LANGCHAIN_PROJECT=internal-knowledge-assistant
 ```
 
 ### 2. Run Locally
@@ -119,21 +128,40 @@ gcloud artifacts repositories create knowledge-assistant \
   --description="Docker repository for Internal Knowledge Assistant"
 ```
 
-### 3. Configure Secret Manager
-Create and upload your credentials safely:
-```bash
-# Create the secrets
-gcloud secrets create firebase-admin-creds --replication-policy="automatic"
-gcloud secrets create google-oauth-creds --replication-policy="automatic"
-gcloud secrets create milvus-token --replication-policy="automatic"
-gcloud secrets create langchain-api-key --replication-policy="automatic"
+### 3. Configure Secret Manager (Consolidated Secrets)
 
-# Add the data versions
-gcloud secrets versions add firebase-admin-creds --data-file=backend/credentials/firebase-admin.json
-gcloud secrets versions add google-oauth-creds --data-file=backend/credentials/google-credentials.json
-# For the strings below, you can pass the strings directly
-echo -n "your_milvus_token" | gcloud secrets versions add milvus-token --data-file=-
-echo -n "your_langchain_api_key" | gcloud secrets versions add langchain-api-key --data-file=-
+All secrets are stored in a **single consolidated JSON secret** called `app-secrets`. This simplifies management and deployment.
+
+**Option A: Use the helper script (recommended):**
+```bash
+# First, create individual secrets temporarily (if migrating from old setup)
+# Then run the consolidation script:
+chmod +x scripts/create-consolidated-secret.sh
+./scripts/create-consolidated-secret.sh
+```
+
+**Option B: Create manually:**
+```bash
+# Create the consolidated secret with all configuration
+cat > /tmp/app-secrets.json << 'EOF'
+{
+  "FIREBASE_ADMIN_CREDENTIALS": { ...your firebase service account JSON... },
+  "GOOGLE_OAUTH_CLIENT": { ...your Google OAuth client JSON... },
+  "MILVUS_URI": "https://your-endpoint.zillizcloud.com",
+  "MILVUS_TOKEN": "your_milvus_token",
+  "MILVUS_COLLECTION": "internal_knowledge_assistant",
+  "LANGCHAIN_API_KEY": "your_langchain_api_key",
+  "LANGCHAIN_TRACING_V2": "true",
+  "LANGCHAIN_ENDPOINT": "https://api.smith.langchain.com",
+  "LANGCHAIN_PROJECT": "internal-knowledge-assistant",
+  "GOOGLE_PICKER_API_KEY": "your_picker_api_key",
+  "SECRET_KEY": "your_flask_secret_key",
+  "FIRESTORE_DB": "internal-knowledge-assistant"
+}
+EOF
+
+gcloud secrets create app-secrets --data-file=/tmp/app-secrets.json
+rm /tmp/app-secrets.json
 ```
 
 ### 4. Setup IAM Permissions
@@ -142,13 +170,10 @@ Create a dedicated service account and grant it the minimum required permissions
 # Create service account
 gcloud iam service-accounts create knowledge-assistant-runner
 
-# Grant access to Secret Manager
-for secret in firebase-admin-creds google-oauth-creds milvus-token langchain-api-key; do
-  gcloud secrets add-iam-policy-binding $secret \
-    --member="serviceAccount:knowledge-assistant-runner@[PROJECT_ID].iam.gserviceaccount.com" \
-    --role="roles/secretmanager.secretAccessor" \
-    --condition=None
-done
+# Grant access to the consolidated secret
+gcloud secrets add-iam-policy-binding app-secrets \
+  --member="serviceAccount:knowledge-assistant-runner@[PROJECT_ID].iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
 
 # Grant access to Firestore
 gcloud projects add-iam-policy-binding [PROJECT_ID] \
@@ -191,9 +216,13 @@ The repository includes a `cloudbuild.yaml` file that:
 - Deploys the container to **Cloud Run** in the `us-west1` region.
 
 ### 2. Secret Management
-Sensitive credentials are not stored in the container. Instead, they are managed via **GCP Secret Manager** and mounted as volumes at runtime:
-- `firebase-admin-creds`: Mounted at `/secrets/firebase/creds.json`
-- `google-oauth-creds`: Mounted at `/secrets/google/creds.json`
+Sensitive credentials are not stored in the container. Instead, they are managed via **GCP Secret Manager** using a **single consolidated secret**:
+
+- `app-secrets`: Mounted at `/secrets/app/secrets.json`
+
+The application parses this JSON at startup and:
+- Writes Firebase/Google OAuth credentials to temp files for libraries that require file paths
+- Sets environment variables for other configuration values (Milvus, LangChain, etc.)
 
 ### 3. Deployment Command (Manual)
 To trigger a manual build and deployment:
