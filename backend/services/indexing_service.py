@@ -209,7 +209,7 @@ class IndexingService:
         Run indexing with progress updates.
         """
         import os
-        from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext
+        from llama_index.core import VectorStoreIndex, StorageContext
         from llama_index.core.node_parser import SentenceSplitter
 
         from backend.services.rag import RAGService
@@ -229,20 +229,8 @@ class IndexingService:
 
         documents = []
 
-        # Load local documents
-        notify("Loading local documents...", 15)
-
-        data_dir = os.path.join(os.getcwd(), "backend", "data")
-        os.makedirs(data_dir, exist_ok=True)
-        try:
-            local_docs = SimpleDirectoryReader(data_dir).load_data()
-            documents.extend(local_docs)
-            cls.logger.info("Loaded %d local documents", len(local_docs))
-        except Exception:
-            pass
-
         # Load Google Drive documents
-        notify("Downloading documents from Google Drive...", 25)
+        notify("Downloading documents from Google Drive...", 20)
 
         drive_docs = rag_google_drive.load_google_drive_documents(
             user_id=user_id,

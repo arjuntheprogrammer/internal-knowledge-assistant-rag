@@ -2,7 +2,7 @@ import logging
 import os
 import re
 
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext
+from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.core.base.response.schema import Response
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.query_engine import RouterQueryEngine
@@ -64,23 +64,13 @@ class RAGService:
         user_id = user_context.get("uid")
         if not user_id:
             return
-        documents = []
 
-        data_dir = os.path.join(os.getcwd(), "backend", "data")
-        os.makedirs(data_dir, exist_ok=True)
-        try:
-            local_docs = SimpleDirectoryReader(data_dir).load_data()
-            documents.extend(local_docs)
-            print(f"Loaded {len(local_docs)} local documents.")
-        except Exception:
-            pass
-
-        drive_docs = rag_google_drive.load_google_drive_documents(
+        # Load Google Drive documents
+        documents = rag_google_drive.load_google_drive_documents(
             user_id=user_id,
             drive_folder_id=user_context.get("drive_folder_id"),
             token_json=user_context.get("google_token"),
         )
-        documents.extend(drive_docs)
 
         if not documents:
             print("No documents found. Index will be empty.")

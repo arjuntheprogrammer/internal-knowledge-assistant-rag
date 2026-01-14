@@ -33,7 +33,6 @@ reliability.
 
 ## Data sources
 
-- Local files in `backend/data` (loaded via `SimpleDirectoryReader`).
 - Google Drive files (loaded via `rag_google_drive.load_google_drive_documents()`).
 
 Each document is annotated with metadata (e.g., file name) and indexed.
