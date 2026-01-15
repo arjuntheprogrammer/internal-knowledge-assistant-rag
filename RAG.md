@@ -114,11 +114,16 @@ questions.
 Configuration is in `backend/services/rag/rag_context.py` and is supplied per
 user from Firestore (OpenAI API key + Drive folder ID).
 
-## Telemetry (LangSmith)
+## Telemetry (Opik)
 
-Tracing is enabled when `LANGCHAIN_TRACING_V2=true` and a LangSmith API key is
-present. The callback handler lives in `backend/services/langsmith_tracing.py`
+Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic
+workflows with tracing, eval metrics, and production-ready dashboards.
+
+Tracing is enabled when `OPIK_API_KEY` is configured (set `OPIK_ENABLED=false`
+to disable). The callback handler lives in `backend/services/opik_tracing.py`
 and is attached in `rag_context.py`.
+
+> **Migration Note**: LangSmith was replaced with Opik for observability.
 
 ## Notes for Docker builds
 

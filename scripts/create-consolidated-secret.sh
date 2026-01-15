@@ -21,7 +21,7 @@ echo "Fetching existing secrets..."
 FIREBASE_CREDS=$(gcloud secrets versions access latest --secret=firebase-admin-creds --project=$PROJECT_ID)
 GOOGLE_OAUTH=$(gcloud secrets versions access latest --secret=google-oauth-creds --project=$PROJECT_ID)
 MILVUS_TOKEN=$(gcloud secrets versions access latest --secret=milvus-token --project=$PROJECT_ID)
-LANGCHAIN_KEY=$(gcloud secrets versions access latest --secret=langchain-api-key --project=$PROJECT_ID)
+OPIK_KEY=$(gcloud secrets versions access latest --secret=opik-api-key --project=$PROJECT_ID)
 
 echo "Building consolidated secret..."
 
@@ -34,10 +34,9 @@ CONSOLIDATED=$(cat <<EOF
   "MILVUS_URI": "https://in03-955a82bbe424026.api.gcp-us-west1.zillizcloud.com",
   "MILVUS_TOKEN": "$MILVUS_TOKEN",
   "MILVUS_COLLECTION": "internal_knowledge_assistant",
-  "LANGCHAIN_API_KEY": "$LANGCHAIN_KEY",
-  "LANGCHAIN_TRACING_V2": "true",
-  "LANGCHAIN_ENDPOINT": "https://api.smith.langchain.com",
-  "LANGCHAIN_PROJECT": "internal-knowledge-assistant",
+  "OPIK_API_KEY": "$OPIK_KEY",
+  "OPIK_PROJECT_NAME": "internal-knowledge-assistant",
+  "OPIK_ENABLED": "true",
   "GOOGLE_PICKER_API_KEY": "$GOOGLE_PICKER_API_KEY",
   "SECRET_KEY": "$(openssl rand -hex 32)",
   "FIRESTORE_DB": "internal-knowledge-assistant"

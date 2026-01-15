@@ -8,7 +8,8 @@ google-api-python-client==2.187.0
 google-auth-oauthlib==1.2.0
 gunicorn==21.2.0
 httpx==0.28.1
-langsmith>=0.1.100,<0.2
+opik>=1.0.0
+llama-index-callbacks-opik>=0.3.0
 llama-index>=0.10.0
 llama-index-readers-google
 llama-index-retrievers-bm25

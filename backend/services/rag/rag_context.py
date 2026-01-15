@@ -2,7 +2,7 @@ from llama_index.core import Settings
 from llama_index.core.callbacks import CallbackManager
 from llama_index.llms.openai import OpenAI
 from llama_index.embeddings.openai import OpenAIEmbedding
-from backend.services.langsmith_tracing import get_langsmith_callback_handler
+from backend.services.opik_tracing import get_opik_callback_handler
 import os
 
 
@@ -23,8 +23,7 @@ def get_service_context(openai_api_key=None, user_id=None):
     embed_model = OpenAIEmbedding(
         model="text-embedding-3-small", api_key=api_key)
 
-    metadata = {"user_id": user_id} if user_id else None
-    handler = get_langsmith_callback_handler(metadata=metadata)
+    handler = get_opik_callback_handler(user_id=user_id)
     callback_manager = CallbackManager([handler]) if handler else None
 
     Settings.llm = llm

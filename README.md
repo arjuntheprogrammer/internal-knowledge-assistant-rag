@@ -14,7 +14,7 @@ This is a premium AI-powered internal knowledge assistant designed to help you a
 6. **Vector Store**: Zilliz Cloud (Managed Milvus).
 7. **Chat Model**: OpenAI (GPT-4.1 mini).
 8. **Knowledge Base**: Google Drive folder integration.
-9. **Analytics**: LangSmith tracing for observability.
+9. **Analytics**: Opik tracing for observability.
 
 ## Workflow
 
@@ -55,7 +55,7 @@ flowchart TD
 - **Google Drive Integration**: Seamlessly connect your Drive folders and index documents (Docs, PDFs, etc.) for instant retrieval.
 - **Scalable Multi-Tenancy**: Built using a shared Zilliz Cloud (Milvus) collection with metadata isolation, ensuring high performance regardless of the number of users.
 - **Hybrid Retrieval Engine**: Combines **Vector Search** (for semantic meaning) and **BM25 Search** (for keyword exact matches) to provide the most accurate context.
-- **Advanced Observability**: Full integration with **LangSmith** enables detailed tracing of the AI pipeline, including cost tracking, latency monitoring, and per-user analytics.
+- **Advanced Observability**: Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic workflows with **Opik** tracing, eval metrics, and production-ready dashboards.
 - **Automated Synchronization**: Background scheduler periodically polls your Google Drive to keep the knowledge base up-to-date.
 
 ## Not Implemented Yet
@@ -117,10 +117,11 @@ GOOGLE_OAUTH_CLIENT_PATH=backend/credentials/google-credentials.json
 # Google Picker API (for folder selection UI)
 GOOGLE_PICKER_API_KEY=your_picker_api_key
 
-# LangSmith Tracing (optional)
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_API_KEY=your_langchain_api_key
-LANGCHAIN_PROJECT=internal-knowledge-assistant
+# Opik Tracing
+# Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic workflows
+OPIK_API_KEY=your_opik_api_key
+OPIK_PROJECT_NAME=internal-knowledge-assistant
+OPIK_ENABLED=true
 ```
 
 > **Note: Firebase Admin vs Client Config**
@@ -187,10 +188,9 @@ cat > /tmp/app-secrets.json << 'EOF'
   "MILVUS_URI": "https://your-endpoint.zillizcloud.com",
   "MILVUS_TOKEN": "your_milvus_token",
   "MILVUS_COLLECTION": "internal_knowledge_assistant",
-  "LANGCHAIN_API_KEY": "your_langchain_api_key",
-  "LANGCHAIN_TRACING_V2": "true",
-  "LANGCHAIN_ENDPOINT": "https://api.smith.langchain.com",
-  "LANGCHAIN_PROJECT": "internal-knowledge-assistant",
+  "OPIK_API_KEY": "your_opik_api_key",
+  "OPIK_PROJECT_NAME": "internal-knowledge-assistant",
+  "OPIK_ENABLED": "true",
   "GOOGLE_PICKER_API_KEY": "your_picker_api_key",
   "SECRET_KEY": "your_flask_secret_key",
   "FIRESTORE_DB": "internal-knowledge-assistant",
@@ -292,10 +292,13 @@ Update your DNS records to point `knowledge-assistant.arjuntheprogrammer.com` to
 1. **Firebase Console**: Auth > Settings > Authorized Domains.
 2. **Google Cloud Console**: APIs & Services > Credentials > OAuth 2.0 Client IDs (Update Redirect URIs to include `/api/config/drive-oauth-callback`).
 
-## Analytics and Monitoring (LangSmith & PostHog)
+## Analytics and Monitoring (Opik & PostHog)
 
-### LangSmith
-Tracing is enabled by default in production. Monitor your AI pipeline at [smith.langchain.com](https://smith.langchain.com).
+### Opik
+
+Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic workflows with tracing, eval metrics, and production-ready dashboards. Tracing is enabled by default in production.
+
+> **Migration Note**: LangSmith was replaced with Opik for observability.
 
 ### PostHog (Coming Soon)
 Token usage (Input, Thinking, Output) and user behavior analytics are integrated via PostHog.
