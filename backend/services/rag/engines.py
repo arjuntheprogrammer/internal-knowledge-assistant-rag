@@ -51,13 +51,23 @@ class LazyRAGQueryEngine(BaseQueryEngine):
         user_id = self._user_context.get("uid")
 
         # Get the index - it should have been built by IndexingService
-        # If not, return an error message instead of blocking
+        # If not available, try to rebuild from vector store
         index = self._service.get_index(user_id)
         if not index:
-            return Response(
-                "I'm sorry, I'm still connecting to your documents. "
-                "Please go to Settings and click 'Connect Google Drive' to finish the setup."
-            )
+            # Check if user has completed indexing before (status is READY)
+            from backend.services.indexing_service import IndexingService, IndexingStatus
+            status_info = IndexingService.get_status(user_id)
+
+            if status_info.get("status") == IndexingStatus.READY:
+                # Index was built but in-memory cache is empty (e.g., server restart)
+                # Rebuild from persisted vector store
+                index = self._rebuild_index_from_vector_store(user_id)
+
+            if not index:
+                return Response(
+                    "I'm sorry, I'm still connecting to your documents. "
+                    "Please go to Settings and click 'Connect Google Drive' to finish the setup."
+                )
 
         query_engine = build_rag_query_engine(
             query_bundle=query_bundle,
@@ -68,6 +78,37 @@ class LazyRAGQueryEngine(BaseQueryEngine):
             user_id=user_id,
         )
         return query_engine.query(query_bundle)
+
+    def _rebuild_index_from_vector_store(self, user_id: str):
+        """Rebuild the index from persisted vector store after server restart."""
+        from llama_index.core import VectorStoreIndex
+        from llama_index.core.vector_stores import MetadataFilters, ExactMatchFilter
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            logger.info("Rebuilding index from vector store for user %s", user_id)
+
+            vector_store = self._service.get_vector_store(user_id)
+            if not vector_store:
+                logger.warning("No vector store available for user %s", user_id)
+                return None
+
+            # Create index from existing vector store
+            index = VectorStoreIndex.from_vector_store(
+                vector_store=vector_store,
+                callback_manager=self._callback_manager,
+            )
+
+            # Cache it for future requests
+            self._service._index_by_user[user_id] = index
+            logger.info("Successfully rebuilt index from vector store for user %s", user_id)
+
+            return index
+        except Exception as e:
+            logger.error("Failed to rebuild index from vector store for user %s: %s", user_id, e)
+            return None
 
     async def _aquery(self, query_bundle: QueryBundle):
         return self._query(query_bundle)
