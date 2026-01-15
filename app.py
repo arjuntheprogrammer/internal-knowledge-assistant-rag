@@ -35,16 +35,18 @@ def create_app(config_name="default"):
 
     @app.context_processor
     def inject_firebase_config():
+        # Read directly from os.getenv to ensure values are read after secrets are loaded
         return {
             "firebase_config": {
-                "apiKey": app.config.get("FIREBASE_API_KEY"),
-                "authDomain": app.config.get("FIREBASE_AUTH_DOMAIN"),
-                "projectId": app.config.get("FIREBASE_PROJECT_ID"),
-                "storageBucket": app.config.get("FIREBASE_STORAGE_BUCKET"),
-                "messagingSenderId": app.config.get("FIREBASE_MESSAGING_SENDER_ID"),
-                "appId": app.config.get("FIREBASE_APP_ID"),
+                "apiKey": os.getenv("FIREBASE_API_KEY"),
+                "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
+                "projectId": os.getenv("FIREBASE_PROJECT_ID"),
+                "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
+                "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
+                "appId": os.getenv("FIREBASE_APP_ID"),
             }
         }
+
 
     # Register Blueprints
     app.register_blueprint(config_bp, url_prefix="/api/config")

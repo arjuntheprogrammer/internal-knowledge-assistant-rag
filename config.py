@@ -7,13 +7,32 @@ load_dotenv()
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "your_secret_key_here")
     UPLOAD_FOLDER = os.path.join(os.getcwd(), "backend/uploads")
-    # Firebase Client Config
-    FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY")
-    FIREBASE_AUTH_DOMAIN = os.getenv("FIREBASE_AUTH_DOMAIN")
-    FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
-    FIREBASE_STORAGE_BUCKET = os.getenv("FIREBASE_STORAGE_BUCKET")
-    FIREBASE_MESSAGING_SENDER_ID = os.getenv("FIREBASE_MESSAGING_SENDER_ID")
-    FIREBASE_APP_ID = os.getenv("FIREBASE_APP_ID")
+
+    # Firebase Client Config - use property accessors to read at access time
+    # This is necessary because secrets are loaded after config.py is imported
+    @property
+    def FIREBASE_API_KEY(self):
+        return os.getenv("FIREBASE_API_KEY")
+
+    @property
+    def FIREBASE_AUTH_DOMAIN(self):
+        return os.getenv("FIREBASE_AUTH_DOMAIN")
+
+    @property
+    def FIREBASE_PROJECT_ID(self):
+        return os.getenv("FIREBASE_PROJECT_ID")
+
+    @property
+    def FIREBASE_STORAGE_BUCKET(self):
+        return os.getenv("FIREBASE_STORAGE_BUCKET")
+
+    @property
+    def FIREBASE_MESSAGING_SENDER_ID(self):
+        return os.getenv("FIREBASE_MESSAGING_SENDER_ID")
+
+    @property
+    def FIREBASE_APP_ID(self):
+        return os.getenv("FIREBASE_APP_ID")
 
 
 class DevelopmentConfig(Config):
