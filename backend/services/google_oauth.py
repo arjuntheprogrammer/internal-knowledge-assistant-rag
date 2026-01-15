@@ -64,3 +64,29 @@ def _load_client_config_from_file(path):
         return {"installed": data["installed"]}
 
     return None
+def refresh_google_credentials(credentials_json):
+    """
+    Load credentials from JSON and refresh them if expired.
+    Returns (creds, was_refreshed)
+    """
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request
+
+    if not credentials_json:
+        return None, False
+
+    try:
+        if isinstance(credentials_json, str):
+            credentials_data = json.loads(credentials_json)
+        else:
+            credentials_data = credentials_json
+
+        creds = Credentials.from_authorized_user_info(credentials_data, SCOPES)
+
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            return creds, True
+
+        return creds, False
+    except Exception:
+        return None, False

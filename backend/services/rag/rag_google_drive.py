@@ -239,21 +239,32 @@ def ensure_pydrive_creds_from_token(token_path, pydrive_creds_path):
 
 
 def get_google_token_data(user_id, token_json=None):
-    """Helper to get google token from Firestore and write it to disk."""
+    """Helper to get google token from Firestore, refresh it if needed, and write it to disk."""
     token_data = token_json
     if not token_data and user_id:
         token_data = UserConfig.get_google_token(user_id)
     if not token_data:
         return None
-    if isinstance(token_data, dict):
-        token_data = json.dumps(token_data)
+
+    # Refresh token if needed
+    from backend.services.google_oauth import refresh_google_credentials
+    creds, refreshed = refresh_google_credentials(token_data)
+
+    if creds:
+        token_str = creds.to_json()
+        if refreshed and user_id:
+            UserConfig.set_google_token(user_id, token_str)
+        final_token_data = token_str
+    else:
+        # Fallback to original if refresh fails, though it likely won't work
+        final_token_data = json.dumps(token_data) if isinstance(token_data, dict) else token_data
 
     token_path = os.path.join(
         os.getcwd(), "backend", "credentials", f"token_{user_id}.json"
     )
     os.makedirs(os.path.dirname(token_path), exist_ok=True)
     with open(token_path, "w") as handle:
-        handle.write(token_data)
+        handle.write(final_token_data)
     return token_path
 
 

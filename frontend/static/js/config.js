@@ -782,6 +782,8 @@ function loadPickerApi() {
 function createPicker(config) {
   const picker = new google.picker.PickerBuilder()
     .setTitle("Select a folder to index")
+    .setOrigin(window.location.origin)
+    .setAppId(config.appId)
     .addView(
       new google.picker.DocsView()
         .setIncludeFolders(true)

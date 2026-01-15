@@ -222,18 +222,16 @@ def get_picker_config(current_user):
     if not token_json:
         return jsonify({"error": "Google Drive not authorized"}), 400
 
-    # Parse the token to get the access_token
-    try:
-        if isinstance(token_json, str):
-            token_data = json.loads(token_json)
-        else:
-            token_data = token_json
-        access_token = token_data.get("token")
-    except Exception:
-        return jsonify({"error": "Invalid token format"}), 400
+    from backend.services.google_oauth import refresh_google_credentials
+    creds, refreshed = refresh_google_credentials(token_json)
 
-    if not access_token:
-        return jsonify({"error": "No access token available"}), 400
+    if not creds:
+        return jsonify({"error": "Invalid or expired Google Drive session"}), 400
+
+    if refreshed:
+        UserConfig.set_google_token(current_user["uid"], creds.to_json())
+
+    access_token = creds.token
 
     # Get the OAuth client ID from credentials file
     client_id = None
