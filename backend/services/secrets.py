@@ -118,6 +118,13 @@ def setup_production_environment():
         "GOOGLE_PICKER_API_KEY": "GOOGLE_PICKER_API_KEY",
         "SECRET_KEY": "SECRET_KEY",
         "FIRESTORE_DB": "FIRESTORE_DB",
+        # Firebase Client Config
+        "FIREBASE_API_KEY": "FIREBASE_API_KEY",
+        "FIREBASE_AUTH_DOMAIN": "FIREBASE_AUTH_DOMAIN",
+        "FIREBASE_PROJECT_ID": "FIREBASE_PROJECT_ID",
+        "FIREBASE_STORAGE_BUCKET": "FIREBASE_STORAGE_BUCKET",
+        "FIREBASE_MESSAGING_SENDER_ID": "FIREBASE_MESSAGING_SENDER_ID",
+        "FIREBASE_APP_ID": "FIREBASE_APP_ID",
     }
 
     for secret_key, env_var in env_mappings.items():
