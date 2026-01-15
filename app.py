@@ -33,6 +33,19 @@ def create_app(config_name="default"):
         if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
             SchedulerService.start_polling()
 
+    @app.context_processor
+    def inject_firebase_config():
+        return {
+            "firebase_config": {
+                "apiKey": app.config.get("FIREBASE_API_KEY"),
+                "authDomain": app.config.get("FIREBASE_AUTH_DOMAIN"),
+                "projectId": app.config.get("FIREBASE_PROJECT_ID"),
+                "storageBucket": app.config.get("FIREBASE_STORAGE_BUCKET"),
+                "messagingSenderId": app.config.get("FIREBASE_MESSAGING_SENDER_ID"),
+                "appId": app.config.get("FIREBASE_APP_ID"),
+            }
+        }
+
     # Register Blueprints
     app.register_blueprint(config_bp, url_prefix="/api/config")
     app.register_blueprint(chat_bp, url_prefix="/api/chat")

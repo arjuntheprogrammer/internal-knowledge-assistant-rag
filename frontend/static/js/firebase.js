@@ -8,14 +8,8 @@ import {
   signOut,
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "[REMOVED]",
-  authDomain: "internal-knowledge-assistant.firebaseapp.com",
-  projectId: "internal-knowledge-assistant",
-  storageBucket: "internal-knowledge-assistant.firebasestorage.app",
-  messagingSenderId: "472638866088",
-  appId: "1:472638866088:web:9d97a43d6c4d838bbb789d",
-};
+const configElement = document.getElementById("firebase-config");
+const firebaseConfig = JSON.parse(configElement?.textContent || "{}");
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
