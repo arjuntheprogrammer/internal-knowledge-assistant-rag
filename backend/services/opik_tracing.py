@@ -27,16 +27,14 @@ def get_opik_callback_handler(user_id: Optional[str] = None):
         return None
 
     try:
-        from llama_index.callbacks.opik import OpikCallbackHandler
+        from opik.integrations.llama_index import LlamaIndexCallbackHandler
 
         project_name = os.getenv(
             "OPIK_PROJECT_NAME", "internal-knowledge-assistant")
 
         # Create handler with optional metadata
-        tags = [f"user:{user_id}"] if user_id else None
-        handler = OpikCallbackHandler(
+        handler = LlamaIndexCallbackHandler(
             project_name=project_name,
-            tags=tags,
         )
         logger.info("Opik tracing initialized for project: %s", project_name)
         return handler
