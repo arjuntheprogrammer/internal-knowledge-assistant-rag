@@ -99,9 +99,17 @@ MILVUS_URI=https://your-endpoint.zillizcloud.com
 MILVUS_TOKEN=your_zilliz_token
 MILVUS_COLLECTION=internal_knowledge_assistant
 
-# Firebase Admin
+# Firebase Admin (server-side token verification & Firestore access)
 FIREBASE_ADMIN_CREDENTIALS_PATH=backend/credentials/firebase-admin.json
 FIRESTORE_DB=(default)
+
+# Firebase Client (frontend authentication - these are public identifiers, not secrets)
+FIREBASE_API_KEY=your_firebase_api_key
+FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+FIREBASE_MESSAGING_SENDER_ID=123456789
+FIREBASE_APP_ID=1:123456789:web:abcdef
 
 # Google Drive OAuth
 GOOGLE_OAUTH_CLIENT_PATH=backend/credentials/google-credentials.json
@@ -114,6 +122,10 @@ LANGCHAIN_TRACING_V2=true
 LANGCHAIN_API_KEY=your_langchain_api_key
 LANGCHAIN_PROJECT=internal-knowledge-assistant
 ```
+
+> **Note: Firebase Admin vs Client Config**
+> - **Firebase Admin Credentials** (`FIREBASE_ADMIN_CREDENTIALS_PATH`): A service account private key used by the Python backend for token verification and Firestore access. This is a secret and must never be exposed.
+> - **Firebase Client Config** (`FIREBASE_API_KEY`, etc.): Public identifiers used by the JavaScript frontend to initialize Firebase Auth for Google Sign-In. These are designed to be public and are safe to include in client-side code.
 
 ### 2. Run Locally
 
@@ -181,7 +193,13 @@ cat > /tmp/app-secrets.json << 'EOF'
   "LANGCHAIN_PROJECT": "internal-knowledge-assistant",
   "GOOGLE_PICKER_API_KEY": "your_picker_api_key",
   "SECRET_KEY": "your_flask_secret_key",
-  "FIRESTORE_DB": "internal-knowledge-assistant"
+  "FIRESTORE_DB": "internal-knowledge-assistant",
+  "FIREBASE_API_KEY": "your_firebase_api_key",
+  "FIREBASE_AUTH_DOMAIN": "your-project.firebaseapp.com",
+  "FIREBASE_PROJECT_ID": "your-project-id",
+  "FIREBASE_STORAGE_BUCKET": "your-project.appspot.com",
+  "FIREBASE_MESSAGING_SENDER_ID": "123456789",
+  "FIREBASE_APP_ID": "1:123456789:web:abcdef"
 }
 EOF
 
