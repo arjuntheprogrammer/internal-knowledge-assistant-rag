@@ -108,7 +108,7 @@ questions.
 ## LLM and embeddings
 
 - OpenAI:
-  - LLM default: `gpt-4o-mini`
+  - LLM default: `gpt-4.1-mini`
   - Embeddings: `text-embedding-3-small`
 
 Configuration is in `backend/services/rag/rag_context.py` and is supplied per

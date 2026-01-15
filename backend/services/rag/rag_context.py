@@ -19,8 +19,9 @@ def get_service_context(openai_api_key=None, user_id=None):
     if not api_key:
         raise ValueError("OpenAI API Key not found")
 
-    llm = OpenAI(model="gpt-4o-mini", api_key=api_key)
-    embed_model = OpenAIEmbedding(model="text-embedding-3-small", api_key=api_key)
+    llm = OpenAI(model="gpt-4.1-mini", api_key=api_key)
+    embed_model = OpenAIEmbedding(
+        model="text-embedding-3-small", api_key=api_key)
 
     metadata = {"user_id": user_id} if user_id else None
     handler = get_langsmith_callback_handler(metadata=metadata)

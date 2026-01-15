@@ -12,7 +12,7 @@ This is a premium AI-powered internal knowledge assistant designed to help you a
 4. **RAG**: LlamaIndex (Hybrid search: Vector + BM25).
 5. **Database**: Google Cloud Firestore (Managed).
 6. **Vector Store**: Zilliz Cloud (Managed Milvus).
-7. **Chat Model**: OpenAI (GPT-4o-mini).
+7. **Chat Model**: OpenAI (GPT-4.1 mini).
 8. **Knowledge Base**: Google Drive folder integration.
 9. **Analytics**: LangSmith tracing for observability.
 

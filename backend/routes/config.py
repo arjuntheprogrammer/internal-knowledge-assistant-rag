@@ -33,8 +33,10 @@ def _normalize_drive_folder_id(value):
 def get_config(current_user):
     user = UserConfig.get_user(current_user["uid"]) or {}
     openai_key = user.get("openai_api_key")
-    key_first4 = openai_key[:4] if openai_key and len(openai_key) >= 8 else None
-    key_last4 = openai_key[-4:] if openai_key and len(openai_key) >= 8 else None
+    key_first4 = openai_key[:4] if openai_key and len(
+        openai_key) >= 8 else None
+    key_last4 = openai_key[-4:] if openai_key and len(
+        openai_key) >= 8 else None
     openai_key_valid = bool(user.get("openai_key_valid"))
     openai_key_validated_at = (
         user.get("openai_key_validated_at") if openai_key_valid else None
@@ -51,7 +53,7 @@ def get_config(current_user):
         drive_test_success = False
         drive_tested_at = None
     response = {
-        "openai_model": "gpt-4o-mini",
+        "openai_model": "gpt-4.1-mini",
         "drive_folder_id": drive_folder_id,
         "drive_authenticated": bool(user.get("google_token")),
         "has_openai_key": bool(openai_key),
@@ -437,4 +439,3 @@ def re_index(current_user):
     result = IndexingService.start_indexing(user_context, force=True)
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
-
