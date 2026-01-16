@@ -13,9 +13,7 @@ def configure_logging():
 
     root_logger.setLevel(logging.INFO)
 
-    formatter = logging.Formatter(
-        "%(asctime)s %(levelname)s %(name)s %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
 
     info_handler = RotatingFileHandler(
         os.path.join(log_dir, "app.log"),

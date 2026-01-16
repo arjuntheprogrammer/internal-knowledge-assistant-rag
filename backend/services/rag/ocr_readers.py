@@ -175,8 +175,7 @@ def load_image_document(
                 )
             if fallback_cached is None:
                 try:
-                    fallback_processed = preprocess_image(
-                        image, fallback_config)
+                    fallback_processed = preprocess_image(image, fallback_config)
                     fallback_text, fallback_confidence = ocr_image(
                         fallback_processed, fallback_config
                     )
@@ -236,8 +235,7 @@ def _ocr_pdf_pages(
 
         for future, page_number in futures.items():
             try:
-                text, confidence = future.result(
-                    timeout=config.page_timeout_seconds)
+                text, confidence = future.result(timeout=config.page_timeout_seconds)
             except TimeoutError:
                 future.cancel()
                 logger.warning(
@@ -335,12 +333,13 @@ def _ocr_pdf_page(
     return text, confidence
 
 
-def _render_pdf_page(file_path: str, page_number: int, dpi: int) -> Optional[Image.Image]:
+def _render_pdf_page(
+    file_path: str, page_number: int, dpi: int
+) -> Optional[Image.Image]:
     try:
         doc = fitz.open(file_path)
     except Exception as exc:
-        logger.warning(
-            "Failed opening PDF for rendering %s: %s", file_path, exc)
+        logger.warning("Failed opening PDF for rendering %s: %s", file_path, exc)
         return None
     try:
         page_index = page_number - 1
@@ -387,13 +386,11 @@ def _build_document(
 ) -> Optional[Document]:
     if not text or not text.strip():
         return None
-    normalized = normalize_metadata(
-        metadata, page_number=page_number, source=source)
+    normalized = normalize_metadata(metadata, page_number=page_number, source=source)
     try:
         return Document(text=text, metadata=normalized)
     except Exception as exc:
-        logger.warning(
-            "Failed creating document for page %s: %s", page_number, exc)
+        logger.warning("Failed creating document for page %s: %s", page_number, exc)
         return None
 
 
@@ -408,7 +405,9 @@ def _resolve_mime_type(file_path: str, metadata: Dict[str, Any]) -> str:
     return ""
 
 
-def _set_document_id(doc: Document, file_id: str, page_number: int, source: str) -> None:
+def _set_document_id(
+    doc: Document, file_id: str, page_number: int, source: str
+) -> None:
     try:
         doc.id_ = f"{file_id}_page_{page_number}_{source}"
     except Exception:

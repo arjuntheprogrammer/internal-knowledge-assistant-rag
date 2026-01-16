@@ -59,9 +59,7 @@ def get_ocr_config() -> OcrConfig:
     oem = _coerce_int(os.getenv("OCR_OEM", "3"), 3)
     dpi = _clamp_dpi(_coerce_int(os.getenv("OCR_DPI", "300"), 300))
     max_workers = max(1, _coerce_int(os.getenv("OCR_MAX_WORKERS", "2"), 2))
-    page_timeout = _coerce_float(
-        os.getenv("OCR_PAGE_TIMEOUT_SECONDS", "20"), 20.0
-    )
+    page_timeout = _coerce_float(os.getenv("OCR_PAGE_TIMEOUT_SECONDS", "20"), 20.0)
     pdf_text_min_chars = max(
         0, _coerce_int(os.getenv("OCR_PDF_TEXT_MIN_CHARS", "40"), 40)
     )
@@ -279,7 +277,9 @@ def _normalize_dpi(image: Image.Image, target_dpi: int) -> Image.Image:
     return resized
 
 
-def _adaptive_threshold(image: Image.Image, radius: int = 8, offset: int = 10) -> Image.Image:
+def _adaptive_threshold(
+    image: Image.Image, radius: int = 8, offset: int = 10
+) -> Image.Image:
     if image.mode != "L":
         image = image.convert("L")
     blurred = image.filter(ImageFilter.BoxBlur(radius))

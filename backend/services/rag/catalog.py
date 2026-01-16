@@ -14,8 +14,7 @@ def log_vector_store_count(vector_store):
         if client is not None and collection_name:
             stats = client.get_collection_stats(collection_name)
             count = stats.get("row_count", 0)
-            logger.info(
-                f"Milvus collection '{collection_name}' count: {count}")
+            logger.info(f"Milvus collection '{collection_name}' count: {count}")
             return
     except Exception as exc:
         logger.warning(f"Vector store count check failed: {exc}")

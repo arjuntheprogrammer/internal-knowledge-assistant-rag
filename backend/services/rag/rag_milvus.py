@@ -1,6 +1,7 @@
 import os
 from llama_index.vector_stores.milvus import MilvusVectorStore
 
+
 def get_milvus_vector_store(user_id=None):
     # Zilliz/Milvus configuration
     # For Zilliz, URI is the Public Endpoint and Token is the API Key
@@ -15,5 +16,5 @@ def get_milvus_vector_store(user_id=None):
         token=token,
         collection_name=collection_name,
         dim=1536,  # Default for OpenAI text-embedding-3-small / ada-002
-        overwrite=False
+        overwrite=False,
     )

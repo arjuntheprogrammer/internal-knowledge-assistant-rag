@@ -18,8 +18,7 @@ def get_opik_callback_handler(user_id: Optional[str] = None):
     Returns None if Opik is disabled or not configured.
     """
     # Check if Opik is enabled
-    opik_enabled = os.getenv("OPIK_ENABLED", "true").lower() not in {
-        "0", "false", "no"}
+    opik_enabled = os.getenv("OPIK_ENABLED", "true").lower() not in {"0", "false", "no"}
     api_key = os.getenv("OPIK_API_KEY")
 
     if not opik_enabled or not api_key:
@@ -29,8 +28,7 @@ def get_opik_callback_handler(user_id: Optional[str] = None):
     try:
         from opik.integrations.llama_index import LlamaIndexCallbackHandler
 
-        project_name = os.getenv(
-            "OPIK_PROJECT_NAME", "internal-knowledge-assistant")
+        project_name = os.getenv("OPIK_PROJECT_NAME", "internal-knowledge-assistant")
 
         # Create handler with optional metadata
         handler = LlamaIndexCallbackHandler(

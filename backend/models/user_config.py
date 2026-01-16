@@ -43,6 +43,7 @@ class UserConfig:
     @classmethod
     def update_config(cls, uid, data):
         from google.cloud.firestore_v1 import DELETE_FIELD
+
         db = get_firestore_client()
         update_data = {}
         for k, v in data.items():

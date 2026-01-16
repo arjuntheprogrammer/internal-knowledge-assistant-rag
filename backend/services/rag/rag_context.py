@@ -20,8 +20,7 @@ def get_service_context(openai_api_key=None, user_id=None):
         raise ValueError("OpenAI API Key not found")
 
     llm = OpenAI(model="gpt-4.1-mini", api_key=api_key)
-    embed_model = OpenAIEmbedding(
-        model="text-embedding-3-small", api_key=api_key)
+    embed_model = OpenAIEmbedding(model="text-embedding-3-small", api_key=api_key)
 
     handler = get_opik_callback_handler(user_id=user_id)
     callback_manager = CallbackManager([handler]) if handler else None

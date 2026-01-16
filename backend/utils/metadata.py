@@ -16,18 +16,12 @@ def resolve_file_name(metadata: Dict[str, Any]) -> Optional[str]:
 
 def resolve_file_id(metadata: Dict[str, Any]) -> Optional[str]:
     """Extract file ID from various metadata keys."""
-    return (
-        metadata.get("file_id")
-        or metadata.get("file id")
-    )
+    return metadata.get("file_id") or metadata.get("file id")
 
 
 def resolve_mime_type(metadata: Dict[str, Any]) -> Optional[str]:
     """Extract mime type from various metadata keys."""
-    return (
-        metadata.get("mime_type")
-        or metadata.get("mime type")
-    )
+    return metadata.get("mime_type") or metadata.get("mime type")
 
 
 def resolve_revision_id(metadata: Dict[str, Any]) -> str:
@@ -41,7 +35,11 @@ def resolve_revision_id(metadata: Dict[str, Any]) -> str:
     return str(revision) if revision else "unknown"
 
 
-def normalize_metadata(metadata: Dict[str, Any], page_number: Optional[int] = None, source: Optional[str] = None) -> Dict[str, Any]:
+def normalize_metadata(
+    metadata: Dict[str, Any],
+    page_number: Optional[int] = None,
+    source: Optional[str] = None,
+) -> Dict[str, Any]:
     """Standardize metadata keys for consistency."""
     meta = dict(metadata or {})
 

@@ -64,6 +64,8 @@ def _load_client_config_from_file(path):
         return {"installed": data["installed"]}
 
     return None
+
+
 def refresh_google_credentials(credentials_json):
     """
     Load credentials from JSON and refresh them if expired.

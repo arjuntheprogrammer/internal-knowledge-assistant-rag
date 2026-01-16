@@ -120,7 +120,9 @@ class RAGFormatter:
             if re.search(r"(?m)^\s*[-*]\s+", cleaned_sources):
                 return f"**Sources:**\n{cleaned_sources}"
             if "," in cleaned_sources:
-                items = [item.strip() for item in cleaned_sources.split(",") if item.strip()]
+                items = [
+                    item.strip() for item in cleaned_sources.split(",") if item.strip()
+                ]
                 bullets = "\n".join(f"- {item}" for item in items)
                 return f"**Sources:**\n{bullets}" if bullets else "**Sources:** None"
             return f"**Sources:** {cleaned_sources}"

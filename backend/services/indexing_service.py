@@ -18,10 +18,11 @@ from backend.utils.time_utils import format_dt
 
 class IndexingStatus(str, Enum):
     """Status of the indexing process for a user."""
-    PENDING = "PENDING"      # Initial state, never indexed
-    INDEXING = "INDEXING"    # Currently processing documents
-    READY = "READY"          # Indexing complete, ready for queries
-    FAILED = "FAILED"        # Indexing failed with an error
+
+    PENDING = "PENDING"  # Initial state, never indexed
+    INDEXING = "INDEXING"  # Currently processing documents
+    READY = "READY"  # Indexing complete, ready for queries
+    FAILED = "FAILED"  # Indexing failed with an error
 
 
 class IndexingService:
@@ -49,7 +50,8 @@ class IndexingService:
 
         # Check if there's an active job running
         with cls._job_lock:
-            is_active = user_id in cls._active_jobs and cls._active_jobs[user_id].is_alive(
+            is_active = (
+                user_id in cls._active_jobs and cls._active_jobs[user_id].is_alive()
             )
 
         # If status says INDEXING but no active thread, it may have crashed
@@ -58,16 +60,14 @@ class IndexingService:
             started_at = user.get("indexing_started_at")
             if started_at:
                 try:
-                    if hasattr(started_at, 'timestamp'):
+                    if hasattr(started_at, "timestamp"):
                         elapsed = time.time() - started_at.timestamp()
                     else:
                         elapsed = 0
                     if elapsed > 1800:  # 30 minutes
                         status = IndexingStatus.FAILED
                         cls._update_status(
-                            user_id,
-                            IndexingStatus.FAILED,
-                            "Indexing timed out"
+                            user_id, IndexingStatus.FAILED, "Indexing timed out"
                         )
                 except Exception:
                     pass
@@ -77,16 +77,20 @@ class IndexingService:
             "message": user.get("indexing_message", ""),
             "progress": user.get("indexing_progress", 0),
             "document_count": user.get("indexed_document_count", 0),
-            "file_count": user.get("indexed_file_count")
-            if user.get("indexed_file_count") is not None
-            else user.get("drive_file_count", 0),
+            "file_count": (
+                user.get("indexed_file_count")
+                if user.get("indexed_file_count") is not None
+                else user.get("drive_file_count", 0)
+            ),
             "started_at": format_dt(user.get("indexing_started_at")),
             "completed_at": format_dt(user.get("indexing_completed_at")),
             "is_active": is_active,
         }
 
     @classmethod
-    def start_indexing(cls, user_context: dict, force: bool = False, silent: bool = False) -> dict:
+    def start_indexing(
+        cls, user_context: dict, force: bool = False, silent: bool = False
+    ) -> dict:
         """
         Start background indexing for a user.
 
@@ -105,7 +109,7 @@ class IndexingService:
                 return {
                     "success": False,
                     "message": "Indexing is already in progress",
-                    "status": IndexingStatus.INDEXING
+                    "status": IndexingStatus.INDEXING,
                 }
 
         # Check if already indexed and not forced
@@ -116,7 +120,7 @@ class IndexingService:
                 return {
                     "success": True,
                     "message": "Documents already connected",
-                    "status": IndexingStatus.READY
+                    "status": IndexingStatus.READY,
                 }
             # Silent background sync: Proceed to cross-check files without updating status
 
@@ -134,10 +138,11 @@ class IndexingService:
                 user_id,
                 IndexingStatus.INDEXING,
                 "Getting your documents ready...",
-                progress=0
+                progress=0,
             )
 
         from backend.utils.time_utils import utc_now
+
         UserConfig.update_config(user_id, {"indexing_started_at": utc_now()})
 
         # Start background thread
@@ -145,20 +150,23 @@ class IndexingService:
             target=cls._run_indexing,
             args=(user_context.copy(), silent),
             daemon=True,
-            name=f"indexing-{user_id}"
+            name=f"indexing-{user_id}",
         )
 
         with cls._job_lock:
             cls._active_jobs[user_id] = thread
 
         thread.start()
-        cls.logger.info("Started %s indexing for user %s",
-                        "silent" if silent else "standard", user_id)
+        cls.logger.info(
+            "Started %s indexing for user %s",
+            "silent" if silent else "standard",
+            user_id,
+        )
 
         return {
             "success": True,
             "message": "Indexing started",
-            "status": IndexingStatus.INDEXING
+            "status": IndexingStatus.INDEXING,
         }
 
     @classmethod
@@ -175,14 +183,17 @@ class IndexingService:
             def on_progress(msg, progress):
                 if not silent:
                     cls._update_status(
-                        user_id, IndexingStatus.INDEXING, msg, progress=progress)
+                        user_id, IndexingStatus.INDEXING, msg, progress=progress
+                    )
                 else:
                     cls.logger.info(
-                        f"Silent indexing user {user_id}: {msg} ({progress}%)")
+                        f"Silent indexing user {user_id}: {msg} ({progress}%)"
+                    )
 
             # Run the actual indexing core
             documents = RAGService.initialize_index(
-                user_context, on_progress=on_progress)
+                user_context, on_progress=on_progress
+            )
 
             if documents:
                 total_docs = len(documents)
@@ -192,14 +203,17 @@ class IndexingService:
                     user_id,
                     IndexingStatus.READY,
                     "Indexing complete! You can now chat with your documents.",
-                    progress=100
+                    progress=100,
                 )
-                UserConfig.update_config(user_id, {
-                    "indexing_completed_at": utc_now(),
-                    "indexed_document_count": total_docs,
-                    "indexed_file_count": file_count,
-                    "drive_file_count": file_count,
-                })
+                UserConfig.update_config(
+                    user_id,
+                    {
+                        "indexing_completed_at": utc_now(),
+                        "indexed_document_count": total_docs,
+                        "indexed_file_count": file_count,
+                        "drive_file_count": file_count,
+                    },
+                )
             else:
                 # initialize_index handles its own status if no docs found,
                 # but we ensure consistency here.
@@ -207,19 +221,15 @@ class IndexingService:
                     user_id,
                     IndexingStatus.READY,
                     "No documents found or already indexed.",
-                    progress=100
+                    progress=100,
                 )
 
-            cls.logger.info(
-                "Indexing completed successfully for user %s", user_id)
+            cls.logger.info("Indexing completed successfully for user %s", user_id)
 
         except Exception as e:
-            cls.logger.error(
-                "Indexing failed for user %s: %s", user_id, str(e))
+            cls.logger.error("Indexing failed for user %s: %s", user_id, str(e))
             cls._update_status(
-                user_id,
-                IndexingStatus.FAILED,
-                f"Indexing failed: {str(e)}"
+                user_id, IndexingStatus.FAILED, f"Indexing failed: {str(e)}"
             )
         finally:
             with cls._job_lock:
@@ -231,7 +241,7 @@ class IndexingService:
         user_id: str,
         status: IndexingStatus,
         message: str,
-        progress: Optional[int] = None
+        progress: Optional[int] = None,
     ):
         """Update the indexing status in Firestore."""
         update_data = {
@@ -275,9 +285,7 @@ class IndexingService:
             if user_id in cls._active_jobs:
                 # We can't really stop a thread, but we can mark it as failed
                 cls._update_status(
-                    user_id,
-                    IndexingStatus.FAILED,
-                    "Indexing was cancelled"
+                    user_id, IndexingStatus.FAILED, "Indexing was cancelled"
                 )
                 cls._active_jobs.pop(user_id, None)
                 return {"success": True, "message": "Indexing cancelled"}
@@ -290,14 +298,14 @@ class IndexingService:
         Reset indexing status and clear all indexing metadata for a user.
         """
         cls._update_status(
-            user_id,
-            IndexingStatus.PENDING,
-            "No documents indexed.",
-            progress=0
+            user_id, IndexingStatus.PENDING, "No documents indexed.", progress=0
         )
-        UserConfig.update_config(user_id, {
-            "indexing_started_at": None,
-            "indexing_completed_at": None,
-            "indexed_document_count": 0,
-            "indexed_file_count": 0,
-        })
+        UserConfig.update_config(
+            user_id,
+            {
+                "indexing_started_at": None,
+                "indexing_completed_at": None,
+                "indexed_document_count": 0,
+                "indexed_file_count": 0,
+            },
+        )

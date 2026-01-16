@@ -12,6 +12,7 @@ def create_app(config_name="default"):
     # Load production secrets first (before other initialization)
     if config_name == "production" or os.getenv("FLASK_CONFIG") == "production":
         from backend.services.secrets import setup_production_environment
+
         setup_production_environment()
 
     configure_logging()
@@ -23,6 +24,7 @@ def create_app(config_name="default"):
 
     # Handle Proxy headers for Cloud Run HTTPS
     from werkzeug.middleware.proxy_fix import ProxyFix
+
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     CORS(app)
@@ -46,7 +48,6 @@ def create_app(config_name="default"):
                 "appId": os.getenv("FIREBASE_APP_ID"),
             }
         }
-
 
     # Register Blueprints
     app.register_blueprint(config_bp, url_prefix="/api/config")
@@ -82,6 +83,7 @@ def create_app(config_name="default"):
     @app.route("/sitemap.xml")
     def static_from_root():
         from flask import send_from_directory
+
         return send_from_directory(app.static_folder, request.path[1:])
 
     return app

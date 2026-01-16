@@ -56,7 +56,10 @@ def chat(current_user):
         drive_folder_id = user_context.get("drive_folder_id")
         google_token = user_context.get("google_token")
         if not drive_folder_id:
-            return jsonify({"message": "Google Drive folder ID is not configured."}), 400
+            return (
+                jsonify({"message": "Google Drive folder ID is not configured."}),
+                400,
+            )
         if not google_token:
             return jsonify({"message": "Google Drive access is not authorized."}), 400
 
@@ -70,26 +73,41 @@ def chat(current_user):
         if status == IndexingStatus.INDEXING and not indexing_completed_at:
             progress = indexing_status.get("progress", 0)
             message = indexing_status.get("message", "Processing documents...")
-            return jsonify({
-                "message": f"We're still getting your documents ready ({progress}% complete). {message}",
-                "indexing": True,
-                "progress": progress,
-            }), 202
+            return (
+                jsonify(
+                    {
+                        "message": f"We're still getting your documents ready ({progress}% complete). {message}",
+                        "indexing": True,
+                        "progress": progress,
+                    }
+                ),
+                202,
+            )
 
         if status == IndexingStatus.PENDING:
-            return jsonify({
-                "message": "We haven't connected your documents yet. Please go to Settings and click 'Connect Google Drive' to begin.",
-                "indexing": False,
-                "needs_indexing": True,
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "message": "We haven't connected your documents yet. Please go to Settings and click 'Connect Google Drive' to begin.",
+                        "indexing": False,
+                        "needs_indexing": True,
+                    }
+                ),
+                400,
+            )
 
         if status == IndexingStatus.FAILED:
             error_message = indexing_status.get("message", "Unknown error")
-            return jsonify({
-                "message": f"We ran into an issue getting your documents ready: {error_message}. Please check your connection in Settings.",
-                "indexing": False,
-                "failed": True,
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "message": f"We ran into an issue getting your documents ready: {error_message}. Please check your connection in Settings.",
+                        "indexing": False,
+                        "failed": True,
+                    }
+                ),
+                400,
+            )
 
         # Pass user context/ACL here in future
         query_bundle = QueryBundle(
@@ -99,8 +117,7 @@ def chat(current_user):
         response_text = RAGService.query(query_bundle, user_context)
 
         # Safety Check Output
-        is_safe_response, reason_response = SafetyService.is_safe(
-            response_text)
+        is_safe_response, reason_response = SafetyService.is_safe(response_text)
         if not is_safe_response:
             response_text = "[REDACTED due to safety policy]"
 

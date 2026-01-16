@@ -55,7 +55,11 @@ class LazyRAGQueryEngine(BaseQueryEngine):
         index = self._service.get_index(user_id)
         if not index:
             # Check if user has completed indexing before (status is READY)
-            from backend.services.indexing_service import IndexingService, IndexingStatus
+            from backend.services.indexing_service import (
+                IndexingService,
+                IndexingStatus,
+            )
+
             status_info = IndexingService.get_status(user_id)
 
             if status_info.get("status") == IndexingStatus.READY:
@@ -103,11 +107,15 @@ class LazyRAGQueryEngine(BaseQueryEngine):
 
             # Cache it for future requests
             self._service._index_by_user[user_id] = index
-            logger.info("Successfully rebuilt index from vector store for user %s", user_id)
+            logger.info(
+                "Successfully rebuilt index from vector store for user %s", user_id
+            )
 
             return index
         except Exception as e:
-            logger.error("Failed to rebuild index from vector store for user %s: %s", user_id, e)
+            logger.error(
+                "Failed to rebuild index from vector store for user %s: %s", user_id, e
+            )
             return None
 
     async def _aquery(self, query_bundle: QueryBundle):
@@ -159,7 +167,9 @@ def build_rag_query_engine(
         "Update the list with any new unique items from the context. "
         "Keep bullet points and Markdown formatting. **Answer:** "
     )
-    text_qa_template = list_text_qa_template if is_list_query else default_text_qa_template
+    text_qa_template = (
+        list_text_qa_template if is_list_query else default_text_qa_template
+    )
     refine_template = list_refine_template if is_list_query else default_refine_template
     rerank_top_n = 24 if is_list_query else 6
     reranker = LLMRerank(llm=llm, top_n=rerank_top_n)
