@@ -1,4 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
 import {
   GoogleAuthProvider,
   getAuth,
@@ -13,6 +14,7 @@ const firebaseConfig = JSON.parse(configElement?.textContent || "{}");
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const analytics = firebaseConfig.measurementId ? getAnalytics(app) : null;
 
 const provider = new GoogleAuthProvider();
 provider.addScope("https://www.googleapis.com/auth/drive.readonly");

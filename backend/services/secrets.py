@@ -124,6 +124,7 @@ def setup_production_environment():
         "FIREBASE_STORAGE_BUCKET": "FIREBASE_STORAGE_BUCKET",
         "FIREBASE_MESSAGING_SENDER_ID": "FIREBASE_MESSAGING_SENDER_ID",
         "FIREBASE_APP_ID": "FIREBASE_APP_ID",
+        "FIREBASE_MEASUREMENT_ID": "FIREBASE_MEASUREMENT_ID",
     }
 
     for secret_key, env_var in env_mappings.items():
