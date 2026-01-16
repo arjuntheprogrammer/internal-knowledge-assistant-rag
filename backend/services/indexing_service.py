@@ -13,6 +13,7 @@ from enum import Enum
 from typing import Optional
 
 from backend.models.user_config import UserConfig
+from backend.utils.time_utils import format_dt
 
 
 class IndexingStatus(str, Enum):
@@ -78,8 +79,8 @@ class IndexingService:
             "file_count": user.get("indexed_file_count")
             if user.get("indexed_file_count") is not None
             else user.get("drive_file_count", 0),
-            "started_at": cls._format_dt(user.get("indexing_started_at")),
-            "completed_at": cls._format_dt(user.get("indexing_completed_at")),
+            "started_at": format_dt(user.get("indexing_started_at")),
+            "completed_at": format_dt(user.get("indexing_completed_at")),
             "is_active": is_active,
         }
 
@@ -345,15 +346,6 @@ class IndexingService:
             update_data["indexing_progress"] = progress
 
         UserConfig.update_config(user_id, update_data)
-
-    @classmethod
-    def _format_dt(cls, value):
-        """Format datetime for JSON response."""
-        if not value:
-            return None
-        if hasattr(value, "isoformat"):
-            return value.isoformat()
-        return str(value)
 
     @staticmethod
     def _count_unique_files(documents) -> int:

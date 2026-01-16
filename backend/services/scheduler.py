@@ -3,6 +3,7 @@ import threading
 import time
 
 from backend.models.user_config import UserConfig
+from backend.utils.user_context import build_user_context, is_user_context_ready
 
 
 class SchedulerService:
@@ -31,18 +32,12 @@ class SchedulerService:
                 try:
                     users = UserConfig.list_users_with_drive()
                     for user in users:
-                        user_context = {
-                            "uid": user.get("uid"),
-                            "email": user.get("email"),
-                            "openai_api_key": user.get("openai_api_key"),
-                            "drive_folder_id": user.get("drive_folder_id"),
-                            "google_token": user.get("google_token"),
-                        }
-                        if (
-                            not user_context.get("openai_api_key")
-                            or not user_context.get("drive_folder_id")
-                            or not user_context.get("google_token")
-                        ):
+                        user_context = build_user_context(
+                            user.get("uid"),
+                            email=user.get("email"),
+                            user_config=user,
+                        )
+                        if not is_user_context_ready(user_context):
                             continue
 
                         user_id = user_context.get("uid")

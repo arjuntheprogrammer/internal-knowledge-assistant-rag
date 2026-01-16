@@ -12,6 +12,8 @@ from backend.services.google_oauth import (
 from backend.services.rag import RAGService
 from backend.services.rag import rag_google_drive
 from backend.services.indexing_service import IndexingService, IndexingStatus
+from backend.utils.time_utils import format_dt, utc_now
+from backend.utils.user_context import build_user_context
 
 
 config_bp = Blueprint("config", __name__)
@@ -61,9 +63,9 @@ def get_config(current_user):
         "openai_key_first4": key_first4,
         "openai_key_last4": key_last4,
         "openai_key_valid": openai_key_valid,
-        "openai_key_validated_at": _format_dt(openai_key_validated_at),
+        "openai_key_validated_at": format_dt(openai_key_validated_at),
         "drive_test_success": drive_test_success,
-        "drive_tested_at": _format_dt(drive_tested_at),
+        "drive_tested_at": format_dt(drive_tested_at),
         "drive_test_folder_id": drive_test_folder_id,
     }
     return jsonify(response), 200
@@ -129,7 +131,7 @@ def test_openai(current_user):
             {
                 "openai_api_key": api_key,
                 "openai_key_valid": True,
-                "openai_key_validated_at": _utc_now(),
+                "openai_key_validated_at": utc_now(),
             },
         )
         return jsonify({"success": True}), 200
@@ -309,7 +311,7 @@ def test_drive(current_user):
         current_user["uid"],
         {
             "drive_test_success": bool(result.get("success")),
-            "drive_tested_at": _utc_now() if result.get("success") else None,
+            "drive_tested_at": utc_now() if result.get("success") else None,
             "drive_test_folder_id": drive_folder_id if result.get("success") else None,
             "drive_folder_checksum": checksum if result.get("success") else None,
             "drive_file_count": result.get("file_count", 0)
@@ -332,13 +334,12 @@ def test_drive(current_user):
                     should_index = checksum != previous_checksum
                 else:
                     should_index = True
-            user_context = {
-                "uid": current_user["uid"],
-                "email": current_user.get("email"),
-                "openai_api_key": openai_key,
-                "drive_folder_id": drive_folder_id,
-                "google_token": updated_user.get("google_token"),
-            }
+            user_context = build_user_context(
+                current_user["uid"],
+                email=current_user.get("email"),
+                user_config=updated_user,
+                overrides={"drive_folder_id": drive_folder_id},
+            )
             if should_index:
                 indexing_result = IndexingService.start_indexing(
                     user_context, force=True
@@ -389,20 +390,6 @@ def remove_drive(current_user):
     return jsonify({"success": True, "message": "Drive folder and associated data removed."}), 200
 
 
-def _utc_now():
-    from datetime import datetime
-
-    return datetime.utcnow()
-
-
-def _format_dt(value):
-    if not value:
-        return None
-    if hasattr(value, "isoformat"):
-        return value.isoformat()
-    return str(value)
-
-
 @config_bp.route("/indexing-status", methods=["GET"])
 @token_required
 def get_indexing_status(current_user):
@@ -422,13 +409,11 @@ def start_indexing(current_user):
     """
     user_config = UserConfig.get_user(current_user["uid"]) or {}
 
-    user_context = {
-        "uid": current_user["uid"],
-        "email": current_user.get("email"),
-        "openai_api_key": user_config.get("openai_api_key"),
-        "drive_folder_id": user_config.get("drive_folder_id"),
-        "google_token": user_config.get("google_token"),
-    }
+    user_context = build_user_context(
+        current_user["uid"],
+        email=current_user.get("email"),
+        user_config=user_config,
+    )
 
     # Don't force re-indexing if already READY
     result = IndexingService.start_indexing(user_context, force=False)
@@ -467,13 +452,11 @@ def re_index(current_user):
     # Get user config and start indexing
     user_config = UserConfig.get_user(user_id) or {}
 
-    user_context = {
-        "uid": user_id,
-        "email": current_user.get("email"),
-        "openai_api_key": user_config.get("openai_api_key"),
-        "drive_folder_id": user_config.get("drive_folder_id"),
-        "google_token": user_config.get("google_token"),
-    }
+    user_context = build_user_context(
+        user_id,
+        email=current_user.get("email"),
+        user_config=user_config,
+    )
 
     # Force indexing even if already READY
     result = IndexingService.start_indexing(user_context, force=True)
