@@ -1,5 +1,9 @@
+import logging
 import os
 import re
+from backend.utils.metadata import normalize_metadata, get_stock_name
+
+logger = logging.getLogger(__name__)
 
 
 def log_vector_store_count(vector_store):
@@ -10,11 +14,11 @@ def log_vector_store_count(vector_store):
         if client is not None and collection_name:
             stats = client.get_collection_stats(collection_name)
             count = stats.get("row_count", 0)
-            print(f"Milvus collection '{collection_name}' count: {count}")
+            logger.info(
+                f"Milvus collection '{collection_name}' count: {count}")
             return
     except Exception as exc:
-        print(f"Vector store count check failed: {exc}")
-
+        logger.warning(f"Vector store count check failed: {exc}")
 
 
 def annotate_documents(documents, user_id=None):
@@ -24,17 +28,14 @@ def annotate_documents(documents, user_id=None):
             continue
         if user_id:
             metadata["user_id"] = user_id
-        file_name = (
-            metadata.get("file name")
-            or metadata.get("file_name")
-            or metadata.get("filename")
-            or metadata.get("file_path")
-        )
-        if file_name:
-            base_name = os.path.basename(str(file_name))
-            stock_name = os.path.splitext(base_name)[0].strip()
-            if stock_name:
-                metadata.setdefault("stock_name", stock_name)
+
+        stock_name = get_stock_name(metadata)
+        if stock_name:
+            metadata["stock_name"] = stock_name
+
+        # Ensure normalized keys exist
+        normalized = normalize_metadata(metadata)
+        metadata.update(normalized)
 
 
 def build_document_catalog(documents):
@@ -43,18 +44,12 @@ def build_document_catalog(documents):
         metadata = getattr(doc, "metadata", None)
         if not isinstance(metadata, dict):
             continue
-        doc_name = metadata.get("stock_name")
-        if not doc_name:
-            file_name = (
-                metadata.get("file name")
-                or metadata.get("file_name")
-                or metadata.get("filename")
-            )
-            if file_name:
-                doc_name = os.path.splitext(os.path.basename(str(file_name)))[0].strip()
+
+        doc_name = get_stock_name(metadata)
         if not doc_name:
             continue
-        drive_id = metadata.get("file id") or metadata.get("file_id")
+
+        drive_id = metadata.get("file_id") or metadata.get("file id")
         url = None
         if drive_id:
             url = f"https://drive.google.com/file/d/{drive_id}/view"

@@ -1,3 +1,4 @@
+import logging
 from flask import Blueprint, request, jsonify
 from backend.middleware.auth import token_required
 from backend.models.user_config import UserConfig
@@ -8,6 +9,7 @@ from backend.utils.user_context import build_user_context
 
 from llama_index.core.schema import QueryBundle
 
+logger = logging.getLogger(__name__)
 chat_bp = Blueprint("chat", __name__)
 
 
@@ -18,8 +20,8 @@ def feedback(current_user):
     if not data or "rating" not in data:
         return jsonify({"message": "Rating is required"}), 400
 
-    # Log feedback to DB or LangSmith here
-    print(
+    # Log feedback
+    logger.info(
         f"Feedback received from {current_user['email']}: {data['rating']} (MessageID: {data.get('message_id')})"
     )
 
@@ -97,7 +99,8 @@ def chat(current_user):
         response_text = RAGService.query(query_bundle, user_context)
 
         # Safety Check Output
-        is_safe_response, reason_response = SafetyService.is_safe(response_text)
+        is_safe_response, reason_response = SafetyService.is_safe(
+            response_text)
         if not is_safe_response:
             response_text = "[REDACTED due to safety policy]"
 
@@ -112,6 +115,5 @@ def chat(current_user):
             200,
         )
     except Exception as e:
-
-        print(f"Chat Error: {e}")
+        logger.exception(f"Chat Error: {e}")
         return jsonify({"message": "Error processing request", "error": str(e)}), 500

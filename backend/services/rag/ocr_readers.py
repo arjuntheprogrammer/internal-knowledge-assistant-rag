@@ -21,6 +21,13 @@ from .ocr_utils import (
     store_cached_ocr,
     text_density,
 )
+from backend.utils.metadata import (
+    resolve_file_id,
+    resolve_file_name,
+    resolve_mime_type,
+    resolve_revision_id,
+    normalize_metadata,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -61,8 +68,8 @@ def load_pdf_documents(
         logger.warning("Failed reading PDF %s: %s", file_path, exc)
         return documents
 
-    file_id = _get_file_id(metadata, file_path)
-    revision_id = _get_revision_id(metadata)
+    file_id = resolve_file_id(metadata) or os.path.basename(file_path)
+    revision_id = resolve_revision_id(metadata)
     config_hash = config.config_hash()
     pages_to_ocr: List[int] = []
 
@@ -111,8 +118,8 @@ def load_image_document(
     file_path: str, metadata: Dict[str, Any], config=None
 ) -> Optional[Document]:
     config = config or get_ocr_config()
-    file_id = _get_file_id(metadata, file_path)
-    revision_id = _get_revision_id(metadata)
+    file_id = resolve_file_id(metadata) or os.path.basename(file_path)
+    revision_id = resolve_revision_id(metadata)
     config_hash = config.config_hash()
     page_number = 1
     cache_key = build_cache_key(file_id, revision_id, page_number, config_hash)
@@ -168,7 +175,8 @@ def load_image_document(
                 )
             if fallback_cached is None:
                 try:
-                    fallback_processed = preprocess_image(image, fallback_config)
+                    fallback_processed = preprocess_image(
+                        image, fallback_config)
                     fallback_text, fallback_confidence = ocr_image(
                         fallback_processed, fallback_config
                     )
@@ -228,7 +236,8 @@ def _ocr_pdf_pages(
 
         for future, page_number in futures.items():
             try:
-                text, confidence = future.result(timeout=config.page_timeout_seconds)
+                text, confidence = future.result(
+                    timeout=config.page_timeout_seconds)
             except TimeoutError:
                 future.cancel()
                 logger.warning(
@@ -330,7 +339,8 @@ def _render_pdf_page(file_path: str, page_number: int, dpi: int) -> Optional[Ima
     try:
         doc = fitz.open(file_path)
     except Exception as exc:
-        logger.warning("Failed opening PDF for rendering %s: %s", file_path, exc)
+        logger.warning(
+            "Failed opening PDF for rendering %s: %s", file_path, exc)
         return None
     try:
         page_index = page_number - 1
@@ -377,65 +387,25 @@ def _build_document(
 ) -> Optional[Document]:
     if not text or not text.strip():
         return None
-    normalized = _normalize_metadata(metadata, page_number, source)
+    normalized = normalize_metadata(
+        metadata, page_number=page_number, source=source)
     try:
         return Document(text=text, metadata=normalized)
     except Exception as exc:
-        logger.warning("Failed creating document for page %s: %s", page_number, exc)
+        logger.warning(
+            "Failed creating document for page %s: %s", page_number, exc)
         return None
 
 
-def _normalize_metadata(
-    metadata: Dict[str, Any],
-    page_number: int,
-    source: str,
-) -> Dict[str, Any]:
-    meta = dict(metadata or {})
-    file_name = (
-        meta.get("file name")
-        or meta.get("file_name")
-        or meta.get("filename")
-        or meta.get("file_path")
-    )
-    if file_name:
-        meta["file_name"] = file_name
-    mime_type = meta.get("mime type") or meta.get("mime_type")
-    if mime_type:
-        meta["mime_type"] = mime_type
-    meta["page_number"] = page_number
-    meta["source"] = source
-    return meta
-
-
 def _resolve_mime_type(file_path: str, metadata: Dict[str, Any]) -> str:
-    mime_type = metadata.get("mime type") or metadata.get("mime_type")
+    mime_type = resolve_mime_type(metadata)
     if mime_type:
         return str(mime_type)
     guessed, _ = mimetypes.guess_type(file_path)
     if guessed:
-        metadata["mime type"] = guessed
         metadata["mime_type"] = guessed
         return guessed
     return ""
-
-
-def _get_file_id(metadata: Dict[str, Any], file_path: str) -> str:
-    file_id = metadata.get("file id") or metadata.get("file_id")
-    if file_id:
-        return str(file_id)
-    return os.path.basename(file_path)
-
-
-def _get_revision_id(metadata: Dict[str, Any]) -> str:
-    revision = (
-        metadata.get("modified at")
-        or metadata.get("modifiedAt")
-        or metadata.get("modifiedTime")
-        or metadata.get("modified_time")
-    )
-    if revision:
-        return str(revision)
-    return "unknown"
 
 
 def _set_document_id(doc: Document, file_id: str, page_number: int, source: str) -> None:

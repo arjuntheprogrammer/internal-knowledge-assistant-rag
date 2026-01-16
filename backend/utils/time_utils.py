@@ -1,12 +1,12 @@
 """Datetime helpers used across the backend."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 
 def utc_now() -> datetime:
     """Return a UTC timestamp for persistence."""
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 def format_dt(value: Optional[Any]) -> Optional[str]:
