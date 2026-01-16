@@ -24,4 +24,7 @@ dependencies:
       - llama-index-callbacks-opik>=0.3.0
       - black==24.3.0
       - numpy
+      - Pillow==10.3.0
+      - pytesseract==0.3.10
+      - PyMuPDF==1.24.9
       - pypdf

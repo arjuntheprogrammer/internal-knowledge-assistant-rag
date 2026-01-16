@@ -5,7 +5,11 @@ WORKDIR /app
 COPY requirements.txt .
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        tesseract-ocr \
+        libtesseract-dev \
+        poppler-utils \
     && rm -rf /var/lib/apt/lists/* \
     && pip install -r requirements.txt
 
