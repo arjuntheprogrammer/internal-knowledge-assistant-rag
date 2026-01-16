@@ -86,6 +86,9 @@ Follow the **[Local Setup Guide](docs/LOCAL.md)** to get the application running
 ### Production Deployment
 For information on setting up the GCP environment and deploying to Cloud Run, see the **[Production & Deployment Guide](docs/PRODUCTION.md)**.
 
+### Technical Documentation
+Learn more about the retrieval pipeline and optimizations in the **[RAG Documentation](docs/RAG.md)**.
+
 ---
 
 ## Analytics and Monitoring (Opik & PostHog)
