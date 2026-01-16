@@ -13,6 +13,27 @@ async function safeJson(response) {
   }
 }
 
+function showFullscreenLoader(text) {
+  const loader = document.getElementById("fullscreen-loader");
+  if (!loader) return;
+  const textEl = loader.querySelector(".loader-text");
+  if (textEl) textEl.textContent = text;
+  loader.style.display = "flex";
+  window.addEventListener("beforeunload", preventExitListener);
+}
+
+function hideFullscreenLoader() {
+  const loader = document.getElementById("fullscreen-loader");
+  if (loader) loader.style.display = "none";
+  window.removeEventListener("beforeunload", preventExitListener);
+}
+
+const preventExitListener = (e) => {
+  e.preventDefault();
+  e.returnValue = "Operation in progress. Are you sure you want to leave?";
+  return e.returnValue;
+};
+
 export function bindConfigPage() {
   const token = localStorage.getItem("firebase_token");
   if (!token) return;
@@ -431,7 +452,6 @@ export async function testOpenAIKey() {
 export async function verifyDriveConnection() {
   const listContainer = document.getElementById("drive-test-results");
   const ul = document.getElementById("drive-files-list");
-  const loader = document.getElementById("fullscreen-loader");
   const verifyBtn = document.getElementById("verify-drive-btn");
 
   if (!listContainer || !ul) return;
@@ -439,24 +459,18 @@ export async function verifyDriveConnection() {
   ul.innerHTML = "<li>Scanning...</li>";
 
   // Show loader and prevent exit
-  if (loader) loader.style.display = "flex";
+  showFullscreenLoader("Scanning Google Drive...");
   if (verifyBtn) verifyBtn.disabled = true;
-  
-  const preventExit = (e) => {
-    e.preventDefault();
-    e.returnValue = "Scanning in progress. Are you sure you want to leave?";
-    return e.returnValue;
-  };
-  window.addEventListener("beforeunload", preventExit);
 
   const saved = await saveConfig({ showAlert: false });
   if (!saved) {
     ul.innerHTML = '<li style="color: red">Failed to save Drive settings.</li>';
-    if (loader) loader.style.display = "none";
+    hideFullscreenLoader();
     if (verifyBtn) verifyBtn.disabled = false;
-    window.removeEventListener("beforeunload", preventExit);
     return;
   }
+
+  let indexingStarted = false;
 
   try {
     const res = await fetch(`${API_BASE}/config/test-drive`, {
@@ -499,6 +513,7 @@ export async function verifyDriveConnection() {
 
     // Check if indexing was auto-started
     if (data.indexing_started) {
+      indexingStarted = true;
       showToast("Drive connected! Indexing your documents...", "success");
       showIndexingStatusInline("Indexing documents...");
       startIndexingPoll();
@@ -509,10 +524,12 @@ export async function verifyDriveConnection() {
     ul.innerHTML = `<li style="color: red">Verification request failed: ${e}</li>`;
     await loadConfig();
   } finally {
-    // Hide loader and allow exit
-    if (loader) loader.style.display = "none";
     if (verifyBtn) verifyBtn.disabled = false;
-    window.removeEventListener("beforeunload", preventExit);
+    // Only hide loader if indexing hasn't started;
+    // if it HAS started, startIndexingPoll will manage the loader.
+    if (!indexingStarted) {
+      hideFullscreenLoader();
+    }
   }
 }
 
@@ -643,10 +660,7 @@ async function loadIndexingStatusInline() {
     );
     startIndexingPoll();
   } else if (status.status === "READY" && status.file_count > 0) {
-    showIndexingStatusInline(
-      `✓ ${status.file_count} files ready`,
-      true
-    );
+    showIndexingStatusInline(`✓ ${status.file_count} files ready`, true);
   } else if (status.status === "FAILED") {
     showIndexingStatusInline(
       `✗ Indexing failed: ${status.message || "Unknown error"}`,
@@ -684,19 +698,24 @@ function hideIndexingStatusInline() {
 function startIndexingPoll() {
   if (indexingPollInterval) return;
 
+  // Ensure loader is visible when polling starts
+  showFullscreenLoader("Preparing to index documents...");
+
   indexingPollInterval = setInterval(async () => {
     const status = await getIndexingStatus();
     if (status) {
       if (status.status === "INDEXING") {
-        showIndexingStatusInline(
-          `Indexing documents... (${status.progress || 0}%)`
-        );
+        const msg = `Indexing documents... (${status.progress || 0}%)`;
+        showIndexingStatusInline(msg);
+        showFullscreenLoader(msg);
         // Also update the top banner
         showConfigNotice();
       } else if (status.status !== "INDEXING") {
         // Stop polling when done
         clearInterval(indexingPollInterval);
         indexingPollInterval = null;
+
+        hideFullscreenLoader();
 
         if (status.status === "READY") {
           showIndexingStatusInline(
