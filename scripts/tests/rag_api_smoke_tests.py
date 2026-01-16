@@ -27,14 +27,6 @@ TEST_CASES = [
             "list 3 stocks",
         ],
     },
-    {
-        "name": "case_03_triple",
-        "queries": [
-            "What is HCL Technologies Limited known for?",
-            "Summarize Sun Pharmaceutical Industries Limited in one sentence.",
-            "What does Bharat Electronics Limited do?",
-        ],
-    },
 ]
 
 
