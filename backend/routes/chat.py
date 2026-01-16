@@ -4,6 +4,7 @@ from backend.models.user_config import UserConfig
 from backend.services.rag import RAGService
 from backend.services.safety import SafetyService
 from backend.services.indexing_service import IndexingService, IndexingStatus
+from backend.utils.user_context import build_user_context
 
 from llama_index.core.schema import QueryBundle
 
@@ -41,12 +42,17 @@ def chat(current_user):
 
     try:
         user_config = UserConfig.get_user(current_user["uid"]) or {}
-        openai_key = user_config.get("openai_api_key")
+        user_context = build_user_context(
+            current_user["uid"],
+            email=current_user.get("email"),
+            user_config=user_config,
+        )
+        openai_key = user_context.get("openai_api_key")
         if not openai_key:
             return jsonify({"message": "OpenAI API key is not configured."}), 400
 
-        drive_folder_id = user_config.get("drive_folder_id")
-        google_token = user_config.get("google_token")
+        drive_folder_id = user_context.get("drive_folder_id")
+        google_token = user_context.get("google_token")
         if not drive_folder_id:
             return jsonify({"message": "Google Drive folder ID is not configured."}), 400
         if not google_token:
@@ -88,16 +94,7 @@ def chat(current_user):
             query_str=user_message,
             custom_embedding_strs=[user_message],
         )
-        response_text = RAGService.query(
-            query_bundle,
-            {
-                "uid": current_user["uid"],
-                "email": current_user.get("email"),
-                "openai_api_key": openai_key,
-                "drive_folder_id": drive_folder_id,
-                "google_token": google_token,
-            },
-        )
+        response_text = RAGService.query(query_bundle, user_context)
 
         # Safety Check Output
         is_safe_response, reason_response = SafetyService.is_safe(response_text)
