@@ -10,6 +10,7 @@ from backend.services.google_oauth import (
     exchange_google_oauth_code,
 )
 from backend.services.rag import RAGService
+from backend.services.rag import rag_google_drive
 from backend.services.indexing_service import IndexingService, IndexingStatus
 
 
@@ -90,6 +91,9 @@ def update_config(current_user):
         and update_data.get("drive_folder_id") != existing.get("drive_folder_id")
     ):
         update_data["drive_test_success"] = False
+        update_data["drive_tested_at"] = None
+        update_data["drive_test_folder_id"] = None
+        update_data["drive_folder_checksum"] = None
     if update_data:
         UserConfig.update_config(current_user["uid"], update_data)
         if (
@@ -97,6 +101,12 @@ def update_config(current_user):
             or update_data.get("drive_folder_id") != existing.get("drive_folder_id")
         ):
             RAGService.reset_user_cache(current_user["uid"])
+        if (
+            "drive_folder_id" in update_data
+            and update_data.get("drive_folder_id") is None
+            and existing.get("drive_folder_id")
+        ):
+            _purge_drive_documents(current_user["uid"])
     return jsonify({"message": "Configuration updated"}), 200
 
 
@@ -269,21 +279,38 @@ def test_drive(current_user):
     )
     if not drive_folder_id:
         return jsonify({"success": False, "message": "Drive folder ID not configured."}), 400
+    previous_folder_id = user.get("drive_folder_id")
+    previous_checksum = user.get("drive_folder_checksum")
+    drive_folder_changed = False
     if payload.get("drive_folder_id"):
+        drive_folder_changed = drive_folder_id != previous_folder_id
         UserConfig.update_config(
             current_user["uid"],
-            {"drive_folder_id": drive_folder_id, "drive_test_success": False},
+            {
+                "drive_folder_id": drive_folder_id,
+                "drive_test_success": False,
+                "drive_tested_at": None,
+                "drive_test_folder_id": None,
+            },
         )
     result = RAGService.get_drive_file_list(
         user_id=current_user["uid"],
         drive_folder_id=drive_folder_id,
     )
+    checksum = None
+    if result.get("success"):
+        checksum = rag_google_drive.get_folder_checksum(
+            user_id=current_user["uid"],
+            drive_folder_id=drive_folder_id,
+            token_json=user.get("google_token"),
+        )
     UserConfig.update_config(
         current_user["uid"],
         {
             "drive_test_success": bool(result.get("success")),
             "drive_tested_at": _utc_now() if result.get("success") else None,
             "drive_test_folder_id": drive_folder_id if result.get("success") else None,
+            "drive_folder_checksum": checksum if result.get("success") else None,
         },
     )
 
@@ -295,6 +322,12 @@ def test_drive(current_user):
         openai_key = updated_user.get("openai_api_key")
 
         if openai_key:
+            should_index = drive_folder_changed
+            if not drive_folder_changed:
+                if checksum and previous_checksum:
+                    should_index = checksum != previous_checksum
+                else:
+                    should_index = True
             user_context = {
                 "uid": current_user["uid"],
                 "email": current_user.get("email"),
@@ -302,11 +335,31 @@ def test_drive(current_user):
                 "drive_folder_id": drive_folder_id,
                 "google_token": updated_user.get("google_token"),
             }
-            indexing_result = IndexingService.start_indexing(user_context)
-            indexing_started = indexing_result.get("success", False)
+            if should_index:
+                indexing_result = IndexingService.start_indexing(
+                    user_context, force=True
+                )
+                indexing_started = indexing_result.get("success", False)
 
     result["indexing_started"] = indexing_started
     return jsonify(result), 200
+
+
+def _purge_drive_documents(user_id):
+    IndexingService.reset_indexing(user_id)
+    RAGService.reset_user_cache(user_id)
+    try:
+        vector_store = RAGService.get_vector_store(user_id)
+        if vector_store:
+            client = getattr(vector_store, "client", None)
+            collection_name = getattr(vector_store, "collection_name", None)
+            if client and collection_name:
+                client.delete(
+                    collection_name=collection_name,
+                    filter=f"user_id == '{user_id}'"
+                )
+    except Exception:
+        pass
 
 
 @config_bp.route("/remove-drive", methods=["POST"])
@@ -322,30 +375,11 @@ def remove_drive(current_user):
         "drive_folder_id": None,
         "drive_test_success": False,
         "drive_tested_at": None,
-        "drive_test_folder_id": None
+        "drive_test_folder_id": None,
+        "drive_folder_checksum": None,
     })
 
-    # 2. Reset indexing status
-    IndexingService.reset_indexing(user_id)
-
-    # 3. Clear in-memory RAG cache (Index, Catalog, BM25)
-    from backend.services.rag import RAGService
-    RAGService.reset_user_cache(user_id)
-
-    # 4. Attempt to clear vector store records
-    try:
-        vector_store = RAGService.get_vector_store(user_id)
-        if vector_store:
-            client = getattr(vector_store, "client", None)
-            collection_name = getattr(vector_store, "collection_name", None)
-            if client and collection_name:
-                client.delete(
-                    collection_name=collection_name,
-                    filter=f"user_id == '{user_id}'"
-                )
-    except Exception:
-        # Ignore errors if vector store is not available
-        pass
+    _purge_drive_documents(user_id)
 
     return jsonify({"success": True, "message": "Drive folder and associated data removed."}), 200
 
