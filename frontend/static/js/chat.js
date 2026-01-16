@@ -185,12 +185,16 @@ function startChatIndexingPoll() {
 
 export async function sendMessage() {
   const input = document.getElementById("user-input");
+  if (!input || input.disabled) return;
+
   const text = input.value.trim();
   if (!text) return;
 
   appendMessage("user", text);
   input.value = "";
 
+  // Disable input while waiting for response
+  toggleChatInput(false, "Thinking...");
   showTypingIndicator();
 
   try {
@@ -211,11 +215,15 @@ export async function sendMessage() {
           data.message
         }\n\nPlease wait a moment while we finish connecting your documents.`
       );
+      // Keep disabled and start polling since we're indexing
+      toggleChatInput(false, getDisabledMessage("INDEXING"));
+      startChatIndexingPoll();
       return;
     }
 
     if (res.ok) {
       appendMessage("bot", data.response, data.message_id);
+      toggleChatInput(true);
     } else {
       // Handle needs_indexing and failed states
       if (data.needs_indexing) {
@@ -223,22 +231,26 @@ export async function sendMessage() {
           "bot",
           "📚 **No Documents Connected**\n\nYour documents haven't been processed yet. Please go to [Settings](/configure) and click **Connect Google Drive** to begin."
         );
+        toggleChatInput(false, getDisabledMessage("PENDING"));
       } else if (data.failed) {
         appendMessage(
           "bot",
           "❌ **Setup Incomplete**\n\n" +
             (data.message || "Please go to Settings to reconnect your folder.")
         );
+        toggleChatInput(false, getDisabledMessage("FAILED"));
       } else {
         appendMessage(
           "bot",
           "Error: " + (data.message || "Failed to get response")
         );
+        toggleChatInput(true);
       }
     }
   } catch (err) {
     removeTypingIndicator();
     appendMessage("bot", "Network error. Please try again.");
+    toggleChatInput(true);
   }
 }
 
