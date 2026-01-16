@@ -147,11 +147,13 @@ def get_google_drive_reader():
                             if ocr_readers.is_pdf_mime_type(
                                 mime_type
                             ) or ocr_readers.is_image_mime_type(mime_type):
-                                ocr_documents.extend(
-                                    ocr_readers.load_documents_for_file(
-                                        final_filepath, file_metadata, config=ocr_config
-                                    )
+                                ocr_docs = ocr_readers.load_documents_for_file(
+                                    final_filepath, file_metadata, config=ocr_config
                                 )
+                                if ocr_docs:
+                                    ocr_documents.extend(ocr_docs)
+                                elif ocr_readers.is_pdf_mime_type(mime_type):
+                                    standard_files.append(final_filepath)
                             else:
                                 standard_files.append(final_filepath)
 
