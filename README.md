@@ -81,10 +81,10 @@ flowchart TD
 ## 🚀 Getting Started
 
 ### Local Development
-Follow the **[Local Setup Guide](LOCAL_SETUP.md)** to get the application running on your machine.
+Follow the **[Local Setup Guide](docs/LOCAL.md)** to get the application running on your machine.
 
 ### Production Deployment
-For information on setting up the GCP environment and deploying to Cloud Run, see the **[Production & Deployment Guide](PRODUCTION.md)**.
+For information on setting up the GCP environment and deploying to Cloud Run, see the **[Production & Deployment Guide](docs/PRODUCTION.md)**.
 
 ---
 
