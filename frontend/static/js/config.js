@@ -431,14 +431,30 @@ export async function testOpenAIKey() {
 export async function verifyDriveConnection() {
   const listContainer = document.getElementById("drive-test-results");
   const ul = document.getElementById("drive-files-list");
+  const loader = document.getElementById("fullscreen-loader");
+  const verifyBtn = document.getElementById("verify-drive-btn");
 
   if (!listContainer || !ul) return;
   listContainer.style.display = "block";
   ul.innerHTML = "<li>Scanning...</li>";
 
+  // Show loader and prevent exit
+  if (loader) loader.style.display = "flex";
+  if (verifyBtn) verifyBtn.disabled = true;
+  
+  const preventExit = (e) => {
+    e.preventDefault();
+    e.returnValue = "Scanning in progress. Are you sure you want to leave?";
+    return e.returnValue;
+  };
+  window.addEventListener("beforeunload", preventExit);
+
   const saved = await saveConfig({ showAlert: false });
   if (!saved) {
     ul.innerHTML = '<li style="color: red">Failed to save Drive settings.</li>';
+    if (loader) loader.style.display = "none";
+    if (verifyBtn) verifyBtn.disabled = false;
+    window.removeEventListener("beforeunload", preventExit);
     return;
   }
 
@@ -463,12 +479,12 @@ export async function verifyDriveConnection() {
       ul.innerHTML = `<li style="color: red">Error: ${
         data.message || "Verification failed."
       }</li>`;
-      return;
+      return; // Cleanup in finally
     }
 
     if (!data.success) {
       ul.innerHTML = `<li style="color: red">Error: ${data.message}</li>`;
-      return;
+      return; // Cleanup in finally
     }
 
     if (data.files && data.files.length > 0) {
@@ -492,6 +508,11 @@ export async function verifyDriveConnection() {
   } catch (e) {
     ul.innerHTML = `<li style="color: red">Verification request failed: ${e}</li>`;
     await loadConfig();
+  } finally {
+    // Hide loader and allow exit
+    if (loader) loader.style.display = "none";
+    if (verifyBtn) verifyBtn.disabled = false;
+    window.removeEventListener("beforeunload", preventExit);
   }
 }
 

@@ -138,7 +138,7 @@ Assistant{% endblock %} {% block content %}
 
         <div class="drive-auth-row" style="margin-top: 16px">
           <button id="verify-drive-btn" class="btn-primary">
-            Connect Google Drive
+            Scan Google Drive
           </button>
           <span id="drive-test-status" class="status-inline"
             >Not connected yet.</span
@@ -171,6 +171,12 @@ Assistant{% endblock %} {% block content %}
 
     <div class="admin-right"></div>
   </div>
+</div>
+
+<div id="fullscreen-loader" class="fullscreen-loader">
+  <div class="spinner"></div>
+  <div class="loader-text">Scanning Google Drive...</div>
+  <div style="margin-top: 8px; font-size: 0.9rem; color: var(--text-muted)">Please do not close this tab</div>
 </div>
 
 {% endblock %}
