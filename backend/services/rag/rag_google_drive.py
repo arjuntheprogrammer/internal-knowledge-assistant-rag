@@ -65,6 +65,8 @@ def get_google_drive_reader():
         from llama_index.readers.google import (
             GoogleDriveReader as BaseGoogleDriveReader,
         )
+        from backend.services.rag import ocr_readers
+        from backend.services.rag.ocr_utils import get_ocr_config
 
         logger = logging.getLogger(__name__)
 
@@ -103,6 +105,9 @@ def get_google_drive_reader():
                         temp_dir = Path(temp_dir)
                         os.makedirs(temp_dir, exist_ok=True)
                         metadata = {}
+                        ocr_documents = []
+                        standard_files = []
+                        ocr_config = get_ocr_config()
 
                         for fileid_meta in fileids_meta:
                             filename = fileid_meta[2]
@@ -112,7 +117,10 @@ def get_google_drive_reader():
                             if not safe_filename:
                                 continue
                             altsep = os.path.altsep
-                            if os.path.sep in safe_filename or (altsep and altsep in safe_filename):
+                            if (
+                                os.path.sep in safe_filename
+                                or (altsep and altsep in safe_filename)
+                            ):
                                 safe_filename = safe_filename.replace(os.path.sep, "_")
                                 if altsep:
                                     safe_filename = safe_filename.replace(altsep, "_")
@@ -125,7 +133,7 @@ def get_google_drive_reader():
                             if not final_filepath:
                                 continue
 
-                            metadata[final_filepath] = {
+                            file_metadata = {
                                 "file id": fileid_meta[0],
                                 "author": fileid_meta[1],
                                 "file name": fileid_meta[2],
@@ -133,13 +141,30 @@ def get_google_drive_reader():
                                 "created at": fileid_meta[4],
                                 "modified at": fileid_meta[5],
                             }
+                            metadata[final_filepath] = file_metadata
 
-                        loader = SimpleDirectoryReader(
-                            temp_dir, file_metadata=get_metadata
-                        )
-                        documents = loader.load_data()
-                        for doc in documents:
-                            doc.id_ = doc.metadata.get("file id", doc.id_)
+                            mime_type = file_metadata.get("mime type")
+                            if ocr_readers.is_pdf_mime_type(
+                                mime_type
+                            ) or ocr_readers.is_image_mime_type(mime_type):
+                                ocr_documents.extend(
+                                    ocr_readers.load_documents_for_file(
+                                        final_filepath, file_metadata, config=ocr_config
+                                    )
+                                )
+                            else:
+                                standard_files.append(final_filepath)
+
+                        documents = []
+                        if standard_files:
+                            loader = SimpleDirectoryReader(
+                                input_files=standard_files, file_metadata=get_metadata
+                            )
+                            documents = loader.load_data()
+                            for doc in documents:
+                                doc.id_ = doc.metadata.get("file id", doc.id_)
+
+                        documents = ocr_documents + documents
 
                     return documents
                 except Exception as e:
