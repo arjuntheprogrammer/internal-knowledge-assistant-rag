@@ -94,6 +94,7 @@ def update_config(current_user):
         update_data["drive_tested_at"] = None
         update_data["drive_test_folder_id"] = None
         update_data["drive_folder_checksum"] = None
+        update_data["drive_file_count"] = 0
     if update_data:
         UserConfig.update_config(current_user["uid"], update_data)
         if (
@@ -311,6 +312,9 @@ def test_drive(current_user):
             "drive_tested_at": _utc_now() if result.get("success") else None,
             "drive_test_folder_id": drive_folder_id if result.get("success") else None,
             "drive_folder_checksum": checksum if result.get("success") else None,
+            "drive_file_count": result.get("file_count", 0)
+            if result.get("success")
+            else 0,
         },
     )
 
@@ -377,6 +381,7 @@ def remove_drive(current_user):
         "drive_tested_at": None,
         "drive_test_folder_id": None,
         "drive_folder_checksum": None,
+        "drive_file_count": 0,
     })
 
     _purge_drive_documents(user_id)
@@ -442,6 +447,7 @@ def is_indexing_ready(current_user):
         "status": status["status"],
         "message": status["message"],
         "document_count": status["document_count"],
+        "file_count": status.get("file_count", 0),
     }), 200
 
 

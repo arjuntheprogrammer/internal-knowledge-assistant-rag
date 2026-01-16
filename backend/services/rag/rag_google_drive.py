@@ -381,22 +381,16 @@ def get_drive_file_list(user_id, drive_folder_id):
         }
 
     found_files = []
-    total_docs = 0
     total_files = len(drive_files) if drive_files else 0
     try:
-        doc_counts = []
         for folder_id in [drive_folder_id]:
-            docs = loader.load_data(folder_id=folder_id)
-            count = len(docs)
-            total_docs += count
-            doc_counts.append(count)
+            loader.load_data(folder_id=folder_id)
 
         success = total_files > 0
         display_files = _format_drive_file_list(drive_files)
         if display_files:
             found_files = display_files + found_files
 
-        found_files.append(f"Verification: Found {total_files} files and processed {total_docs} retrieval chunks.")
         message = (
             f"Verified with {auth_type}"
             if success
@@ -405,6 +399,7 @@ def get_drive_file_list(user_id, drive_folder_id):
         return {
             "success": success,
             "files": found_files,
+            "file_count": total_files,
             "message": message,
         }
 

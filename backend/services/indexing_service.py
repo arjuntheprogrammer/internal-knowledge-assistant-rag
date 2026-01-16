@@ -75,6 +75,9 @@ class IndexingService:
             "message": user.get("indexing_message", ""),
             "progress": user.get("indexing_progress", 0),
             "document_count": user.get("indexed_document_count", 0),
+            "file_count": user.get("indexed_file_count")
+            if user.get("indexed_file_count") is not None
+            else user.get("drive_file_count", 0),
             "started_at": cls._format_dt(user.get("indexing_started_at")),
             "completed_at": cls._format_dt(user.get("indexing_completed_at")),
             "is_active": is_active,
@@ -240,6 +243,7 @@ class IndexingService:
         documents.extend(drive_docs)
 
         total_docs = len(documents)
+        file_count = cls._count_unique_files(documents)
         if not documents:
             cls._update_status(
                 user_id,
@@ -247,7 +251,14 @@ class IndexingService:
                 "No documents found. Add files to your Drive folder and re-index.",
                 progress=100
             )
-            UserConfig.update_config(user_id, {"indexed_document_count": 0})
+            UserConfig.update_config(
+                user_id,
+                {
+                    "indexed_document_count": 0,
+                    "indexed_file_count": 0,
+                    "drive_file_count": 0,
+                },
+            )
             return
 
         notify(f"Processing {total_docs} documents...", 40)
@@ -307,7 +318,14 @@ class IndexingService:
             log_vector_store_count(vector_store)
 
         # Update document count
-        UserConfig.update_config(user_id, {"indexed_document_count": total_docs})
+        UserConfig.update_config(
+            user_id,
+            {
+                "indexed_document_count": total_docs,
+                "indexed_file_count": file_count,
+                "drive_file_count": file_count,
+            },
+        )
         cls.logger.info("Index initialized with %d documents for user %s", total_docs, user_id)
 
     @classmethod
@@ -336,6 +354,22 @@ class IndexingService:
         if hasattr(value, "isoformat"):
             return value.isoformat()
         return str(value)
+
+    @staticmethod
+    def _count_unique_files(documents) -> int:
+        file_ids = set()
+        for doc in documents:
+            metadata = getattr(doc, "metadata", {}) or {}
+            file_id = (
+                metadata.get("file id")
+                or metadata.get("file_id")
+                or metadata.get("file_name")
+                or metadata.get("filename")
+                or metadata.get("file_path")
+            )
+            if file_id:
+                file_ids.add(str(file_id))
+        return len(file_ids)
 
     @classmethod
     def is_ready(cls, user_id: str) -> bool:
@@ -376,5 +410,6 @@ class IndexingService:
         UserConfig.update_config(user_id, {
             "indexing_started_at": None,
             "indexing_completed_at": None,
-            "indexed_document_count": 0
+            "indexed_document_count": 0,
+            "indexed_file_count": 0,
         })

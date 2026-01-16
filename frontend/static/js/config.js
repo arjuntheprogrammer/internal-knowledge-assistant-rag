@@ -642,9 +642,9 @@ async function loadIndexingStatusInline() {
       `Indexing documents... (${status.progress || 0}%)`
     );
     startIndexingPoll();
-  } else if (status.status === "READY" && status.document_count > 0) {
+  } else if (status.status === "READY" && status.file_count > 0) {
     showIndexingStatusInline(
-      `✓ ${status.document_count} documents indexed and ready`,
+      `✓ ${status.file_count} files ready`,
       true
     );
   } else if (status.status === "FAILED") {
@@ -700,7 +700,7 @@ function startIndexingPoll() {
 
         if (status.status === "READY") {
           showIndexingStatusInline(
-            `✓ ${status.document_count || 0} documents indexed and ready`,
+            `✓ ${status.file_count || 0} files ready`,
             true
           );
           showToast(
