@@ -167,3 +167,7 @@ backend/credentials/**/*.json
 backend/credentials/pydrive_creds.txt
 chroma-data/
 promts.md
+
+# Agent Context
+AGENTS.md
+GEMINI.md
