@@ -87,43 +87,10 @@ flowchart TD
 
 ### 1. Configuration
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory by copying the `.env.template` file and filling in the required values:
 
 ```bash
-# Flask
-SECRET_KEY=your_secret_key
-PORT=5001
-FLASK_APP=app.py
-FLASK_CONFIG=development
-
-# Vector Store (Zilliz Cloud / Milvus)
-MILVUS_URI=https://your-endpoint.zillizcloud.com
-MILVUS_TOKEN=your_zilliz_token
-MILVUS_COLLECTION=internal_knowledge_assistant
-
-# Firebase Admin (server-side token verification & Firestore access)
-FIREBASE_ADMIN_CREDENTIALS_PATH=backend/credentials/firebase-admin.json
-FIRESTORE_DB=(default)
-
-# Firebase Client (frontend authentication - these are public identifiers, not secrets)
-FIREBASE_API_KEY=your_firebase_api_key
-FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-FIREBASE_MESSAGING_SENDER_ID=123456789
-FIREBASE_APP_ID=1:123456789:web:abcdef
-
-# Google Drive OAuth
-GOOGLE_OAUTH_CLIENT_PATH=backend/credentials/google-credentials.json
-
-# Google Picker API (for folder selection UI)
-GOOGLE_PICKER_API_KEY=your_picker_api_key
-
-# Opik Tracing
-# Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic workflows
-OPIK_API_KEY=your_opik_api_key
-OPIK_PROJECT_NAME=internal-knowledge-assistant
-OPIK_ENABLED=true
+cp .env.template .env
 ```
 
 > **Note: Firebase Admin vs Client Config**
