@@ -11,8 +11,11 @@ from PIL import Image
 
 from .ocr_utils import (
     build_cache_key,
+    build_fallback_config,
     get_ocr_config,
+    is_ocr_quality_low,
     load_cached_ocr,
+    ocr_quality_score,
     ocr_image,
     preprocess_image,
     store_cached_ocr,
@@ -113,18 +116,21 @@ def load_image_document(
     config_hash = config.config_hash()
     page_number = 1
     cache_key = build_cache_key(file_id, revision_id, page_number, config_hash)
-
+    cached = None
+    cached_low_quality = False
     if config.cache_enabled:
         cached = load_cached_ocr(config.cache_dir, cache_key)
         if cached is not None:
             text, confidence = cached
-            return _document_from_ocr(
-                text,
-                confidence,
-                metadata,
-                page_number,
-                file_id,
-            )
+            if not is_ocr_quality_low(text, confidence, config):
+                return _document_from_ocr(
+                    text,
+                    confidence,
+                    metadata,
+                    page_number,
+                    file_id,
+                )
+            cached_low_quality = True
 
     try:
         with Image.open(file_path) as image:
@@ -133,15 +139,58 @@ def load_image_document(
         logger.warning("Failed opening image %s: %s", file_path, exc)
         return None
 
-    try:
-        processed = preprocess_image(image, config)
-        text, confidence = ocr_image(processed, config)
-    except Exception as exc:
-        logger.warning("OCR failed for image %s: %s", file_path, exc)
-        return None
+    text = ""
+    confidence = None
+    if cached is not None and cached_low_quality:
+        text, confidence = cached
+    else:
+        try:
+            processed = preprocess_image(image, config)
+            text, confidence = ocr_image(processed, config)
+        except Exception as exc:
+            logger.warning("OCR failed for image %s: %s", file_path, exc)
+            return None
 
     if config.cache_enabled:
         store_cached_ocr(config.cache_dir, cache_key, text, confidence)
+
+    if is_ocr_quality_low(text, confidence, config):
+        fallback_config = build_fallback_config(config)
+        if fallback_config:
+            fallback_hash = fallback_config.config_hash()
+            fallback_key = build_cache_key(
+                file_id, revision_id, page_number, fallback_hash
+            )
+            fallback_cached = None
+            if config.cache_enabled:
+                fallback_cached = load_cached_ocr(
+                    fallback_config.cache_dir, fallback_key
+                )
+            if fallback_cached is None:
+                try:
+                    fallback_processed = preprocess_image(image, fallback_config)
+                    fallback_text, fallback_confidence = ocr_image(
+                        fallback_processed, fallback_config
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Fallback OCR failed for image %s: %s", file_path, exc
+                    )
+                    fallback_text, fallback_confidence = "", None
+                if config.cache_enabled:
+                    store_cached_ocr(
+                        fallback_config.cache_dir,
+                        fallback_key,
+                        fallback_text,
+                        fallback_confidence,
+                    )
+            else:
+                fallback_text, fallback_confidence = fallback_cached
+
+            if ocr_quality_score(
+                fallback_text, fallback_confidence, fallback_config
+            ) > ocr_quality_score(text, confidence, config):
+                text, confidence = fallback_text, fallback_confidence
 
     return _document_from_ocr(
         text,
@@ -219,20 +268,61 @@ def _ocr_pdf_page(
     config_hash: str,
 ) -> Tuple[str, Optional[float]]:
     cache_key = build_cache_key(file_id, revision_id, page_number, config_hash)
+    cached = None
+    cached_low_quality = False
     if config.cache_enabled:
         cached = load_cached_ocr(config.cache_dir, cache_key)
         if cached is not None:
-            return cached
+            text, confidence = cached
+            if not is_ocr_quality_low(text, confidence, config):
+                return cached
+            cached_low_quality = True
 
     image = _render_pdf_page(file_path, page_number, config.dpi)
     if image is None:
         return "", None
 
-    processed = preprocess_image(image, config)
-    text, confidence = ocr_image(processed, config)
+    if cached is not None and cached_low_quality:
+        text, confidence = cached
+    else:
+        processed = preprocess_image(image, config)
+        text, confidence = ocr_image(processed, config)
 
     if config.cache_enabled:
         store_cached_ocr(config.cache_dir, cache_key, text, confidence)
+
+    if is_ocr_quality_low(text, confidence, config):
+        fallback_config = build_fallback_config(config)
+        if fallback_config:
+            fallback_hash = fallback_config.config_hash()
+            fallback_key = build_cache_key(
+                file_id, revision_id, page_number, fallback_hash
+            )
+            fallback_cached = None
+            if config.cache_enabled:
+                fallback_cached = load_cached_ocr(
+                    fallback_config.cache_dir, fallback_key
+                )
+            if fallback_cached is None:
+                fallback_processed = preprocess_image(image, fallback_config)
+                fallback_text, fallback_confidence = ocr_image(
+                    fallback_processed, fallback_config
+                )
+                if config.cache_enabled:
+                    store_cached_ocr(
+                        fallback_config.cache_dir,
+                        fallback_key,
+                        fallback_text,
+                        fallback_confidence,
+                    )
+            else:
+                fallback_text, fallback_confidence = fallback_cached
+
+            if ocr_quality_score(
+                fallback_text, fallback_confidence, fallback_config
+            ) > ocr_quality_score(text, confidence, config):
+                return fallback_text, fallback_confidence
+
     return text, confidence
 
 

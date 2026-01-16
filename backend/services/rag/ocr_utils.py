@@ -2,7 +2,8 @@ import hashlib
 import json
 import logging
 import os
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
@@ -25,6 +26,13 @@ class OcrConfig:
     max_workers: int
     page_timeout_seconds: float
     pdf_text_min_chars: int
+    quality_min_words: int
+    quality_min_alpha_ratio: float
+    quality_min_confidence: float
+    quality_max_short_word_ratio: float
+    quality_min_avg_word_len: float
+    fallback_enabled: bool
+    fallback_psm: int
     cache_dir: str
     cache_enabled: bool
 
@@ -57,6 +65,28 @@ def get_ocr_config() -> OcrConfig:
     pdf_text_min_chars = max(
         0, _coerce_int(os.getenv("OCR_PDF_TEXT_MIN_CHARS", "40"), 40)
     )
+    quality_min_words = max(
+        1, _coerce_int(os.getenv("OCR_QUALITY_MIN_WORDS", "12"), 12)
+    )
+    quality_min_alpha_ratio = _clamp_ratio(
+        _coerce_float(os.getenv("OCR_QUALITY_MIN_ALPHA_RATIO", "0.45"), 0.45)
+    )
+    quality_min_confidence = _clamp_ratio(
+        _coerce_float(os.getenv("OCR_QUALITY_MIN_CONFIDENCE", "0.35"), 0.35)
+    )
+    quality_max_short_word_ratio = _clamp_ratio(
+        _coerce_float(os.getenv("OCR_QUALITY_MAX_SHORT_WORD_RATIO", "0.75"), 0.75)
+    )
+    quality_min_avg_word_len = max(
+        1.0,
+        _coerce_float(os.getenv("OCR_QUALITY_MIN_AVG_WORD_LEN", "2.4"), 2.4),
+    )
+    fallback_enabled = os.getenv("OCR_FALLBACK_ENABLED", "1").lower() not in {
+        "0",
+        "false",
+        "no",
+    }
+    fallback_psm = _coerce_int(os.getenv("OCR_FALLBACK_PSM", "3"), 3)
     cache_dir = os.getenv(
         "OCR_CACHE_DIR",
         os.path.join(os.getcwd(), "backend", "ocr_cache"),
@@ -78,6 +108,13 @@ def get_ocr_config() -> OcrConfig:
         max_workers=max_workers,
         page_timeout_seconds=page_timeout,
         pdf_text_min_chars=pdf_text_min_chars,
+        quality_min_words=quality_min_words,
+        quality_min_alpha_ratio=quality_min_alpha_ratio,
+        quality_min_confidence=quality_min_confidence,
+        quality_max_short_word_ratio=quality_max_short_word_ratio,
+        quality_min_avg_word_len=quality_min_avg_word_len,
+        fallback_enabled=fallback_enabled,
+        fallback_psm=fallback_psm,
         cache_dir=cache_dir,
         cache_enabled=cache_enabled,
     )
@@ -105,6 +142,76 @@ def ocr_image(image: Image.Image, config: OcrConfig) -> Tuple[str, Optional[floa
     text = _data_to_text(data)
     confidence = _data_to_confidence(data)
     return text.strip(), confidence
+
+
+def ocr_quality_stats(text: str) -> Dict[str, float]:
+    text = text or ""
+    total = len(text)
+    if total == 0:
+        return {
+            "total": 0,
+            "alpha_ratio": 0.0,
+            "alnum_ratio": 0.0,
+            "word_count": 0,
+            "short_word_ratio": 0.0,
+            "avg_word_len": 0.0,
+        }
+    alpha_count = sum(1 for ch in text if ch.isalpha())
+    alnum_count = sum(1 for ch in text if ch.isalnum())
+    words = re.findall(r"[A-Za-z]+", text)
+    word_count = len(words)
+    short_word_ratio = 0.0
+    avg_word_len = 0.0
+    if word_count:
+        short_word_ratio = sum(1 for w in words if len(w) <= 2) / word_count
+        avg_word_len = sum(len(w) for w in words) / word_count
+    return {
+        "total": total,
+        "alpha_ratio": alpha_count / total,
+        "alnum_ratio": alnum_count / total,
+        "word_count": word_count,
+        "short_word_ratio": short_word_ratio,
+        "avg_word_len": avg_word_len,
+    }
+
+
+def ocr_quality_score(
+    text: str, confidence: Optional[float], config: OcrConfig
+) -> float:
+    stats = ocr_quality_stats(text)
+    if stats["total"] <= 0:
+        return 0.0
+    word_scale = max(config.quality_min_words, 1)
+    word_score = min(stats["word_count"] / word_scale, 1.0)
+    confidence_score = max(confidence or 0.0, 0.0)
+    return (stats["alpha_ratio"] * 0.6) + (word_score * 0.3) + (confidence_score * 0.1)
+
+
+def is_ocr_quality_low(
+    text: str, confidence: Optional[float], config: OcrConfig
+) -> bool:
+    if not text or not text.strip():
+        return True
+    stats = ocr_quality_stats(text)
+    if stats["word_count"] < config.quality_min_words:
+        return True
+    if stats["alpha_ratio"] < config.quality_min_alpha_ratio:
+        return True
+    if stats["short_word_ratio"] > config.quality_max_short_word_ratio:
+        return True
+    if stats["avg_word_len"] < config.quality_min_avg_word_len:
+        return True
+    if confidence is not None and confidence < config.quality_min_confidence:
+        return True
+    return False
+
+
+def build_fallback_config(config: OcrConfig) -> Optional[OcrConfig]:
+    if not config.fallback_enabled:
+        return None
+    if config.fallback_psm == config.psm:
+        return None
+    return replace(config, psm=config.fallback_psm)
 
 
 def text_density(text: str) -> int:
@@ -218,6 +325,14 @@ def _data_to_confidence(data: Dict[str, Any]) -> Optional[float]:
     if not values:
         return None
     return sum(values) / (len(values) * 100.0)
+
+
+def _clamp_ratio(value: float) -> float:
+    if value < 0.0:
+        return 0.0
+    if value > 1.0:
+        return 1.0
+    return value
 
 
 def _safe_int(items: list, idx: int) -> int:
