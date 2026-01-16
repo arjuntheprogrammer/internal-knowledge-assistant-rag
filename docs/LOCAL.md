@@ -12,22 +12,40 @@ This guide will help you set up the **Internal Knowledge Assistant** for local d
 
 ## 1. Environment Setup
 
-It is highly recommended to use a virtual environment:
+### Option A: Docker (Preferred)
+Running with Docker is the most reliable way to ensure all system dependencies (like Tesseract OCR and build tools) are correctly configured.
 
+```bash
+docker compose up --build
+```
+The app will be available at `http://localhost:5001`.
+
+### Option B: Local Setup
+If you prefer to run directly on your host machine:
+
+#### Virtual Environment
 ```bash
 # Using venv
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # OR using Conda
-conda create -n knowledge-assistant python=3.10
+conda create -n knowledge-assistant python=3.11
 conda activate knowledge-assistant
 ```
 
-Install dependencies:
+#### Install Dependencies
+We recommend using **[uv](https://github.com/astral-sh/uv)** for faster installations.
+
 ```bash
+# If you have uv installed:
+uv pip install -r requirements.txt
+
+# Otherwise, using standard pip:
 pip install -r requirements.txt
 ```
+
+---
 
 ## 2. Configuration
 
@@ -59,7 +77,9 @@ Fill in the required values in your `.env`. Here are some key parts:
 - **Firebase Admin Credentials** (`FIREBASE_ADMIN_CREDENTIALS_PATH`): Used by the Python backend for token verification and Firestore access. **Keep this secret.**
 - **Firebase Client Config** (`FIREBASE_API_KEY`, etc.): Used by the JavaScript frontend to initialize Firebase Auth. These are safe to be public.
 
-## 3. Run Locally
+## 3. Run (Local Only)
+
+If you are **not** using Docker, start the Flask server manually:
 
 ```bash
 python app.py
