@@ -13,7 +13,7 @@ RUN apt-get update \
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt gunicorn
+RUN pip install uv && uv pip install --system --no-cache -r requirements.txt gunicorn
 
 # Copy application code
 COPY . .

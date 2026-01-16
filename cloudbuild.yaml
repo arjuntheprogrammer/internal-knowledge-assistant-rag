@@ -1,25 +1,35 @@
 steps:
-  # Build the container image
+  # 1. Pull the previous image to use as a cache source (allow failure if first run)
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args: ['-c', 'docker pull us-west1-docker.pkg.dev/$PROJECT_ID/knowledge-assistant/app:latest || exit 0']
+
+  # 2. Build the container image using cache
   - name: "gcr.io/cloud-builders/docker"
     args:
       [
         "build",
         "--build-arg",
         "BUILDKIT_INLINE_CACHE=1",
+        "--cache-from",
+        "us-west1-docker.pkg.dev/$PROJECT_ID/knowledge-assistant/app:latest",
         "-t",
         "us-west1-docker.pkg.dev/$PROJECT_ID/knowledge-assistant/app:$SHORT_SHA",
+        "-t",
+        "us-west1-docker.pkg.dev/$PROJECT_ID/knowledge-assistant/app:latest",
         ".",
       ]
 
-  # Push the container image to Artifact Registry
+  # 3. Push the container images (SHA and latest) to Artifact Registry
   - name: "gcr.io/cloud-builders/docker"
     args:
       [
         "push",
-        "us-west1-docker.pkg.dev/$PROJECT_ID/knowledge-assistant/app:$SHORT_SHA",
+        "us-west1-docker.pkg.dev/$PROJECT_ID/knowledge-assistant/app",
+        "--all-tags"
       ]
 
-  # Deploy container image to Cloud Run
+  # 4. Deploy container image to Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     entrypoint: gcloud
     args:
@@ -42,6 +52,7 @@ steps:
 
 images:
   - "us-west1-docker.pkg.dev/$PROJECT_ID/knowledge-assistant/app:$SHORT_SHA"
+  - "us-west1-docker.pkg.dev/$PROJECT_ID/knowledge-assistant/app:latest"
 
 options:
   logging: CLOUD_LOGGING_ONLY
