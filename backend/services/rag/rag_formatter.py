@@ -70,6 +70,9 @@ class RAGFormatter:
                     continue
                 metadata = getattr(node, "metadata", {}) or {}
                 drive_id = metadata.get("file id") or metadata.get("file_id")
+                page_number = metadata.get("page_number")
+                source_type = metadata.get("source")
+                mime_type = metadata.get("mime_type") or metadata.get("mime type")
                 label = (
                     metadata.get("file name")
                     or metadata.get("file_name")
@@ -78,15 +81,25 @@ class RAGFormatter:
                 if not label or label in {drive_id, node.node_id}:
                     label = "Google Drive document"
 
-                source_key = drive_id or label or node.node_id
+                page_suffix = f" (page {page_number})" if page_number else ""
+                label_with_page = f"{label}{page_suffix}"
+
+                source_parts = [drive_id or label_with_page or node.node_id]
+                if page_number:
+                    source_parts.append(str(page_number))
+                if source_type:
+                    source_parts.append(str(source_type))
+                source_key = ":".join(source_parts)
                 if not source_key or source_key in seen:
                     continue
                 seen.add(source_key)
-                if drive_id and label:
+                if drive_id and label_with_page:
                     url = f"https://drive.google.com/file/d/{drive_id}/view"
-                    sources.append(f"[{label}]({url})")
+                    if mime_type == "application/pdf" and page_number:
+                        url = f"{url}#page={page_number}"
+                    sources.append(f"[{label_with_page}]({url})")
                 else:
-                    sources.append(label)
+                    sources.append(label_with_page)
 
         if sources:
             bullets = "\n".join(f"- {source}" for source in sources)
