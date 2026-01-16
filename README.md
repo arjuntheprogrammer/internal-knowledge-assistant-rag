@@ -273,6 +273,27 @@ To trigger a manual build and deployment:
 gcloud builds submit --config cloudbuild.yaml . --substitutions SHORT_SHA=$(git rev-parse --short HEAD)
 ```
 
+### 3.1 Cloud Run Memory (Recommended)
+OCR + RAG workloads exceed the default 512Mi. Set Cloud Run to 1Gi to avoid OOMs:
+```bash
+gcloud run services update internal-knowledge-assistant \
+  --region us-west1 \
+  --memory 1Gi
+```
+
+To bake this into a one-off manual deploy (instead of updating later), use:
+```bash
+gcloud run deploy internal-knowledge-assistant \
+  --image us-west1-docker.pkg.dev/$PROJECT_ID/knowledge-assistant/app:$SHORT_SHA \
+  --region us-west1 \
+  --platform managed \
+  --allow-unauthenticated \
+  --service-account "knowledge-assistant-runner@$PROJECT_ID.iam.gserviceaccount.com" \
+  --set-env-vars "FLASK_CONFIG=production,APP_SECRETS_PATH=/secrets/app/secrets.json" \
+  --set-secrets "/secrets/app/secrets.json=app-secrets:latest" \
+  --memory 1Gi
+```
+
 ### 4. Custom Domain & Firebase
 The application is live at: [https://internal-knowledge-assistant-cp35zlfwgq-uw.a.run.app/](https://internal-knowledge-assistant-cp35zlfwgq-uw.a.run.app/)
 
