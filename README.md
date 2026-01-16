@@ -15,6 +15,7 @@ This is a premium AI-powered internal knowledge assistant designed to help you a
 7. **Chat Model**: OpenAI (GPT-4.1 mini).
 8. **Knowledge Base**: Google Drive folder integration.
 9. **Analytics**: Opik tracing for observability.
+10. **OCR Engine**: Tesseract OCR for high-fidelity scanning of images and non-searchable PDFs.
 
 ## Workflow
 
@@ -55,7 +56,8 @@ flowchart TD
 - **Google Drive Integration**: Seamlessly connect your Drive folders and index documents (Docs, PDFs, etc.) for instant retrieval.
 - **Scalable Multi-Tenancy**: Built using a shared Zilliz Cloud (Milvus) collection with metadata isolation, ensuring high performance regardless of the number of users.
 - **Hybrid Retrieval Engine**: Combines **Vector Search** (for semantic meaning) and **BM25 Search** (for keyword exact matches) to provide the most accurate context.
-- **Advanced Observability**: Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic workflows with **Opik** tracing, eval metrics, and production-ready dashboards.
+- **Intelligent OCR & Document Parsing**: Advanced multi-stage processing for PDFs and images. The system extracts digital text where available and automatically falls back to **Tesseract OCR** for scanned documents, ensuring comprehensive knowledge coverage with built-in caching and multi-threaded performance.
+- **Advanced Observability with Opik**: Deeply integrated **Opik** tracing for debugging, evaluating, and monitoring LLM applications. Track every step of the RAG pipeline with production-ready dashboards and evaluation metrics.
 - **Automated Synchronization**: Background scheduler periodically polls your Google Drive to keep the knowledge base up-to-date.
 
 ## Not Implemented Yet
