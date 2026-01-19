@@ -29,7 +29,7 @@ flowchart TD
     subgraph Setup["⚙️ Configuration"]
         C --> D[Enter OpenAI API Key]
         D --> E[Select Google Drive Folder]
-        E --> F[Index Documents]
+        E --> F[Build Database]
     end
 
     subgraph Chat["💬 Chat"]
@@ -45,15 +45,17 @@ flowchart TD
 ```
 
 1. User signs in with Google via Firebase Auth.
-2. User configures OpenAI API key and Google Drive folder ID.
-3. User asks a question in the chat interface.
-4. Backend retrieves relevant documents from **Zilliz Cloud** using hybrid search.
-5. Large Language Model (OpenAI) synthesizes the answer from the retrieved context.
-6. Responsive answers are returned with clickable citations and sources.
+2. User completes setup: validate OpenAI API key, authorize Drive, and select a folder.
+3. User builds the database (documents are indexed with progress feedback).
+4. Chat is enabled only after configuration is complete.
+5. User asks a question in the chat interface.
+6. Backend retrieves relevant documents from **Zilliz Cloud** using hybrid search.
+7. Large Language Model (OpenAI) synthesizes the answer from the retrieved context.
+8. Responsive answers are returned with clickable citations and sources.
 
 ## Key Features
 
-- **Google Drive Integration**: Seamlessly connect your Drive folders and index documents (Docs, PDFs, etc.) for instant retrieval.
+- **Google Drive Integration**: Seamlessly connect your Drive folders and build the searchable database for instant retrieval.
 - **Scalable Multi-Tenancy**: Built using a shared Zilliz Cloud (Milvus) collection with metadata isolation, ensuring high performance regardless of the number of users.
 - **Hybrid Retrieval Engine**: Combines **Vector Search** (for semantic meaning) and **BM25 Search** (for keyword exact matches) to provide the most accurate context.
 - **Intelligent OCR & Document Parsing**: Advanced multi-stage processing for PDFs and images. The system extracts digital text where available and automatically falls back to **Tesseract OCR** for scanned documents, ensuring comprehensive knowledge coverage with built-in caching and multi-threaded performance.
