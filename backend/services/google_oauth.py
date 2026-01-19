@@ -6,9 +6,6 @@ from google_auth_oauthlib.flow import Flow
 from backend.services.rag.rag_google_drive import resolve_credentials_path
 
 SCOPES = [
-    "openid",
-    "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/drive.readonly",
 ]
 
@@ -20,7 +17,6 @@ def build_google_auth_url(user_id, redirect_uri, origin):
 
     authorization_url, _ = flow.authorization_url(
         access_type="offline",
-        include_granted_scopes="true",
         state=user_id,
         prompt="consent",
     )

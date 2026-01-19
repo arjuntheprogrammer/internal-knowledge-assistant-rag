@@ -451,9 +451,6 @@ def _list_drive_files(token_path, folder_id):
         return None, f"Failed to read Drive token: {exc}"
 
     scopes = token_data.get("scopes") or [
-        "openid",
-        "https://www.googleapis.com/auth/userinfo.email",
-        "https://www.googleapis.com/auth/userinfo.profile",
         "https://www.googleapis.com/auth/drive.readonly",
     ]
 
@@ -549,9 +546,6 @@ def get_folder_checksum(user_id, drive_folder_id, token_json=None):
         return None
 
     scopes = token_data.get("scopes") or [
-        "openid",
-        "https://www.googleapis.com/auth/userinfo.email",
-        "https://www.googleapis.com/auth/userinfo.profile",
         "https://www.googleapis.com/auth/drive.readonly",
     ]
 

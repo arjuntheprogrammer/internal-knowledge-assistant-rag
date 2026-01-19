@@ -17,7 +17,6 @@ const auth = getAuth(app);
 const analytics = firebaseConfig.measurementId ? getAnalytics(app) : null;
 
 const provider = new GoogleAuthProvider();
-provider.addScope("https://www.googleapis.com/auth/drive.readonly");
 provider.setCustomParameters({
   prompt: "consent",
   access_type: "offline",
