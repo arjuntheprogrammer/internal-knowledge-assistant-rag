@@ -341,7 +341,7 @@ def test_drive(current_user):
             )
             if should_index:
                 indexing_result = IndexingService.start_indexing(
-                    user_context, force=True
+                    user_context, force=True, inline=True
                 )
                 indexing_started = indexing_result.get("success", False)
 
@@ -422,7 +422,9 @@ def start_indexing(current_user):
     )
 
     # Don't force re-indexing if already READY
-    result = IndexingService.start_indexing(user_context, force=False)
+    result = IndexingService.start_indexing(
+        user_context, force=False, inline=True
+    )
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
 
@@ -470,6 +472,8 @@ def re_index(current_user):
     )
 
     # Force indexing even if already READY
-    result = IndexingService.start_indexing(user_context, force=True)
+    result = IndexingService.start_indexing(
+        user_context, force=True, inline=True
+    )
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code

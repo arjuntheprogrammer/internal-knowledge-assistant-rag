@@ -89,7 +89,11 @@ class IndexingService:
 
     @classmethod
     def start_indexing(
-        cls, user_context: dict, force: bool = False, silent: bool = False
+        cls,
+        user_context: dict,
+        force: bool = False,
+        silent: bool = False,
+        inline: bool = False,
     ) -> dict:
         """
         Start background indexing for a user.
@@ -98,6 +102,7 @@ class IndexingService:
             user_context: Dict containing uid, openai_api_key, drive_folder_id, google_token
             force: If True, re-index even if already READY.
             silent: If True, don't update status to INDEXING if already READY.
+            inline: If True, run indexing on the request thread.
         """
         user_id = user_context.get("uid")
         if not user_id:
@@ -132,6 +137,10 @@ class IndexingService:
         if not user_context.get("google_token"):
             return {"success": False, "message": "Google Drive is not authorized"}
 
+        if inline and silent:
+            # Inline runs should always update status for the user-facing flow.
+            silent = False
+
         # Update status to INDEXING (unless silent and already ready)
         if not (silent and current_status["status"] == IndexingStatus.READY):
             cls._update_status(
@@ -144,6 +153,19 @@ class IndexingService:
         from backend.utils.time_utils import utc_now
 
         UserConfig.update_config(user_id, {"indexing_started_at": utc_now()})
+
+        if inline:
+            with cls._job_lock:
+                cls._active_jobs[user_id] = threading.current_thread()
+            cls.logger.info("Started inline indexing for user %s", user_id)
+            cls._run_indexing(user_context.copy(), silent)
+            final_status = cls.get_status(user_id)
+            success = final_status["status"] == IndexingStatus.READY
+            return {
+                "success": success,
+                "message": final_status.get("message") or "Indexing finished",
+                "status": final_status["status"],
+            }
 
         # Start background thread
         thread = threading.Thread(

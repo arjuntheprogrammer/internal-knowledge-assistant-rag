@@ -471,6 +471,7 @@ export async function verifyDriveConnection() {
   }
 
   let indexingStarted = false;
+  startIndexingPoll({ waitForStart: true });
 
   try {
     const res = await fetch(`${API_BASE}/config/test-drive`, {
@@ -493,11 +494,13 @@ export async function verifyDriveConnection() {
       ul.innerHTML = `<li style="color: red">Error: ${
         data.message || "Verification failed."
       }</li>`;
+      stopIndexingPoll();
       return; // Cleanup in finally
     }
 
     if (!data.success) {
       ul.innerHTML = `<li style="color: red">Error: ${data.message}</li>`;
+      stopIndexingPoll();
       return; // Cleanup in finally
     }
 
@@ -517,11 +520,17 @@ export async function verifyDriveConnection() {
       showToast("Drive connected! Indexing your documents...", "success");
       showIndexingStatusInline("Indexing documents...");
       startIndexingPoll();
+    } else {
+      const status = await getIndexingStatus();
+      if (!status || status.status === "PENDING") {
+        stopIndexingPoll();
+      }
     }
 
     await loadConfig();
   } catch (e) {
     ul.innerHTML = `<li style="color: red">Verification request failed: ${e}</li>`;
+    stopIndexingPoll();
     await loadConfig();
   } finally {
     if (verifyBtn) verifyBtn.disabled = false;
@@ -649,6 +658,16 @@ export async function getIndexingStatus() {
   }
 }
 
+function stopIndexingPoll({ hideLoader = true } = {}) {
+  if (indexingPollInterval) {
+    clearInterval(indexingPollInterval);
+    indexingPollInterval = null;
+  }
+  if (hideLoader) {
+    hideFullscreenLoader();
+  }
+}
+
 // Load and display inline indexing status (shown in Drive section)
 async function loadIndexingStatusInline() {
   const status = await getIndexingStatus();
@@ -695,7 +714,8 @@ function hideIndexingStatusInline() {
   }
 }
 
-function startIndexingPoll() {
+function startIndexingPoll(options = {}) {
+  const waitForStart = Boolean(options.waitForStart);
   if (indexingPollInterval) return;
 
   // Ensure loader is visible when polling starts
@@ -710,12 +730,13 @@ function startIndexingPoll() {
         showFullscreenLoader(msg);
         // Also update the top banner
         showConfigNotice();
+      } else if (status.status === "PENDING" && waitForStart) {
+        const msg = "Preparing to index documents...";
+        showIndexingStatusInline(msg);
+        showFullscreenLoader(msg);
       } else if (status.status !== "INDEXING") {
         // Stop polling when done
-        clearInterval(indexingPollInterval);
-        indexingPollInterval = null;
-
-        hideFullscreenLoader();
+        stopIndexingPoll();
 
         if (status.status === "READY") {
           showIndexingStatusInline(
