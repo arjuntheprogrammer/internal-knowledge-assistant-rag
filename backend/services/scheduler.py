@@ -58,7 +58,7 @@ class SchedulerService:
                         )
 
                         # Use IndexingService to ensure status is tracked and jobs are locked
-                        # We use silent=True so that if the user is already READY, it doesn't
+                        # We use silent=True so that if the user is already COMPLETED, it doesn't
                         # reset their progress to 0 and show the "Connecting" banner.
                         from backend.services.indexing_service import IndexingService
 

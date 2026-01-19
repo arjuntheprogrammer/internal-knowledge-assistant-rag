@@ -54,7 +54,7 @@ class LazyRAGQueryEngine(BaseQueryEngine):
         # If not available, try to rebuild from vector store
         index = self._service.get_index(user_id)
         if not index:
-            # Check if user has completed indexing before (status is READY)
+                # Check if user has completed indexing before (status is COMPLETED)
             from backend.services.indexing_service import (
                 IndexingService,
                 IndexingStatus,
@@ -62,7 +62,7 @@ class LazyRAGQueryEngine(BaseQueryEngine):
 
             status_info = IndexingService.get_status(user_id)
 
-            if status_info.get("status") == IndexingStatus.READY:
+            if status_info.get("status") == IndexingStatus.COMPLETED:
                 # Index was built but in-memory cache is empty (e.g., server restart)
                 # Rebuild from persisted vector store
                 index = self._rebuild_index_from_vector_store(user_id)

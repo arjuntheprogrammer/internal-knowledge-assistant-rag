@@ -7,164 +7,251 @@ Assistant{% endblock %} {% block content %}
     </div>
     <h2>Configuration</h2>
     <div class="admin-left">
-      <div class="config-section">
-        <h3>OpenAI</h3>
-        <div style="margin-bottom: 12px; line-height: 1.6">
-          <div style="font-size: 0.85rem; color: var(--text-muted)">
-            Using model
-            <span
-              style="
-                color: var(--primary-color);
-                font-weight: 800;
-                background: rgba(59, 130, 246, 0.08);
-                padding: 2px 8px;
-                border-radius: 6px;
-                border: 1px solid rgba(59, 130, 246, 0.15);
-              "
-              >gpt-4.1-mini</span
-            >
-          </div>
-          <div
-            style="
-              font-size: 0.85rem;
-              color: var(--text-muted);
-              margin-top: 4px;
-            "
+      <div class="config-steps">
+        <div class="config-step" id="step-1" data-step="1">
+          <button
+            class="config-step-header"
+            type="button"
+            data-step-toggle="1"
+            aria-expanded="true"
           >
-            Add your OpenAI API key below.
+            <div class="step-header-left">
+              <span class="step-number">1</span>
+              <div class="step-title-group">
+                <span class="step-title">API Key Setup</span>
+                <span id="step-1-subtitle" class="step-subtitle"
+                  >Validate your OpenAI key.</span
+                >
+              </div>
+            </div>
+            <div class="step-header-right">
+              <span id="step-1-status" class="step-status">Pending</span>
+              <span class="step-toggle-icon">▾</span>
+            </div>
+          </button>
+          <div class="config-step-body" id="step-1-body">
+            <div style="margin-bottom: 12px; line-height: 1.6">
+              <div style="font-size: 0.85rem; color: var(--text-muted)">
+                Using model
+                <span
+                  style="
+                    color: var(--primary-color);
+                    font-weight: 800;
+                    background: rgba(59, 130, 246, 0.08);
+                    padding: 2px 8px;
+                    border-radius: 6px;
+                    border: 1px solid rgba(59, 130, 246, 0.15);
+                  "
+                  >gpt-4.1-mini</span
+                >
+              </div>
+              <div
+                style="
+                  font-size: 0.85rem;
+                  color: var(--text-muted);
+                  margin-top: 4px;
+                "
+              >
+                Add your OpenAI API key below.
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>API Key</label>
+                <input
+                  type="password"
+                  id="openai-key"
+                  placeholder="sk-..."
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+            <div id="openai-key-status" class="form-status">
+              Not configured
+            </div>
+            <button
+              id="test-openai-btn"
+              class="btn-secondary"
+              style="margin-top: 10px"
+            >
+              Test OpenAI Key
+            </button>
+            <span
+              id="openai-test-result"
+              style="margin-left: 10px; font-weight: 600"
+            ></span>
+            <div
+              style="
+                font-size: 0.75rem;
+                color: var(--text-muted);
+                margin-top: 6px;
+              "
+            >
+              Settings save automatically when you run a test.
+            </div>
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>API Key</label>
-            <input
-              type="password"
-              id="openai-key"
-              placeholder="sk-..."
-              autocomplete="off"
-            />
+
+        <div class="config-step" id="step-2" data-step="2">
+          <button
+            class="config-step-header"
+            type="button"
+            data-step-toggle="2"
+            aria-expanded="false"
+          >
+            <div class="step-header-left">
+              <span class="step-number">2</span>
+              <div class="step-title-group">
+                <span class="step-title">Google Drive Setup</span>
+                <span id="step-2-subtitle" class="step-subtitle"
+                  >Authorize and pick a folder.</span
+                >
+              </div>
+            </div>
+            <div class="step-header-right">
+              <span id="step-2-status" class="step-status">Locked</span>
+              <span class="step-toggle-icon">▾</span>
+            </div>
+          </button>
+          <div class="config-step-body" id="step-2-body">
+            <p
+              style="
+                font-size: 0.85rem;
+                color: var(--text-muted);
+                margin-bottom: 8px;
+              "
+            >
+              Authorize Drive access and select a folder. No files are downloaded
+              in this step.
+            </p>
+            <div id="google-auth-section" class="drive-auth-block">
+              <div class="drive-auth-row">
+                <button id="auth-btn" class="btn-secondary">
+                  Authorize Google Drive
+                </button>
+                <span id="drive-auth-status" class="status-inline"
+                  >Status: Checking...</span
+                >
+              </div>
+              <p id="auth-hint" class="drive-auth-hint">
+                Authorize to access your Drive.
+              </p>
+            </div>
+
+            <div class="folder-picker-section" style="margin-top: 16px">
+              <label
+                style="
+                  font-size: 0.85rem;
+                  font-weight: 600;
+                  color: var(--text-muted);
+                  display: block;
+                  margin-bottom: 8px;
+                "
+              >
+                Select Folder to Index
+              </label>
+
+              <div
+                id="selected-folder-display"
+                class="selected-folder-display"
+                style="display: none"
+              >
+                <span class="folder-icon">📁</span>
+                <span id="selected-folder-name" class="selected-folder-name"
+                  >No folder selected</span
+                >
+                <div class="folder-display-actions">
+                  <button id="change-folder-btn" type="button" class="btn-link">
+                    Change
+                  </button>
+                  <span class="action-divider">|</span>
+                  <button
+                    id="remove-folder-btn"
+                    type="button"
+                    class="btn-link btn-link-danger"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+
+              <div id="folder-picker-actions" class="folder-picker-actions">
+                <button id="select-folder-btn" type="button" class="btn-primary">
+                  📁 Select Folder from Drive
+                </button>
+              </div>
+
+              <input type="hidden" id="drive-folder-id" value="" />
+            </div>
+
+            <div class="step-actions">
+              <span id="drive-save-status" class="status-inline"
+                >No folder selected.</span
+              >
+            </div>
           </div>
         </div>
-        <div id="openai-key-status" class="form-status">Not configured</div>
-        <button
-          id="test-openai-btn"
-          class="btn-secondary"
-          style="margin-top: 10px"
-        >
-          Test OpenAI Key
-        </button>
-        <span
-          id="openai-test-result"
-          style="margin-left: 10px; font-weight: 600"
-        ></span>
-        <div
-          style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px"
-        >
-          Settings save automatically when you run a test.
+
+        <div class="config-step" id="step-3" data-step="3">
+          <button
+            class="config-step-header"
+            type="button"
+            data-step-toggle="3"
+            aria-expanded="false"
+          >
+            <div class="step-header-left">
+              <span class="step-number">3</span>
+              <div class="step-title-group">
+                <span class="step-title">Build Database</span>
+                <span id="step-3-subtitle" class="step-subtitle"
+                  >Index your Drive data.</span
+                >
+              </div>
+            </div>
+            <div class="step-header-right">
+              <span id="step-3-status" class="step-status">Locked</span>
+              <span class="step-toggle-icon">▾</span>
+            </div>
+          </button>
+          <div class="config-step-body" id="step-3-body">
+            <p
+              style="
+                font-size: 0.85rem;
+                color: var(--text-muted);
+                margin-bottom: 12px;
+              "
+            >
+              Download files, generate embeddings, and build your vector index.
+            </p>
+            <button id="build-database-btn" class="btn-primary">
+              Build Database
+            </button>
+            <div
+              id="indexing-status-inline"
+              class="indexing-status-inline"
+              style="display: none; margin-top: 12px"
+            >
+              <span id="indexing-inline-text" class="indexing-inline-text"></span>
+              <div class="indexing-progress-bar">
+                <div
+                  id="indexing-progress-fill"
+                  class="indexing-progress-fill"
+                  style="width: 0%"
+                ></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="config-section">
-        <h3>Google Drive</h3>
-        <p
-          style="
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-          "
-        >
-          Authorize Drive access and provide a single folder ID to index.
-        </p>
-        <div id="google-auth-section" class="drive-auth-block">
-          <div class="drive-auth-row">
-            <button id="auth-btn" class="btn-secondary">
-              Authorize Google Drive
-            </button>
-            <span id="drive-auth-status" class="status-inline"
-              >Status: Checking...</span
-            >
+      <div id="config-complete" class="config-complete" style="display: none">
+        <div class="config-complete-icon">✓</div>
+        <div class="config-complete-content">
+          <div class="config-complete-title">All set!</div>
+          <div class="config-complete-message">
+            Your knowledge base is ready. You can start chatting now.
           </div>
-          <p id="auth-hint" class="drive-auth-hint">
-            Authorize to access your Drive.
-          </p>
-        </div>
-
-        <!-- Folder Selection -->
-        <div class="folder-picker-section" style="margin-top: 16px">
-          <label
-            style="
-              font-size: 0.85rem;
-              font-weight: 600;
-              color: var(--text-muted);
-              display: block;
-              margin-bottom: 8px;
-            "
-          >
-            Select Folder to Index
-          </label>
-
-          <div
-            id="selected-folder-display"
-            class="selected-folder-display"
-            style="display: none"
-          >
-            <span class="folder-icon">📁</span>
-            <span id="selected-folder-name" class="selected-folder-name"
-              >No folder selected</span
-            >
-            <div class="folder-display-actions">
-              <button id="change-folder-btn" type="button" class="btn-link">
-                Change
-              </button>
-              <span class="action-divider">|</span>
-              <button
-                id="remove-folder-btn"
-                type="button"
-                class="btn-link btn-link-danger"
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-
-          <div id="folder-picker-actions" class="folder-picker-actions">
-            <button id="select-folder-btn" type="button" class="btn-primary">
-              📁 Select Folder from Drive
-            </button>
-          </div>
-
-          <input type="hidden" id="drive-folder-id" value="" />
-        </div>
-
-        <div class="drive-auth-row" style="margin-top: 16px">
-          <button id="verify-drive-btn" class="btn-primary">
-            Scan Google Drive
-          </button>
-          <span id="drive-test-status" class="status-inline"
-            >Not connected yet.</span
-          >
-        </div>
-        <div
-          id="drive-test-results"
-          class="drive-test-results"
-          style="display: none; margin-top: 10px"
-        >
-          <ul
-            id="drive-files-list"
-            style="
-              margin: 0;
-              padding-left: 18px;
-              font-size: 0.9rem;
-              line-height: 1.6;
-            "
-          ></ul>
-        </div>
-        <div
-          id="indexing-status-inline"
-          class="indexing-status-inline"
-          style="display: none; margin-top: 12px"
-        >
-          <span id="indexing-inline-text" class="indexing-inline-text"></span>
+          <a class="btn-primary" href="/">Go to Chat</a>
         </div>
       </div>
     </div>

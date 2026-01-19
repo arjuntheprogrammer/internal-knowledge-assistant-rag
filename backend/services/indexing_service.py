@@ -20,8 +20,8 @@ class IndexingStatus(str, Enum):
     """Status of the indexing process for a user."""
 
     PENDING = "PENDING"  # Initial state, never indexed
-    INDEXING = "INDEXING"  # Currently processing documents
-    READY = "READY"  # Indexing complete, ready for queries
+    PROCESSING = "PROCESSING"  # Currently processing documents
+    COMPLETED = "COMPLETED"  # Indexing complete, ready for queries
     FAILED = "FAILED"  # Indexing failed with an error
 
 
@@ -38,14 +38,15 @@ class IndexingService:
     logger = logging.getLogger(__name__)
 
     @classmethod
-    def get_status(cls, user_id: str) -> dict:
+    def get_status(cls, user_id: str, user: Optional[dict] = None) -> dict:
         """
         Get the current indexing status for a user.
 
         Returns:
             dict with status, message, progress, and timestamps
         """
-        user = UserConfig.get_user(user_id) or {}
+        if user is None:
+            user = UserConfig.get_user(user_id) or {}
         status = user.get("indexing_status", IndexingStatus.PENDING)
 
         # Check if there's an active job running
@@ -54,8 +55,8 @@ class IndexingService:
                 user_id in cls._active_jobs and cls._active_jobs[user_id].is_alive()
             )
 
-        # If status says INDEXING but no active thread, it may have crashed
-        if status == IndexingStatus.INDEXING and not is_active:
+        # If status says PROCESSING but no active thread, it may have crashed
+        if status == IndexingStatus.PROCESSING and not is_active:
             # Check if it's been stuck for more than 10 minutes
             started_at = user.get("indexing_started_at")
             if started_at:
@@ -100,8 +101,8 @@ class IndexingService:
 
         Args:
             user_context: Dict containing uid, openai_api_key, drive_folder_id, google_token
-            force: If True, re-index even if already READY.
-            silent: If True, don't update status to INDEXING if already READY.
+            force: If True, re-index even if already COMPLETED.
+            silent: If True, don't update status to PROCESSING if already COMPLETED.
             inline: If True, run indexing on the request thread.
         """
         user_id = user_context.get("uid")
@@ -114,18 +115,18 @@ class IndexingService:
                 return {
                     "success": False,
                     "message": "Indexing is already in progress",
-                    "status": IndexingStatus.INDEXING,
+                    "status": IndexingStatus.PROCESSING,
                 }
 
         # Check if already indexed and not forced
         current_status = cls.get_status(user_id)
-        if current_status["status"] == IndexingStatus.READY and not force:
+        if current_status["status"] == IndexingStatus.COMPLETED and not force:
             if not silent:
                 # Manual request shouldn't re-index if already done
                 return {
                     "success": True,
                     "message": "Documents already connected",
-                    "status": IndexingStatus.READY,
+                    "status": IndexingStatus.COMPLETED,
                 }
             # Silent background sync: Proceed to cross-check files without updating status
 
@@ -141,11 +142,11 @@ class IndexingService:
             # Inline runs should always update status for the user-facing flow.
             silent = False
 
-        # Update status to INDEXING (unless silent and already ready)
-        if not (silent and current_status["status"] == IndexingStatus.READY):
+        # Update status to PROCESSING (unless silent and already completed)
+        if not (silent and current_status["status"] == IndexingStatus.COMPLETED):
             cls._update_status(
                 user_id,
-                IndexingStatus.INDEXING,
+                IndexingStatus.PROCESSING,
                 "Getting your documents ready...",
                 progress=0,
             )
@@ -160,7 +161,7 @@ class IndexingService:
             cls.logger.info("Started inline indexing for user %s", user_id)
             cls._run_indexing(user_context.copy(), silent)
             final_status = cls.get_status(user_id)
-            success = final_status["status"] == IndexingStatus.READY
+            success = final_status["status"] == IndexingStatus.COMPLETED
             return {
                 "success": success,
                 "message": final_status.get("message") or "Indexing finished",
@@ -188,7 +189,7 @@ class IndexingService:
         return {
             "success": True,
             "message": "Indexing started",
-            "status": IndexingStatus.INDEXING,
+            "status": IndexingStatus.PROCESSING,
         }
 
     @classmethod
@@ -205,7 +206,7 @@ class IndexingService:
             def on_progress(msg, progress):
                 if not silent:
                     cls._update_status(
-                        user_id, IndexingStatus.INDEXING, msg, progress=progress
+                        user_id, IndexingStatus.PROCESSING, msg, progress=progress
                     )
                 else:
                     cls.logger.info(
@@ -223,7 +224,7 @@ class IndexingService:
 
                 cls._update_status(
                     user_id,
-                    IndexingStatus.READY,
+                    IndexingStatus.COMPLETED,
                     "Indexing complete! You can now chat with your documents.",
                     progress=100,
                 )
@@ -241,7 +242,7 @@ class IndexingService:
                 # but we ensure consistency here.
                 cls._update_status(
                     user_id,
-                    IndexingStatus.READY,
+                    IndexingStatus.COMPLETED,
                     "No documents found or already indexed.",
                     progress=100,
                 )
@@ -295,7 +296,7 @@ class IndexingService:
     def is_ready(cls, user_id: str) -> bool:
         """Check if indexing is complete and ready for queries."""
         status_info = cls.get_status(user_id)
-        return status_info["status"] == IndexingStatus.READY
+        return status_info["status"] == IndexingStatus.COMPLETED
 
     @classmethod
     def cancel_indexing(cls, user_id: str) -> dict:
@@ -320,7 +321,7 @@ class IndexingService:
         Reset indexing status and clear all indexing metadata for a user.
         """
         cls._update_status(
-            user_id, IndexingStatus.PENDING, "No documents indexed.", progress=0
+            user_id, IndexingStatus.PENDING, "Database not built.", progress=0
         )
         UserConfig.update_config(
             user_id,

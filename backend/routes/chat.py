@@ -52,16 +52,39 @@ def chat(current_user):
         openai_key = user_context.get("openai_api_key")
         if not openai_key:
             return jsonify({"message": "OpenAI API key is not configured."}), 400
+        if not user_config.get("openai_key_valid"):
+            return (
+                jsonify(
+                    {
+                        "message": "OpenAI API key is not validated. Please test it in Settings.",
+                        "needs_config": True,
+                    }
+                ),
+                400,
+            )
 
         drive_folder_id = user_context.get("drive_folder_id")
         google_token = user_context.get("google_token")
-        if not drive_folder_id:
+        if not google_token:
             return (
-                jsonify({"message": "Google Drive folder ID is not configured."}),
+                jsonify(
+                    {
+                        "message": "Google Drive access is not authorized. Please connect your Drive in Settings.",
+                        "needs_config": True,
+                    }
+                ),
                 400,
             )
-        if not google_token:
-            return jsonify({"message": "Google Drive access is not authorized."}), 400
+        if not drive_folder_id:
+            return (
+                jsonify(
+                    {
+                        "message": "Google Drive folder is not selected. Please choose a folder in Settings.",
+                        "needs_config": True,
+                    }
+                ),
+                400,
+            )
 
         # Check indexing status before allowing queries
         indexing_status = IndexingService.get_status(current_user["uid"])
@@ -70,7 +93,7 @@ def chat(current_user):
         # Only block if we are indexing AND we don't have a previous successful connection.
         # This allows silent background syncs (from the scheduler) to happen without interrupting the chat.
         indexing_completed_at = user_config.get("indexing_completed_at")
-        if status == IndexingStatus.INDEXING and not indexing_completed_at:
+        if status == IndexingStatus.PROCESSING and not indexing_completed_at:
             progress = indexing_status.get("progress", 0)
             message = indexing_status.get("message", "Processing documents...")
             return (
@@ -88,9 +111,9 @@ def chat(current_user):
             return (
                 jsonify(
                     {
-                        "message": "We haven't connected your documents yet. Please go to Settings and click 'Connect Google Drive' to begin.",
+                        "message": "We haven't built your document database yet. Please go to Settings and click 'Build Database' to begin.",
                         "indexing": False,
-                        "needs_indexing": True,
+                        "needs_config": True,
                     }
                 ),
                 400,

@@ -132,7 +132,7 @@ export async function checkRouteAccess(redirectOnSuccess = true) {
   // User is authenticated - check if config is complete for chat page
   if (path === "/" || path === "") {
     const status = await getConfigStatus();
-    if (!status.configReady) {
+    if (!status.ready) {
       const toast = document.getElementById("chat-redirect-toast");
       if (toast) {
         toast.style.display = "block";

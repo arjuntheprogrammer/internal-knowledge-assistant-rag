@@ -187,13 +187,7 @@ async function fetchConfigReady(idToken) {
     if (!res.ok) return false;
     const config = await safeJson(res);
     if (!config) return false;
-    return Boolean(
-      config.has_openai_key &&
-        config.openai_key_valid &&
-        config.drive_folder_id &&
-        config.drive_authenticated &&
-        config.drive_test_success
-    );
+    return Boolean(config.config_ready);
   } catch (err) {
     return false;
   }

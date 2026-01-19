@@ -37,7 +37,7 @@ export function bindChat() {
     }
   }
 
-  // Check indexing status and show banner if needed
+  // Check configuration status and show banner if needed
   checkAndShowIndexingBanner();
 }
 
@@ -50,7 +50,7 @@ export function unbindChat() {
 
 async function checkAndShowIndexingBanner() {
   try {
-    const res = await fetch(`${API_BASE}/config/indexing-ready`, {
+    const res = await fetch(`${API_BASE}/config`, {
       headers: authHeaders(),
     });
     if (!res.ok) return;
@@ -63,17 +63,19 @@ async function checkAndShowIndexingBanner() {
       existingBanner.remove();
     }
 
-    if (!data.ready) {
-      // Disable input if not ready
-      toggleChatInput(false, getDisabledMessage(data.status));
+    if (!data.config_ready) {
+      const steps = data.steps || {};
+      const indexing = data.indexing || {};
+      const status = indexing.status || "PENDING";
 
-      const banner = createIndexingBanner(data);
+      toggleChatInput(false, getDisabledMessage(steps, status));
+
+      const banner = createIndexingBanner(steps, indexing);
       if (chatContainer && banner) {
         chatContainer.insertBefore(banner, chatContainer.firstChild);
       }
 
-      // Start polling if indexing is in progress
-      if (data.status === "INDEXING") {
+      if (status === "PROCESSING") {
         startChatIndexingPoll();
       }
     } else {
@@ -97,23 +99,26 @@ function toggleChatInput(enabled, placeholder = "Type your message...") {
   }
 }
 
-function getDisabledMessage(status) {
-  if (status === "INDEXING") return "Getting documents ready... Please wait.";
-  if (status === "PENDING") return "Please finish setup in settings.";
-  if (status === "FAILED") return "Setup incomplete. Check settings.";
-  return "Chat disabled.";
+function getDisabledMessage(steps, status) {
+  if (status === "PROCESSING") return "Building database... Please wait.";
+  if (steps?.api_key?.status !== "COMPLETED")
+    return "Complete Step 1 in Settings to continue.";
+  if (steps?.drive?.status !== "COMPLETED")
+    return "Complete Step 2 in Settings to continue.";
+  if (status === "FAILED") return "Build failed. Check Settings.";
+  return "Complete configuration in Settings.";
 }
 
-function createIndexingBanner(data) {
+function createIndexingBanner(steps, indexing) {
   const banner = document.createElement("div");
   banner.id = "indexing-banner";
   banner.className = `chat-indexing-banner ${
-    data.status === "INDEXING" ? "indexing" : "needs-indexing"
+    indexing.status === "PROCESSING" ? "indexing" : "needs-indexing"
   }`;
 
   const icon = document.createElement("div");
   icon.className = "chat-indexing-banner-icon";
-  icon.textContent = data.status === "INDEXING" ? "⏳" : "📚";
+  icon.textContent = indexing.status === "PROCESSING" ? "⏳" : "📚";
 
   const content = document.createElement("div");
   content.className = "chat-indexing-banner-content";
@@ -124,19 +129,28 @@ function createIndexingBanner(data) {
   const message = document.createElement("div");
   message.className = "chat-indexing-banner-message";
 
-  if (data.status === "INDEXING") {
-    title.textContent = "Connecting to Documents";
+  if (indexing.status === "PROCESSING") {
+    title.textContent = "Building Database";
     message.innerHTML = `${
-      data.message || "Processing your documents..."
-    } <br>Please wait while we get everything ready.`;
-  } else if (data.status === "PENDING") {
-    title.textContent = "No Documents Connected";
-    message.innerHTML = `We haven't processed your documents yet. <a href="/configure">Go to Settings</a> to finish the setup.`;
-  } else if (data.status === "FAILED") {
-    title.textContent = "Setup Incomplete";
+      indexing.message || "Processing your documents..."
+    } <br>Please wait while we finish building your database.`;
+  } else if (steps?.api_key?.status !== "COMPLETED") {
+    title.textContent = "API Key Required";
+    message.innerHTML =
+      'Please complete Step 1 in <a href="/configure">Settings</a>.';
+  } else if (steps?.drive?.status !== "COMPLETED") {
+    title.textContent = "Drive Setup Required";
+    message.innerHTML =
+      'Please complete Step 2 in <a href="/configure">Settings</a>.';
+  } else if (indexing.status === "FAILED") {
+    title.textContent = "Build Failed";
     message.innerHTML = `${
-      data.message || "We ran into an issue."
-    } <a href="/configure">Go to Settings</a> to retry connecting your folder.`;
+      indexing.message || "We ran into an issue."
+    } <a href="/configure">Go to Settings</a> to retry building the database.`;
+  } else {
+    title.textContent = "Database Not Built";
+    message.innerHTML =
+      'Please complete Step 3 in <a href="/configure">Settings</a>.';
   }
 
   content.appendChild(title);
@@ -153,14 +167,15 @@ function startChatIndexingPoll() {
 
   chatIndexingPollInterval = setInterval(async () => {
     try {
-      const res = await fetch(`${API_BASE}/config/indexing-ready`, {
+      const res = await fetch(`${API_BASE}/config`, {
         headers: authHeaders(),
       });
       if (!res.ok) return;
 
       const data = await res.json();
+      const status = data.indexing?.status || "PENDING";
 
-      if (data.ready) {
+      if (data.config_ready) {
         clearInterval(chatIndexingPollInterval);
         chatIndexingPollInterval = null;
 
@@ -176,6 +191,9 @@ function startChatIndexingPoll() {
           "Great! Your documents are now connected and ready to chat.",
           "success"
         );
+      } else if (status === "FAILED") {
+        clearInterval(chatIndexingPollInterval);
+        chatIndexingPollInterval = null;
       }
     } catch (err) {
       // Ignore polling errors
@@ -216,7 +234,7 @@ export async function sendMessage() {
         }\n\nPlease wait a moment while we finish connecting your documents.`
       );
       // Keep disabled and start polling since we're indexing
-      toggleChatInput(false, getDisabledMessage("INDEXING"));
+      toggleChatInput(false, getDisabledMessage({}, "PROCESSING"));
       startChatIndexingPoll();
       return;
     }
@@ -225,20 +243,20 @@ export async function sendMessage() {
       appendMessage("bot", data.response, data.message_id);
       toggleChatInput(true);
     } else {
-      // Handle needs_indexing and failed states
-      if (data.needs_indexing) {
+      // Handle needs_config and failed states
+      if (data.needs_config) {
         appendMessage(
           "bot",
-          "📚 **No Documents Connected**\n\nYour documents haven't been processed yet. Please go to [Settings](/configure) and click **Connect Google Drive** to begin."
+          "📚 **Setup Required**\n\nPlease complete the configuration in [Settings](/configure) before chatting."
         );
-        toggleChatInput(false, getDisabledMessage("PENDING"));
+        toggleChatInput(false, getDisabledMessage({}, "PENDING"));
       } else if (data.failed) {
         appendMessage(
           "bot",
           "❌ **Setup Incomplete**\n\n" +
             (data.message || "Please go to Settings to reconnect your folder.")
         );
-        toggleChatInput(false, getDisabledMessage("FAILED"));
+        toggleChatInput(false, getDisabledMessage({}, "FAILED"));
       } else {
         appendMessage(
           "bot",

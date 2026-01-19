@@ -19,6 +19,41 @@ from backend.utils.user_context import build_user_context
 config_bp = Blueprint("config", __name__)
 
 
+def _build_step_statuses(user, indexing_status: dict) -> dict:
+    api_key = user.get("openai_api_key")
+    api_key_valid = bool(user.get("openai_key_valid"))
+    if api_key_valid:
+        api_status = {"status": "COMPLETED", "message": "API key validated."}
+    elif api_key:
+        api_status = {"status": "FAILED", "message": "API key not validated."}
+    else:
+        api_status = {"status": "PENDING", "message": "API key required."}
+
+    drive_auth = bool(user.get("google_token"))
+    drive_folder = bool(user.get("drive_folder_id"))
+    if drive_auth and drive_folder:
+        drive_status = {
+            "status": "COMPLETED",
+            "message": "Drive authorized and folder selected.",
+        }
+    else:
+        drive_status = {
+            "status": "PENDING",
+            "message": "Authorize Drive and select a folder.",
+        }
+
+    build_status = {
+        "status": indexing_status.get("status", IndexingStatus.PENDING),
+        "message": indexing_status.get("message") or "Build the database.",
+    }
+
+    return {
+        "api_key": api_status,
+        "drive": drive_status,
+        "build": build_status,
+    }
+
+
 def _normalize_drive_folder_id(value):
     if not value:
         return None
@@ -35,6 +70,7 @@ def _normalize_drive_folder_id(value):
 @token_required
 def get_config(current_user):
     user = UserConfig.get_user(current_user["uid"]) or {}
+    indexing_status = IndexingService.get_status(current_user["uid"], user=user)
     openai_key = user.get("openai_api_key")
     key_first4 = openai_key[:4] if openai_key and len(openai_key) >= 8 else None
     key_last4 = openai_key[-4:] if openai_key and len(openai_key) >= 8 else None
@@ -51,6 +87,10 @@ def get_config(current_user):
     if drive_test_folder_id and drive_test_folder_id != drive_folder_id:
         drive_test_success = False
         drive_tested_at = None
+    steps = _build_step_statuses(user, indexing_status)
+    config_ready = all(
+        step.get("status") == "COMPLETED" for step in steps.values()
+    )
     response = {
         "openai_model": "gpt-4.1-mini",
         "drive_folder_id": drive_folder_id,
@@ -63,6 +103,9 @@ def get_config(current_user):
         "drive_test_success": drive_test_success,
         "drive_tested_at": format_dt(drive_tested_at),
         "drive_test_folder_id": drive_test_folder_id,
+        "indexing": indexing_status,
+        "steps": steps,
+        "config_ready": config_ready,
     }
     return jsonify(response), 200
 
@@ -97,6 +140,7 @@ def update_config(current_user):
             "openai_api_key"
         ) or update_data.get("drive_folder_id") != existing.get("drive_folder_id"):
             RAGService.reset_user_cache(current_user["uid"])
+            IndexingService.reset_indexing(current_user["uid"])
         if (
             "drive_folder_id" in update_data
             and update_data.get("drive_folder_id") is None
@@ -283,9 +327,7 @@ def test_drive(current_user):
         )
     previous_folder_id = user.get("drive_folder_id")
     previous_checksum = user.get("drive_folder_checksum")
-    drive_folder_changed = False
     if payload.get("drive_folder_id"):
-        drive_folder_changed = drive_folder_id != previous_folder_id
         UserConfig.update_config(
             current_user["uid"],
             {
@@ -319,37 +361,7 @@ def test_drive(current_user):
         },
     )
 
-    # Auto-start indexing if Drive test was successful
-    indexing_started = False
-    if result.get("success"):
-        # Get fresh user config with updated values
-        updated_user = UserConfig.get_user(current_user["uid"]) or {}
-        openai_key = updated_user.get("openai_api_key")
-
-        if openai_key:
-            indexing_state = IndexingService.get_status(current_user["uid"])
-            current_status = indexing_state.get("status")
-            should_index = drive_folder_changed
-            if current_status in (IndexingStatus.PENDING, IndexingStatus.FAILED):
-                should_index = True
-            elif not drive_folder_changed:
-                if checksum and previous_checksum:
-                    should_index = checksum != previous_checksum
-                else:
-                    should_index = True
-            user_context = build_user_context(
-                current_user["uid"],
-                email=current_user.get("email"),
-                user_config=updated_user,
-                overrides={"drive_folder_id": drive_folder_id},
-            )
-            if should_index:
-                indexing_result = IndexingService.start_indexing(
-                    user_context, force=True, inline=True
-                )
-                indexing_started = indexing_result.get("success", False)
-
-    result["indexing_started"] = indexing_started
+    result["indexing_started"] = False
     return jsonify(result), 200
 
 
@@ -400,22 +412,13 @@ def remove_drive(current_user):
     )
 
 
-@config_bp.route("/indexing-status", methods=["GET"])
-@token_required
-def get_indexing_status(current_user):
-    """Get the current indexing status for the user."""
-    status = IndexingService.get_status(current_user["uid"])
-    return jsonify(status), 200
-
-
 @config_bp.route("/start-indexing", methods=["POST"])
 @token_required
 def start_indexing(current_user):
     """
     Start background document indexing.
 
-    This triggers the indexing process in a background thread.
-    The client should poll /indexing-status to monitor progress.
+    This triggers the indexing process immediately.
     """
     user_config = UserConfig.get_user(current_user["uid"]) or {}
 
@@ -425,33 +428,12 @@ def start_indexing(current_user):
         user_config=user_config,
     )
 
-    # Don't force re-indexing if already READY
+    # Don't force re-indexing if already COMPLETED
     result = IndexingService.start_indexing(
         user_context, force=False, inline=True
     )
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
-
-
-@config_bp.route("/indexing-ready", methods=["GET"])
-@token_required
-def is_indexing_ready(current_user):
-    """Quick check if the index is ready for queries."""
-    is_ready = IndexingService.is_ready(current_user["uid"])
-    status = IndexingService.get_status(current_user["uid"])
-    return (
-        jsonify(
-            {
-                "ready": is_ready,
-                "status": status["status"],
-                "message": status["message"],
-                "document_count": status["document_count"],
-                "file_count": status.get("file_count", 0),
-            }
-        ),
-        200,
-    )
-
 
 @config_bp.route("/re-index", methods=["POST"])
 @token_required
@@ -475,9 +457,30 @@ def re_index(current_user):
         user_config=user_config,
     )
 
-    # Force indexing even if already READY
+    # Force indexing even if already COMPLETED
     result = IndexingService.start_indexing(
         user_context, force=True, inline=True
     )
+    status_code = 200 if result.get("success") else 400
+    return jsonify(result), status_code
+
+
+@config_bp.route("/build-database", methods=["POST"])
+@token_required
+def build_database(current_user):
+    """
+    Build or rebuild the document database.
+    """
+    user_id = current_user["uid"]
+
+    RAGService.reset_user_cache(user_id)
+    user_config = UserConfig.get_user(user_id) or {}
+    user_context = build_user_context(
+        user_id,
+        email=current_user.get("email"),
+        user_config=user_config,
+    )
+
+    result = IndexingService.start_indexing(user_context, force=True, inline=True)
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
