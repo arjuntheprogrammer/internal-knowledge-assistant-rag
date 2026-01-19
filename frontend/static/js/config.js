@@ -334,6 +334,7 @@ export async function loadConfig() {
       }
     }
     await showConfigNotice(config);
+    maybeStartIndexing(config);
   } catch (err) {
     console.error("Failed to load config");
   }
@@ -644,6 +645,7 @@ async function showConfigNotice(config = null) {
 // ============ Indexing Functions (Simplified - Auto-triggered by Drive test) ============
 
 let indexingPollInterval = null;
+let indexingAutoStartAttempted = false;
 
 export async function getIndexingStatus() {
   try {
@@ -655,6 +657,41 @@ export async function getIndexingStatus() {
   } catch (err) {
     console.error("Failed to get indexing status:", err);
     return null;
+  }
+}
+
+async function maybeStartIndexing(config) {
+  if (indexingAutoStartAttempted) return;
+  indexingAutoStartAttempted = true;
+
+  const configReady = Boolean(
+    config?.has_openai_key &&
+      config?.openai_key_valid &&
+      config?.drive_folder_id &&
+      config?.drive_authenticated &&
+      config?.drive_test_success
+  );
+  if (!configReady) return;
+
+  const status = await getIndexingStatus();
+  if (!status || status.status !== "PENDING") return;
+
+  showIndexingStatusInline("Preparing to index documents...");
+  startIndexingPoll({ waitForStart: true });
+
+  try {
+    const res = await fetch(`${API_BASE}/config/start-indexing`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    const data = await safeJson(res);
+    if (!res.ok || !data?.success) {
+      stopIndexingPoll();
+      showToast(data?.message || "Failed to start indexing.");
+    }
+  } catch (err) {
+    stopIndexingPoll();
+    showToast("Failed to start indexing.");
   }
 }
 

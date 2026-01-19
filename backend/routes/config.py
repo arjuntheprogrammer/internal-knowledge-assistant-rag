@@ -327,8 +327,12 @@ def test_drive(current_user):
         openai_key = updated_user.get("openai_api_key")
 
         if openai_key:
+            indexing_state = IndexingService.get_status(current_user["uid"])
+            current_status = indexing_state.get("status")
             should_index = drive_folder_changed
-            if not drive_folder_changed:
+            if current_status in (IndexingStatus.PENDING, IndexingStatus.FAILED):
+                should_index = True
+            elif not drive_folder_changed:
                 if checksum and previous_checksum:
                     should_index = checksum != previous_checksum
                 else:
