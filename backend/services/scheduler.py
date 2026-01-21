@@ -44,8 +44,8 @@ class SchedulerService:
 
                         user_id = user_context.get("uid")
 
-                        # Check if folder has changed before indexing
-                        if not SchedulerService._has_folder_changed(user_context):
+                        # Check if drive selection has changed before indexing
+                        if not SchedulerService._has_drive_changed(user_context):
                             SchedulerService.logger.debug(
                                 "No changes detected for user %s, skipping indexing.",
                                 user_id,
@@ -76,13 +76,13 @@ class SchedulerService:
         )
 
     @classmethod
-    def _has_folder_changed(cls, user_context):
+    def _has_drive_changed(cls, user_context):
         """
-        Check if the user's Drive folder/files have changed since last check.
+        Check if the user's Drive selection has changed since last check.
 
         Returns True if:
         - This is the first check for this user
-        - The folder/files checksum has changed
+        - The documents' checksum has changed
         - We couldn't get a checksum (fail-open to avoid missing updates)
         """
         from backend.services.rag.rag_google_drive import get_files_checksum

@@ -168,13 +168,6 @@ class RAGService:
             raise
 
     @classmethod
-    def get_drive_file_list(cls, user_id, drive_folder_id):
-        return rag_google_drive.get_drive_file_list(
-            user_id=user_id,
-            drive_folder_id=drive_folder_id,
-        )
-
-    @classmethod
     def query(cls, question, user_context):
         user_id = user_context.get("uid")
         settings = cls.get_service_context(

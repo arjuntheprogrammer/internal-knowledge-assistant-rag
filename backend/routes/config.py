@@ -31,13 +31,10 @@ def _build_step_statuses(user, indexing_status: dict) -> dict:
 
     drive_auth = bool(user.get("google_token"))
     drive_files = user.get("drive_file_ids") or []
-    drive_folder = bool(user.get("drive_folder_id"))
-    has_drive_source = bool(drive_files or drive_folder)
-    if drive_auth and has_drive_source:
-        file_count = len(drive_files) if drive_files else "folder"
+    if drive_auth and drive_files:
         drive_status = {
             "status": "COMPLETED",
-            "message": f"Drive authorized with {file_count} files selected." if drive_files else "Drive authorized and folder selected.",
+            "message": f"Drive authorized with {len(drive_files)} files selected.",
         }
     else:
         drive_status = {
@@ -57,18 +54,6 @@ def _build_step_statuses(user, indexing_status: dict) -> dict:
     }
 
 
-def _normalize_drive_folder_id(value):
-    if not value:
-        return None
-    text = value.strip()
-    match = re.search(
-        r"drive\\.google\\.com/drive/(?:u/\\d+/)?folders/([a-zA-Z0-9_-]+)",
-        text,
-        re.I,
-    )
-    return match.group(1) if match else text
-
-
 @config_bp.route("", methods=["GET"])
 @token_required
 def get_config(current_user):
@@ -84,16 +69,6 @@ def get_config(current_user):
     openai_key_validated_at = (
         user.get("openai_key_validated_at") if openai_key_valid else None
     )
-    drive_test_success = bool(user.get("drive_test_success"))
-    drive_folder_id = user.get("drive_folder_id")
-    drive_test_folder_id = (
-        user.get("drive_test_folder_id") if drive_test_success else None
-    )
-    drive_tested_at = user.get(
-        "drive_tested_at") if drive_test_success else None
-    if drive_test_folder_id and drive_test_folder_id != drive_folder_id:
-        drive_test_success = False
-        drive_tested_at = None
     steps = _build_step_statuses(user, indexing_status)
     config_ready = all(
         step.get("status") == "COMPLETED" for step in steps.values()
@@ -102,7 +77,6 @@ def get_config(current_user):
     drive_file_names = user.get("drive_file_names") or []
     response = {
         "openai_model": "gpt-4.1-mini",
-        "drive_folder_id": drive_folder_id,
         "drive_file_ids": drive_file_ids,
         "drive_file_names": drive_file_names,
         "drive_file_count": len(drive_file_ids),
@@ -112,9 +86,6 @@ def get_config(current_user):
         "openai_key_last4": key_last4,
         "openai_key_valid": openai_key_valid,
         "openai_key_validated_at": format_dt(openai_key_validated_at),
-        "drive_test_success": drive_test_success,
-        "drive_tested_at": format_dt(drive_tested_at),
-        "drive_test_folder_id": drive_test_folder_id,
         "indexing": indexing_status,
         "steps": steps,
         "config_ready": config_ready,
@@ -131,11 +102,6 @@ def update_config(current_user):
     openai_key = data.get("openai_api_key")
     if openai_key:
         update_data["openai_api_key"] = openai_key.strip()
-
-    # Handle drive_folder_id (legacy)
-    drive_folder_id = _normalize_drive_folder_id(data.get("drive_folder_id"))
-    if drive_folder_id is not None:
-        update_data["drive_folder_id"] = drive_folder_id.strip() or None
 
     # Handle drive_file_ids (new drive.file scope)
     if "drive_file_ids" in data:
@@ -159,18 +125,7 @@ def update_config(current_user):
         new_files = update_data.get("drive_file_ids") or []
         files_changed = set(old_files) != set(new_files)
 
-    if "drive_folder_id" in update_data and update_data.get(
-        "drive_folder_id"
-    ) != existing.get("drive_folder_id"):
-        update_data["drive_test_success"] = False
-        update_data["drive_tested_at"] = None
-        update_data["drive_test_folder_id"] = None
-        update_data["drive_folder_checksum"] = None
-        update_data["drive_file_count"] = 0
-
     if files_changed:
-        update_data["drive_test_success"] = False
-        update_data["drive_tested_at"] = None
         update_data["drive_files_checksum"] = None
         update_data["drive_file_count"] = len(
             update_data.get("drive_file_ids") or [])
@@ -179,25 +134,19 @@ def update_config(current_user):
         UserConfig.update_config(current_user["uid"], update_data)
         config_changed = (
             update_data.get("openai_api_key") != existing.get("openai_api_key")
-            or update_data.get("drive_folder_id") != existing.get("drive_folder_id")
             or files_changed
         )
         if config_changed:
             RAGService.reset_user_cache(current_user["uid"])
             IndexingService.reset_indexing(current_user["uid"])
 
-        # Check if all drive data is being removed
-        removing_folder = (
-            "drive_folder_id" in update_data
-            and update_data.get("drive_folder_id") is None
-            and existing.get("drive_folder_id")
-        )
+        # Check if drive data is being removed
         removing_files = (
             "drive_file_ids" in update_data
             and not update_data.get("drive_file_ids")
             and existing.get("drive_file_ids")
         )
-        if removing_folder or removing_files:
+        if removing_files:
             _purge_drive_documents(current_user["uid"])
     return jsonify({"message": "Configuration updated"}), 200
 
@@ -390,60 +339,6 @@ def get_picker_config(current_user):
     )
 
 
-@config_bp.route("/test-drive", methods=["POST"])
-@token_required
-def test_drive(current_user):
-    user = UserConfig.get_user(current_user["uid"]) or {}
-    payload = request.get_json(silent=True) or {}
-    drive_folder_id = _normalize_drive_folder_id(
-        payload.get("drive_folder_id") or user.get("drive_folder_id")
-    )
-    if not drive_folder_id:
-        return (
-            jsonify(
-                {"success": False, "message": "Drive folder ID not configured."}),
-            400,
-        )
-    previous_folder_id = user.get("drive_folder_id")
-    previous_checksum = user.get("drive_folder_checksum")
-    if payload.get("drive_folder_id"):
-        UserConfig.update_config(
-            current_user["uid"],
-            {
-                "drive_folder_id": drive_folder_id,
-                "drive_test_success": False,
-                "drive_tested_at": None,
-                "drive_test_folder_id": None,
-            },
-        )
-    result = RAGService.get_drive_file_list(
-        user_id=current_user["uid"],
-        drive_folder_id=drive_folder_id,
-    )
-    checksum = None
-    if result.get("success"):
-        checksum = rag_google_drive.get_folder_checksum(
-            user_id=current_user["uid"],
-            drive_folder_id=drive_folder_id,
-            token_json=user.get("google_token"),
-        )
-    UserConfig.update_config(
-        current_user["uid"],
-        {
-            "drive_test_success": bool(result.get("success")),
-            "drive_tested_at": utc_now() if result.get("success") else None,
-            "drive_test_folder_id": drive_folder_id if result.get("success") else None,
-            "drive_folder_checksum": checksum if result.get("success") else None,
-            "drive_file_count": (
-                result.get("file_count", 0) if result.get("success") else 0
-            ),
-        },
-    )
-
-    result["indexing_started"] = False
-    return jsonify(result), 200
-
-
 def _purge_drive_documents(user_id):
     IndexingService.reset_indexing(user_id)
     RAGService.reset_user_cache(user_id)
@@ -464,7 +359,7 @@ def _purge_drive_documents(user_id):
 @token_required
 def remove_drive(current_user):
     """
-    Remove the Google Drive folder/files configuration and clear associated data.
+    Remove the Google Drive file selection and clear associated data.
     """
     user_id = current_user["uid"]
 
@@ -472,13 +367,8 @@ def remove_drive(current_user):
     UserConfig.update_config(
         user_id,
         {
-            "drive_folder_id": None,
             "drive_file_ids": [],
             "drive_file_names": [],
-            "drive_test_success": False,
-            "drive_tested_at": None,
-            "drive_test_folder_id": None,
-            "drive_folder_checksum": None,
             "drive_files_checksum": None,
             "drive_file_count": 0,
         },
@@ -488,7 +378,7 @@ def remove_drive(current_user):
 
     return (
         jsonify(
-            {"success": True, "message": "Drive folder and associated data removed."}
+            {"success": True, "message": "Drive connection and associated data removed."}
         ),
         200,
     )

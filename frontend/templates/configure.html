@@ -150,22 +150,22 @@ Assistant{% endblock %} {% block content %}
               </label>
 
               <div
-                id="selected-folder-display"
-                class="selected-folder-display"
+                id="selected-files-display"
+                class="selected-files-display"
                 style="display: none"
               >
                 <div class="selected-files-header">
                   <span class="folder-icon">📄</span>
-                  <span id="selected-folder-name" class="selected-folder-name"
+                  <span id="selected-files-summary" class="selected-files-summary"
                     >No files selected</span
                   >
                   <div class="folder-display-actions">
-                    <button id="change-folder-btn" type="button" class="btn-link">
+                    <button id="change-files-btn" type="button" class="btn-link">
                       Change
                     </button>
                     <span class="action-divider">|</span>
                     <button
-                      id="remove-folder-btn"
+                      id="remove-files-btn"
                       type="button"
                       class="btn-link btn-link-danger"
                     >
@@ -176,9 +176,9 @@ Assistant{% endblock %} {% block content %}
                 <ul id="selected-files-list" class="selected-files-list" style="display: none"></ul>
               </div>
 
-              <div id="folder-picker-actions" class="folder-picker-actions">
+              <div id="file-picker-actions" class="file-picker-actions">
                 <button
-                  id="select-folder-btn"
+                  id="select-files-btn"
                   type="button"
                   class="btn-primary"
                 >
@@ -186,7 +186,7 @@ Assistant{% endblock %} {% block content %}
                 </button>
               </div>
 
-              <input type="hidden" id="drive-folder-id" value="" />
+
             </div>
 
             <div class="step-actions">

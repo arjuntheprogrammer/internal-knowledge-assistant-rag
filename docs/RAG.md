@@ -11,7 +11,7 @@ reliability.
 3. `RAGService.query(...)` routes the request:
    - Casual chit-chat goes to a lightweight LLM-only engine.
    - Knowledge queries go to the retrieval engine.
-4. The retrieval engine pulls documents from Google Drive + local files, chunks
+4. The retrieval engine pulls documents from Google Drive files, chunks
    them, runs hybrid retrieval (vector + BM25), then reranks and synthesizes a
    grounded answer.
 
@@ -33,7 +33,7 @@ reliability.
 
 ## Data sources
 
-- Google Drive files (loaded via `rag_google_drive.load_google_drive_documents()`).
+- Google Drive files (loaded via `rag_google_drive.load_google_drive_documents_by_file_ids()`).
 
 Each document is annotated with metadata (e.g., file name) and indexed.
 
@@ -112,7 +112,7 @@ questions.
   - Embeddings: `text-embedding-3-small`
 
 Configuration is in `backend/services/rag/rag_context.py` and is supplied per
-user from Firestore (OpenAI API key + Drive folder ID).
+user from Firestore (OpenAI API key + Drive file IDs).
 
 ## Telemetry (Opik)
 

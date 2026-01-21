@@ -177,19 +177,19 @@ export function bindConfigPage() {
   }
 
   // Folder picker bindings
-  const selectFolderBtn = document.getElementById("select-folder-btn");
-  if (selectFolderBtn) {
-    selectFolderBtn.addEventListener("click", openFolderPicker);
+  const selectFilesBtn = document.getElementById("select-files-btn");
+  if (selectFilesBtn) {
+    selectFilesBtn.addEventListener("click", openFilePicker);
   }
 
-  const changeFolderBtn = document.getElementById("change-folder-btn");
-  if (changeFolderBtn) {
-    changeFolderBtn.addEventListener("click", openFolderPicker);
+  const changeFilesBtn = document.getElementById("change-files-btn");
+  if (changeFilesBtn) {
+    changeFilesBtn.addEventListener("click", openFilePicker);
   }
 
-  const removeFolderBtn = document.getElementById("remove-folder-btn");
-  if (removeFolderBtn) {
-    removeFolderBtn.addEventListener("click", removeDriveFolder);
+  const removeFilesBtn = document.getElementById("remove-files-btn");
+  if (removeFilesBtn) {
+    removeFilesBtn.addEventListener("click", removeDriveFiles);
   }
 
   loadConfig();
@@ -382,9 +382,9 @@ export async function loadConfig() {
     window._selectedDriveFileIds = config.drive_file_ids || [];
     window._selectedDriveFileNames = config.drive_file_names || [];
 
-    const selectBtn = document.getElementById("folder-picker-actions");
-    const displayDiv = document.getElementById("selected-folder-display");
-    const nameSpan = document.getElementById("selected-folder-name");
+    const selectBtn = document.getElementById("file-picker-actions");
+    const displayDiv = document.getElementById("selected-files-display");
+    const nameSpan = document.getElementById("selected-files-summary");
     const filesList = document.getElementById("selected-files-list");
 
     const hasFiles = config.drive_file_ids && config.drive_file_ids.length > 0;
@@ -448,13 +448,11 @@ export async function saveConfig(options = {}) {
   const {
     showAlert = true,
     includeOpenAIKey = true,
-    includeDriveFolder = true,
     includeDriveFiles = false,
     driveFileIds = null,
     driveFileNames = null,
   } = options;
   const openAiKeyInput = document.getElementById("openai-key");
-  const driveInput = document.getElementById("drive-folder-id");
 
   const payload = {};
   if (includeOpenAIKey) {
@@ -463,12 +461,7 @@ export async function saveConfig(options = {}) {
       payload.openai_api_key = openaiKey;
     }
   }
-  if (includeDriveFolder) {
-    const driveFolder = normalizeDriveFolderId(driveInput?.value);
-    if (driveFolder) {
-      payload.drive_folder_id = driveFolder;
-    }
-  }
+
   if (includeDriveFiles && driveFileIds !== null) {
     payload.drive_file_ids = driveFileIds;
     payload.drive_file_names = driveFileNames || [];
@@ -616,7 +609,7 @@ async function showConfigNotice(config = null) {
   } else if (!step2Done) {
     notice.style.display = "block";
     notice.textContent =
-      "Step 2 required: authorize Google Drive and select a folder.";
+      "Step 2 required: authorize Google Drive and select files.";
     notice.classList.remove("success");
   } else {
     notice.style.display = "block";
@@ -771,15 +764,7 @@ async function buildDatabase() {
   }
 
   if (isSavingDrive) {
-    showToast("Saving folder selection. Please wait.");
-    return;
-  }
-
-  const selectedFolder = document
-    .getElementById("drive-folder-id")
-    ?.value?.trim();
-  if (selectedFolder && selectedFolder !== config.drive_folder_id) {
-    showToast("Saving folder selection. Please wait.");
+    showToast("Saving file selection. Please wait.");
     return;
   }
 
@@ -811,46 +796,7 @@ async function buildDatabase() {
   }
 }
 
-async function saveDriveSelection() {
-  if (isSavingDrive) return;
-  const authorized = await checkAuthStatus();
-  if (!authorized) {
-    showToast("Authorize Google Drive before saving a folder.");
-    return;
-  }
-
-  const folderIdInput = document.getElementById("drive-folder-id");
-  const folderId = folderIdInput?.value?.trim();
-  if (!folderId) {
-    showToast("Select a folder to continue.");
-    return;
-  }
-
-  const driveSaveStatus = document.getElementById("drive-save-status");
-  if (driveSaveStatus) {
-    driveSaveStatus.textContent = "Saving folder...";
-    driveSaveStatus.style.color = "#f59e0b";
-  }
-
-  isSavingDrive = true;
-  try {
-    const saved = await saveConfig({
-      showAlert: false,
-      includeOpenAIKey: false,
-      includeDriveFolder: true,
-    });
-    if (!saved) return;
-
-    showToast("Drive folder saved!", "success");
-    await loadConfig();
-    setStepExpanded(2, false);
-    setStepExpanded(3, true);
-  } finally {
-    isSavingDrive = false;
-  }
-}
-
-// ============ Google Folder Picker Functions ============
+// ============ Google File Picker Functions ============
 
 let pickerApiLoaded = false;
 let pickerConfig = null;
@@ -884,7 +830,7 @@ async function getPickerConfig() {
   }
 }
 
-async function openFolderPicker() {
+async function openFilePicker() {
   try {
     if (isStepLocked(2)) {
       showToast("Complete Step 1 before selecting files.");
@@ -1051,16 +997,10 @@ function setSelectedFiles(fileIds, fileNames) {
   window._selectedDriveFileIds = fileIds;
   window._selectedDriveFileNames = fileNames;
 
-  // Clear the folder input (we're using files now)
-  const folderIdInput = document.getElementById("drive-folder-id");
-  if (folderIdInput) {
-    folderIdInput.value = "";
-  }
-
   // Show the selected files display
-  const selectBtn = document.getElementById("folder-picker-actions");
-  const displayDiv = document.getElementById("selected-folder-display");
-  const nameSpan = document.getElementById("selected-folder-name");
+  const selectBtn = document.getElementById("file-picker-actions");
+  const displayDiv = document.getElementById("selected-files-display");
+  const nameSpan = document.getElementById("selected-files-summary");
   const filesList = document.getElementById("selected-files-list");
 
   const displayName = `${fileNames.length} file${fileNames.length > 1 ? "s" : ""} selected`;
@@ -1113,7 +1053,6 @@ async function saveDriveFilesSelection(fileIds, fileNames) {
     const saved = await saveConfig({
       showAlert: false,
       includeOpenAIKey: false,
-      includeDriveFolder: false,
       includeDriveFiles: true,
       driveFileIds: fileIds,
       driveFileNames: fileNames,
@@ -1131,39 +1070,7 @@ async function saveDriveFilesSelection(fileIds, fileNames) {
     isSavingDrive = false;
   }
 }
-
-// Legacy function for backward compatibility
-function setSelectedFolder(folderId, folderName) {
-  // Update the hidden input
-  const folderIdInput = document.getElementById("drive-folder-id");
-  if (folderIdInput) {
-    folderIdInput.value = folderId;
-  }
-
-  // Show the selected folder display
-  const selectBtn = document.getElementById("folder-picker-actions");
-  const displayDiv = document.getElementById("selected-folder-display");
-  const nameSpan = document.getElementById("selected-folder-name");
-
-  if (displayDiv && nameSpan) {
-    nameSpan.textContent = folderName || folderId;
-    displayDiv.style.display = "flex";
-  }
-  if (selectBtn) {
-    selectBtn.style.display = "none";
-  }
-
-  // Store folder name for display
-  localStorage.setItem("selected_folder_name", folderName || "");
-
-  const driveSaveStatus = document.getElementById("drive-save-status");
-  if (driveSaveStatus) {
-    driveSaveStatus.textContent = "Saving folder...";
-    driveSaveStatus.style.color = "#f59e0b";
-  }
-}
-
-async function removeDriveFolder() {
+async function removeDriveFiles() {
   const confirmed = await showConfirmToast(
     "Are you sure you want to remove the selected files? This will delete the search index and all associated data.",
   );
@@ -1184,16 +1091,14 @@ async function removeDriveFolder() {
     }
 
     // Reset UI
-    const folderIdInput = document.getElementById("drive-folder-id");
-    if (folderIdInput) folderIdInput.value = "";
     localStorage.removeItem("selected_folder_name");
 
     // Clear file IDs
     window._selectedDriveFileIds = [];
     window._selectedDriveFileNames = [];
 
-    const selectBtn = document.getElementById("folder-picker-actions");
-    const displayDiv = document.getElementById("selected-folder-display");
+    const selectBtn = document.getElementById("file-picker-actions");
+    const displayDiv = document.getElementById("selected-files-display");
     const filesList = document.getElementById("selected-files-list");
     if (displayDiv) displayDiv.style.display = "none";
     if (selectBtn) selectBtn.style.display = "flex";
@@ -1217,14 +1122,4 @@ async function removeDriveFolder() {
     console.error("Remove files error:", err);
     showToast("Failed to remove files");
   }
-}
-
-function normalizeDriveFolderId(value) {
-  const trimmed = (value || "").trim();
-  if (!trimmed) return "";
-  const folderMatch = trimmed.match(
-    /drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/i,
-  );
-  if (folderMatch) return folderMatch[1];
-  return trimmed;
 }

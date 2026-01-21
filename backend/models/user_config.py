@@ -52,7 +52,8 @@ class UserConfig:
             else:
                 update_data[k] = v
         update_data["updated_at"] = datetime.utcnow()
-        db.collection(cls.COLLECTION).document(uid).set(update_data, merge=True)
+        db.collection(cls.COLLECTION).document(
+            uid).set(update_data, merge=True)
         return update_data
 
     @classmethod
@@ -61,7 +62,6 @@ class UserConfig:
             uid,
             {
                 "google_token": token_json,
-                "drive_test_success": False,
             },
         )
 
@@ -76,7 +76,8 @@ class UserConfig:
         results = []
         for doc in db.collection(cls.COLLECTION).stream():
             data = doc.to_dict() or {}
-            if data.get("drive_folder_id"):
+            # Check for new file-based selection
+            if data.get("drive_file_ids"):
                 data["uid"] = doc.id
                 results.append(data)
         return results

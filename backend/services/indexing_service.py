@@ -82,7 +82,7 @@ class IndexingService:
             "file_count": (
                 user.get("indexed_file_count")
                 if user.get("indexed_file_count") is not None
-                else user.get("drive_file_count", 0)
+                else len(user.get("drive_file_ids", []))
             ),
             "started_at": format_dt(user.get("indexing_started_at")),
             "completed_at": format_dt(user.get("indexing_completed_at")),
@@ -101,7 +101,7 @@ class IndexingService:
         Start background indexing for a user.
 
         Args:
-            user_context: Dict containing uid, openai_api_key, drive_folder_id, google_token
+            user_context: Dict containing uid, openai_api_key, drive_file_ids, google_token
             force: If True, re-index even if already COMPLETED.
             silent: If True, don't update status to PROCESSING if already COMPLETED.
             inline: If True, run indexing on the request thread.
