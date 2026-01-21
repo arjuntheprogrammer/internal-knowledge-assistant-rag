@@ -171,6 +171,11 @@ export function bindConfigPage() {
     testOpenAiBtn.addEventListener("click", testOpenAIKey);
   }
 
+  const resetOpenAiBtn = document.getElementById("reset-openai-btn");
+  if (resetOpenAiBtn) {
+    resetOpenAiBtn.addEventListener("click", resetOpenAIKey);
+  }
+
   const buildBtn = document.getElementById("build-database-btn");
   if (buildBtn) {
     buildBtn.addEventListener("click", buildDatabase);
@@ -254,7 +259,6 @@ export async function checkAuthStatus() {
       btn.textContent = "Authorize Google Drive";
       document.getElementById("auth-hint").textContent =
         "Authorize to access your Drive.";
-      if (saveBtn) saveBtn.disabled = true;
     }
     return authenticated;
   } catch (e) {
@@ -265,7 +269,6 @@ export async function checkAuthStatus() {
     document.getElementById("auth-hint").textContent =
       "Unable to reach auth status.";
     console.error("Auth check failed", e);
-    if (saveBtn) saveBtn.disabled = true;
     return false;
   }
 }
@@ -451,6 +454,7 @@ export async function saveConfig(options = {}) {
     includeDriveFiles = false,
     driveFileIds = null,
     driveFileNames = null,
+    skipLoadConfig = false,
   } = options;
   const openAiKeyInput = document.getElementById("openai-key");
 
@@ -485,7 +489,9 @@ export async function saveConfig(options = {}) {
     if (showAlert) {
       showToast("Configuration saved!", "success");
     }
-    await loadConfig();
+    if (!skipLoadConfig) {
+      await loadConfig();
+    }
     return true;
   } catch (err) {
     showToast("Failed to save config");
@@ -502,13 +508,17 @@ export async function testOpenAIKey() {
     return;
   }
 
-  const saved = await saveConfig({ showAlert: false });
-  if (!saved) return;
-
+  // Set local state to "Testing..." immediately to avoid flicker
   if (resultEl) {
     resultEl.textContent = "Testing...";
     resultEl.style.color = "var(--text-muted)";
     resultEl.classList.remove("status-valid");
+  }
+
+  const saved = await saveConfig({ showAlert: false, skipLoadConfig: true });
+  if (!saved) {
+    await loadConfig();
+    return;
   }
 
   try {
@@ -554,6 +564,35 @@ export async function testOpenAIKey() {
     }
     showToast("OpenAI key validation failed.");
     await loadConfig();
+  }
+}
+
+export async function resetOpenAIKey() {
+  const confirmed = await showConfirmToast(
+    "Are you sure you want to reset your OpenAI API key? This will disable chat and indexing until a new key is provided.",
+  );
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/config`, {
+      method: "PUT",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        openai_api_key: "",
+        openai_key_valid: false,
+      }),
+    });
+
+    if (res.ok) {
+      showToast("OpenAI API key reset.", "success");
+      const keyInput = document.getElementById("openai-key");
+      if (keyInput) keyInput.value = "";
+      await loadConfig();
+    } else {
+      showToast("Failed to reset OpenAI key.");
+    }
+  } catch (err) {
+    showToast("An error occurred while resetting.");
   }
 }
 

@@ -94,9 +94,9 @@ def update_config(current_user):
     data = request.get_json() or {}
     existing = UserConfig.get_user(current_user["uid"]) or {}
     update_data = {}
-    openai_key = data.get("openai_api_key")
-    if openai_key:
-        update_data["openai_api_key"] = openai_key.strip()
+    if "openai_api_key" in data:
+        openai_key = data.get("openai_api_key")
+        update_data["openai_api_key"] = openai_key.strip() if openai_key else ""
 
     # Handle drive_file_ids (new drive.file scope)
     if "drive_file_ids" in data:
@@ -107,6 +107,9 @@ def update_config(current_user):
         update_data["drive_file_names"] = (
             file_names if isinstance(file_names, list) else []
         )
+
+    if "openai_key_valid" in data:
+        update_data["openai_key_valid"] = bool(data.get("openai_key_valid"))
 
     if "openai_api_key" in update_data and update_data.get(
         "openai_api_key"
