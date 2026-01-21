@@ -81,6 +81,10 @@ def create_app(config_name="default"):
     def terms():
         return render_template("terms.html")
 
+    @app.route("/docs")
+    def docs():
+        return render_template("docs.html")
+
     @app.route("/robots.txt")
     @app.route("/sitemap.xml")
     def static_from_root():

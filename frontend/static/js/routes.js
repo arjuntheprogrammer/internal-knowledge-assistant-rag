@@ -104,7 +104,7 @@ function normalizePath(pathname) {
 
 export async function checkRouteAccess(redirectOnSuccess = true) {
   const path = window.location.pathname;
-  const publicRoutes = ["/login", "/signup", "/privacy", "/terms"];
+  const publicRoutes = ["/login", "/signup", "/privacy", "/terms", "/docs"];
   const token = localStorage.getItem("firebase_token");
   const user = getStoredUser();
 

@@ -89,14 +89,16 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/config.css') }}"
     />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/docs.css') }}"
+    />
   </head>
   <body>
-    {% set is_auth_page = request.path in ["/login", "/signup"] %} {% set
-    protected_routes = ['/', '/configure'] %} {% set is_protected = request.path
-    in protected_routes %} {% if not is_auth_page %}
+    {% set protected_routes = ['/', '/configure'] %} {% set is_protected = request.path in protected_routes %}
     <nav id="main-nav" {% if is_protected %}style="display: none;" {% endif %}>
       <div class="nav-left">
-        <a href="/" class="logo-link">
+        <a href="/" id="logo-link" class="logo-link">
           <img
             src="{{ url_for('static', filename='img/logo.png') }}"
             alt="Knowledge Assistant Logo"
@@ -106,6 +108,7 @@
         </a>
       </div>
       <div class="nav-center nav-links">
+        <a href="/docs" id="docs-link">Docs</a>
         <a href="/" id="chat-link" style="display: none">Chat</a>
         <a href="/configure" id="config-link" style="display: none"
           >Configure</a
@@ -130,7 +133,6 @@
         </div>
       </div>
     </nav>
-    {% endif %}
 
     <div id="app-toast" class="app-toast" style="display: none">
       <div class="app-toast-body">
@@ -175,6 +177,7 @@
     <footer class="app-footer">
       <div class="footer-content">
         <div class="footer-links">
+          <a href="/docs">Documentation</a>
           <a href="/privacy">Privacy Policy</a>
           <a href="/terms">Terms of Service</a>
           <a href="mailto:arjuntheprogrammer@gmail.com">Contact Support</a>

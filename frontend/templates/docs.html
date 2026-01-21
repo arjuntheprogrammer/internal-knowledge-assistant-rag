@@ -1,0 +1,241 @@
+{% extends "base.html" %} {% block page_title %}Documentation | Knowledge
+Assistant{% endblock %} {% block content %}
+<div class="container docs-page">
+  <div class="docs-content">
+    <div class="docs-header">
+      <h1>Documentation</h1>
+      <p class="docs-subtitle">
+        Everything you need to get started with Knowledge Assistant
+      </p>
+    </div>
+
+    <section class="docs-section" id="overview">
+      <h2>📝 Overview</h2>
+      <p>
+        <strong>Knowledge Assistant</strong> is a premium AI-powered internal
+        knowledge assistant designed to help you answer questions based on your
+        Google Drive files using
+        <strong>Retrieval Augmented Generation (RAG)</strong>.
+      </p>
+      <p>
+        Simply connect your Google Drive, select the files you want to index,
+        and start asking questions. The AI will search through your documents
+        and provide accurate answers with citations.
+      </p>
+    </section>
+
+    <section class="docs-section" id="features">
+      <h2>✨ Key Features</h2>
+      <ul class="docs-features-list">
+        <li>
+          <strong>Google Drive Integration</strong> – Seamlessly connect your
+          Drive files and build a searchable database for instant retrieval.
+        </li>
+        <li>
+          <strong>Hybrid Search</strong> – Combines Vector Search (semantic
+          meaning) and BM25 Search (keyword matching) for maximum accuracy.
+        </li>
+        <li>
+          <strong>Intelligent OCR</strong> – Advanced document parsing with
+          automatic Tesseract OCR fallback for scanned documents and images.
+        </li>
+        <li>
+          <strong>Real-time Chat</strong> – Interactive chat interface with
+          streaming responses and clickable source citations.
+        </li>
+        <li>
+          <strong>Automatic Sync</strong> – Background scheduler keeps your
+          knowledge base up-to-date with Google Drive changes.
+        </li>
+      </ul>
+    </section>
+
+    <section class="docs-section" id="getting-started">
+      <h2>🚀 Getting Started</h2>
+
+      <div class="docs-step">
+        <div class="docs-step-number">1</div>
+        <div class="docs-step-content">
+          <h3>Log In with Google</h3>
+          <p>
+            Click the <strong>Login</strong> button in the navbar. You'll be
+            prompted to authenticate with your Google account. If you're a new
+            user, your account will be created automatically.
+          </p>
+        </div>
+      </div>
+
+      <div class="docs-step">
+        <div class="docs-step-number">2</div>
+        <div class="docs-step-content">
+          <h3>Configure Your OpenAI API Key</h3>
+          <p>
+            After logging in, you'll be redirected to the
+            <strong>Configure</strong> page. Enter your OpenAI API key and click
+            "Test OpenAI Key" to validate it. The app uses
+            <code>gpt-4.1-mini</code> for generating responses.
+          </p>
+          <p class="docs-note">
+            💡 Your API key is stored securely and is only used for your
+            queries.
+          </p>
+        </div>
+      </div>
+
+      <div class="docs-step">
+        <div class="docs-step-number">3</div>
+        <div class="docs-step-content">
+          <h3>Authorize Google Drive</h3>
+          <p>
+            Click <strong>Authorize Google Drive</strong> to grant read-only
+            access to your files. This allows the app to read and index the
+            documents you select.
+          </p>
+        </div>
+      </div>
+
+      <div class="docs-step">
+        <div class="docs-step-number">4</div>
+        <div class="docs-step-content">
+          <h3>Select Files to Index</h3>
+          <p>
+            Use the file picker to select which Google Drive files you want to
+            include in your knowledge base. You can select individual files or
+            multiple documents.
+          </p>
+        </div>
+      </div>
+
+      <div class="docs-step">
+        <div class="docs-step-number">5</div>
+        <div class="docs-step-content">
+          <h3>Build the Database</h3>
+          <p>
+            Click <strong>Build Database</strong> to download your files,
+            generate embeddings, and create your searchable vector index. A
+            progress bar will show the indexing status.
+          </p>
+        </div>
+      </div>
+
+      <div class="docs-step">
+        <div class="docs-step-number">6</div>
+        <div class="docs-step-content">
+          <h3>Start Chatting</h3>
+          <p>
+            Once configuration is complete, navigate to the
+            <strong>Chat</strong> page. Type your question in the input box and
+            press Send. The AI will search your documents and provide answers
+            with source citations.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="docs-section" id="self-hosting">
+      <h2>🛠️ Self-Hosting</h2>
+      <p>
+        Knowledge Assistant can be self-hosted on your own infrastructure.
+        You'll need the following prerequisites:
+      </p>
+
+      <h3>Requirements</h3>
+      <ul class="docs-requirements-list">
+        <li><strong>Python 3.9+</strong></li>
+        <li>
+          <strong>Zilliz Cloud account</strong> – Managed Milvus for vector
+          storage
+        </li>
+        <li>
+          <strong>Firebase project</strong> – For authentication and Firestore
+          database
+        </li>
+        <li><strong>OpenAI API key</strong> – For the language model</li>
+        <li>
+          <strong>Tesseract OCR</strong> (optional) – For scanning images and
+          PDFs
+        </li>
+      </ul>
+
+      <h3>Environment Variables</h3>
+      <p>
+        Create a <code>.env</code> file based on <code>.env.template</code> with
+        the following key configurations:
+      </p>
+      <ul class="docs-env-list">
+        <li>
+          <code>FIREBASE_API_KEY</code>, <code>FIREBASE_AUTH_DOMAIN</code>, etc.
+          – Firebase client config
+        </li>
+        <li>
+          <code>FIREBASE_ADMIN_CREDENTIALS_PATH</code> – Path to Firebase Admin
+          SDK JSON
+        </li>
+        <li>
+          <code>ZILLIZ_CLOUD_URI</code>, <code>ZILLIZ_CLOUD_TOKEN</code> –
+          Zilliz Cloud connection
+        </li>
+        <li>
+          <code>GOOGLE_PICKER_API_KEY</code> – For Google Drive file picker
+        </li>
+        <li>
+          <code>OPIK_API_KEY</code> (optional) – For observability tracing
+        </li>
+      </ul>
+
+      <h3>Running Locally</h3>
+      <p>The easiest way to run locally is with Docker:</p>
+      <pre class="docs-code"><code>docker compose up --build</code></pre>
+      <p>The app will be available at <code>http://localhost:5001</code>.</p>
+
+      <p>Alternatively, you can run directly with Python:</p>
+      <pre class="docs-code"><code>pip install -r requirements.txt
+python app.py</code></pre>
+    </section>
+
+    <section class="docs-section" id="architecture">
+      <h2>⚙️ Architecture</h2>
+      <ul class="docs-architecture-list">
+        <li>
+          <strong>Backend:</strong> Flask (Python) with Gunicorn for production
+        </li>
+        <li><strong>Frontend:</strong> HTML5, Vanilla CSS, JavaScript</li>
+        <li>
+          <strong>RAG Engine:</strong> LlamaIndex with hybrid search (Vector +
+          BM25)
+        </li>
+        <li><strong>Database:</strong> Google Cloud Firestore (managed)</li>
+        <li><strong>Vector Store:</strong> Zilliz Cloud (managed Milvus)</li>
+        <li><strong>Chat Model:</strong> OpenAI GPT-4.1 mini</li>
+        <li><strong>OCR:</strong> Tesseract for scanned documents</li>
+        <li><strong>Analytics:</strong> Opik tracing for observability</li>
+      </ul>
+    </section>
+
+    <section class="docs-section" id="support">
+      <h2>💬 Support</h2>
+      <p>
+        If you have questions or need help, reach out via
+        <a href="mailto:arjuntheprogrammer@gmail.com"
+          >arjuntheprogrammer@gmail.com</a
+        >.
+      </p>
+      <p>
+        🎥 <strong>Video Walkthrough:</strong>
+        <a
+          href="https://youtu.be/mf2SiJLMSDY"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Watch on YouTube
+        </a>
+      </p>
+    </section>
+
+    <div id="docs-cta" class="docs-cta">
+      <p>Ready to get started?</p>
+      <a href="/login" class="btn-primary">Get Started</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

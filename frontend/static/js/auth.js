@@ -96,9 +96,13 @@ export function initAuthState() {
       } else {
         localStorage.removeItem("firebase_token");
         localStorage.removeItem("user");
-        const isPublic = ["/login", "/signup", "/privacy", "/terms"].includes(
-          window.location.pathname,
-        );
+        const isPublic = [
+          "/login",
+          "/signup",
+          "/privacy",
+          "/terms",
+          "/docs",
+        ].includes(window.location.pathname);
         if (!isPublic) {
           window.location.href = "/login";
         }
@@ -139,12 +143,16 @@ export function updateNav() {
   const chatLink = document.getElementById("chat-link");
   const configLink = document.getElementById("config-link");
   const userMenu = document.getElementById("user-menu");
+  const logoLink = document.getElementById("logo-link");
+  const docsCta = document.getElementById("docs-cta");
 
   if (user) {
     if (loginLink) loginLink.style.display = "none";
     if (chatLink) chatLink.style.display = "flex";
     if (configLink) configLink.style.display = "flex";
     if (userMenu) userMenu.style.display = "flex";
+    if (logoLink) logoLink.href = "/";
+    if (docsCta) docsCta.style.display = "none";
 
     const nameEl = document.getElementById("user-name");
     const emailEl = document.getElementById("user-email");
@@ -170,6 +178,8 @@ export function updateNav() {
     if (chatLink) chatLink.style.display = "none";
     if (configLink) configLink.style.display = "none";
     if (userMenu) userMenu.style.display = "none";
+    if (logoLink) logoLink.href = "/login";
+    if (docsCta) docsCta.style.display = "";
   }
 }
 
