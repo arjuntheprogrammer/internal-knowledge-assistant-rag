@@ -52,8 +52,7 @@ class UserConfig:
             else:
                 update_data[k] = v
         update_data["updated_at"] = datetime.utcnow()
-        db.collection(cls.COLLECTION).document(
-            uid).set(update_data, merge=True)
+        db.collection(cls.COLLECTION).document(uid).set(update_data, merge=True)
         return update_data
 
     @classmethod

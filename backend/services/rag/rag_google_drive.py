@@ -49,10 +49,8 @@ def sanitize_oauth_credentials_file(path):
 def resolve_credentials_path():
     candidates = [
         os.getenv("GOOGLE_OAUTH_CLIENT_PATH"),
-        os.path.join(os.getcwd(), "backend",
-                     "credentials", "client_secrets.json"),
-        os.path.join(os.getcwd(), "backend",
-                     "credentials", "credentials.json"),
+        os.path.join(os.getcwd(), "backend", "credentials", "client_secrets.json"),
+        os.path.join(os.getcwd(), "backend", "credentials", "credentials.json"),
         os.path.join(os.getcwd(), "client_secrets.json"),
     ]
 
@@ -128,14 +126,11 @@ def get_google_drive_reader():
                             if os.path.sep in safe_filename or (
                                 altsep and altsep in safe_filename
                             ):
-                                safe_filename = safe_filename.replace(
-                                    os.path.sep, "_")
+                                safe_filename = safe_filename.replace(os.path.sep, "_")
                                 if altsep:
-                                    safe_filename = safe_filename.replace(
-                                        altsep, "_")
+                                    safe_filename = safe_filename.replace(altsep, "_")
                             filepath = os.path.join(temp_dir, safe_filename)
-                            os.makedirs(os.path.dirname(
-                                filepath), exist_ok=True)
+                            os.makedirs(os.path.dirname(filepath), exist_ok=True)
                             fileid = fileid_meta[0]
                             final_filepath = self._download_with_retries(
                                 fileid, filepath, attempts=retry_attempts
@@ -253,8 +248,7 @@ def ensure_pydrive_creds_from_token(token_path, pydrive_creds_path):
         try:
             from datetime import datetime, timezone
 
-            token_expiry = datetime.fromisoformat(
-                expiry.replace("Z", "+00:00"))
+            token_expiry = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
             if token_expiry.tzinfo is None:
                 token_expiry = token_expiry.replace(tzinfo=timezone.utc)
         except Exception:
@@ -303,8 +297,7 @@ def get_google_token_data(user_id, token_json=None):
     else:
         # Fallback to original if refresh fails, though it likely won't work
         final_token_data = (
-            json.dumps(token_data) if isinstance(
-                token_data, dict) else token_data
+            json.dumps(token_data) if isinstance(token_data, dict) else token_data
         )
 
     token_path = os.path.join(
@@ -371,8 +364,7 @@ def load_google_drive_documents_by_file_ids(user_id, file_ids, token_json=None):
         creds_path and os.path.exists(creds_path)
     ):
         try:
-            loader, auth_type, error = _build_drive_loader(
-                creds_path, token_path)
+            loader, auth_type, error = _build_drive_loader(creds_path, token_path)
             if not loader:
                 if error:
                     print(error)
@@ -422,8 +414,7 @@ def get_selected_files_info(user_id, file_ids, token_json=None):
         return []
 
     try:
-        creds = Credentials.from_authorized_user_info(
-            token_data, scopes=scopes)
+        creds = Credentials.from_authorized_user_info(token_data, scopes=scopes)
         service = build(
             "drive",
             "v3",
@@ -441,8 +432,7 @@ def get_selected_files_info(user_id, file_ids, token_json=None):
                 )
                 files_info.append(file_meta)
             except Exception as e:
-                logger.warning(
-                    f"Could not get metadata for file {file_id}: {e}")
+                logger.warning(f"Could not get metadata for file {file_id}: {e}")
 
         return files_info
     except Exception as e:
@@ -464,8 +454,7 @@ def get_files_checksum(user_id, file_ids, token_json=None):
     if not file_ids:
         return None
 
-    files_info = get_selected_files_info(
-        user_id, file_ids, token_json=token_json)
+    files_info = get_selected_files_info(user_id, file_ids, token_json=token_json)
     if not files_info:
         return None
 

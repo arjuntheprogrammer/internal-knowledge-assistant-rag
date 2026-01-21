@@ -62,8 +62,7 @@ class SchedulerService:
                         # reset their progress to 0 and show the "Connecting" banner.
                         from backend.services.indexing_service import IndexingService
 
-                        IndexingService.start_indexing(
-                            user_context, silent=True)
+                        IndexingService.start_indexing(user_context, silent=True)
 
                 except Exception as e:
                     SchedulerService.logger.error("Polling error: %s", e)

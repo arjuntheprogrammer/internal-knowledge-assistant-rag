@@ -104,8 +104,7 @@ class RAGService:
 
         notify(f"Processing {len(documents)} documents...", 40)
         annotate_documents(documents, user_id=user_id)
-        cls._document_catalog_by_user[user_id] = build_document_catalog(
-            documents)
+        cls._document_catalog_by_user[user_id] = build_document_catalog(documents)
 
         try:
             notify("Analyzing document structure...", 50)
@@ -120,8 +119,7 @@ class RAGService:
                 try:
                     notify("Clearing old index data...", 55)
                     client = getattr(vector_store, "client", None)
-                    collection_name = getattr(
-                        vector_store, "collection_name", None)
+                    collection_name = getattr(vector_store, "collection_name", None)
                     if client and collection_name:
                         # Delete by metadata filter
                         client.delete(
@@ -132,8 +130,7 @@ class RAGService:
                             f"Successfully cleared existing records for user {user_id}"
                         )
                 except Exception as del_err:
-                    cls.logger.warning(
-                        f"Could not clear existing records: {del_err}")
+                    cls.logger.warning(f"Could not clear existing records: {del_err}")
 
             storage_context = None
             if vector_store:
@@ -159,12 +156,10 @@ class RAGService:
             if vector_store:
                 log_vector_store_count(vector_store)
 
-            cls.logger.info(
-                f"Index initialized successfully for user {user_id}.")
+            cls.logger.info(f"Index initialized successfully for user {user_id}.")
             return documents
         except Exception as e:
-            cls.logger.error(
-                f"Index initialization error for user {user_id}: {e}")
+            cls.logger.error(f"Index initialization error for user {user_id}: {e}")
             raise
 
     @classmethod
@@ -231,8 +226,7 @@ class RAGService:
             selections = getattr(selector_result, "selections", None)
             if selections:
                 selected_inds = [selection.index for selection in selections]
-                selected_reasons = [
-                    selection.reason for selection in selections]
+                selected_reasons = [selection.reason for selection in selections]
             else:
                 inds = getattr(selector_result, "inds", None) or []
                 selected_inds = list(inds)

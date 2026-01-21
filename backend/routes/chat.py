@@ -140,8 +140,7 @@ def chat(current_user):
         response_text = RAGService.query(query_bundle, user_context)
 
         # Safety Check Output
-        is_safe_response, reason_response = SafetyService.is_safe(
-            response_text)
+        is_safe_response, reason_response = SafetyService.is_safe(response_text)
         if not is_safe_response:
             response_text = "[REDACTED due to safety policy]"
 

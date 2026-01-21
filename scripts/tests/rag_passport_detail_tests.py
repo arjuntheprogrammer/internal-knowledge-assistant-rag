@@ -47,7 +47,11 @@ def get_indexing_ready(base_url, headers):
     status, payload = request_json("GET", f"{base_url}/api/config", headers=headers)
     if status != 200:
         raise RuntimeError(f"Failed to get indexing status: HTTP {status} {payload}")
-    return {"ready": bool(payload.get("config_ready")), "status": payload.get("indexing", {}).get("status"), "message": payload.get("indexing", {}).get("message")}
+    return {
+        "ready": bool(payload.get("config_ready")),
+        "status": payload.get("indexing", {}).get("status"),
+        "message": payload.get("indexing", {}).get("message"),
+    }
 
 
 def get_config(base_url, headers):

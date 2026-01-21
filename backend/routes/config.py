@@ -58,21 +58,16 @@ def _build_step_statuses(user, indexing_status: dict) -> dict:
 @token_required
 def get_config(current_user):
     user = UserConfig.get_user(current_user["uid"]) or {}
-    indexing_status = IndexingService.get_status(
-        current_user["uid"], user=user)
+    indexing_status = IndexingService.get_status(current_user["uid"], user=user)
     openai_key = user.get("openai_api_key")
-    key_first4 = openai_key[:4] if openai_key and len(
-        openai_key) >= 8 else None
-    key_last4 = openai_key[-4:] if openai_key and len(
-        openai_key) >= 8 else None
+    key_first4 = openai_key[:4] if openai_key and len(openai_key) >= 8 else None
+    key_last4 = openai_key[-4:] if openai_key and len(openai_key) >= 8 else None
     openai_key_valid = bool(user.get("openai_key_valid"))
     openai_key_validated_at = (
         user.get("openai_key_validated_at") if openai_key_valid else None
     )
     steps = _build_step_statuses(user, indexing_status)
-    config_ready = all(
-        step.get("status") == "COMPLETED" for step in steps.values()
-    )
+    config_ready = all(step.get("status") == "COMPLETED" for step in steps.values())
     drive_file_ids = user.get("drive_file_ids") or []
     drive_file_names = user.get("drive_file_names") or []
     response = {
@@ -106,12 +101,12 @@ def update_config(current_user):
     # Handle drive_file_ids (new drive.file scope)
     if "drive_file_ids" in data:
         file_ids = data.get("drive_file_ids") or []
-        update_data["drive_file_ids"] = file_ids if isinstance(
-            file_ids, list) else []
+        update_data["drive_file_ids"] = file_ids if isinstance(file_ids, list) else []
     if "drive_file_names" in data:
         file_names = data.get("drive_file_names") or []
-        update_data["drive_file_names"] = file_names if isinstance(
-            file_names, list) else []
+        update_data["drive_file_names"] = (
+            file_names if isinstance(file_names, list) else []
+        )
 
     if "openai_api_key" in update_data and update_data.get(
         "openai_api_key"
@@ -127,8 +122,7 @@ def update_config(current_user):
 
     if files_changed:
         update_data["drive_files_checksum"] = None
-        update_data["drive_file_count"] = len(
-            update_data.get("drive_file_ids") or [])
+        update_data["drive_file_count"] = len(update_data.get("drive_file_ids") or [])
 
     if update_data:
         UserConfig.update_config(current_user["uid"], update_data)
@@ -287,14 +281,18 @@ def get_picker_config(current_user):
     # Check if the token has the correct scope (drive.file)
     token_scopes = token_data.get("scopes") or []
     has_drive_file_scope = any("drive.file" in scope for scope in token_scopes)
-    has_old_readonly_scope = any(
-        "drive.readonly" in scope for scope in token_scopes)
+    has_old_readonly_scope = any("drive.readonly" in scope for scope in token_scopes)
 
     if has_old_readonly_scope and not has_drive_file_scope:
-        return jsonify({
-            "error": "Please re-authorize Google Drive to use the updated permissions.",
-            "needs_reauth": True,
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": "Please re-authorize Google Drive to use the updated permissions.",
+                    "needs_reauth": True,
+                }
+            ),
+            400,
+        )
 
     from backend.services.google_oauth import refresh_google_credentials
 
@@ -316,8 +314,7 @@ def get_picker_config(current_user):
         try:
             with open(creds_path, "r") as f:
                 creds_data = json.load(f)
-                web_creds = creds_data.get(
-                    "web") or creds_data.get("installed") or {}
+                web_creds = creds_data.get("web") or creds_data.get("installed") or {}
                 client_id = web_creds.get("client_id")
                 # Extract numeric app ID from client_id (format: 123456789-xxx.apps.googleusercontent.com)
                 if client_id and "-" in client_id:
@@ -378,7 +375,10 @@ def remove_drive(current_user):
 
     return (
         jsonify(
-            {"success": True, "message": "Drive connection and associated data removed."}
+            {
+                "success": True,
+                "message": "Drive connection and associated data removed.",
+            }
         ),
         200,
     )
@@ -401,9 +401,7 @@ def start_indexing(current_user):
     )
 
     # Don't force re-indexing if already COMPLETED
-    result = IndexingService.start_indexing(
-        user_context, force=False, inline=True
-    )
+    result = IndexingService.start_indexing(user_context, force=False, inline=True)
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
 
@@ -431,9 +429,7 @@ def re_index(current_user):
     )
 
     # Force indexing even if already COMPLETED
-    result = IndexingService.start_indexing(
-        user_context, force=True, inline=True
-    )
+    result = IndexingService.start_indexing(user_context, force=True, inline=True)
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
 
@@ -454,7 +450,6 @@ def build_database(current_user):
         user_config=user_config,
     )
 
-    result = IndexingService.start_indexing(
-        user_context, force=True, inline=True)
+    result = IndexingService.start_indexing(user_context, force=True, inline=True)
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
