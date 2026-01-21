@@ -30,16 +30,19 @@ def _build_step_statuses(user, indexing_status: dict) -> dict:
         api_status = {"status": "PENDING", "message": "API key required."}
 
     drive_auth = bool(user.get("google_token"))
+    drive_files = user.get("drive_file_ids") or []
     drive_folder = bool(user.get("drive_folder_id"))
-    if drive_auth and drive_folder:
+    has_drive_source = bool(drive_files or drive_folder)
+    if drive_auth and has_drive_source:
+        file_count = len(drive_files) if drive_files else "folder"
         drive_status = {
             "status": "COMPLETED",
-            "message": "Drive authorized and folder selected.",
+            "message": f"Drive authorized with {file_count} files selected." if drive_files else "Drive authorized and folder selected.",
         }
     else:
         drive_status = {
             "status": "PENDING",
-            "message": "Authorize Drive and select a folder.",
+            "message": "Authorize Drive and select files.",
         }
 
     build_status = {
@@ -70,10 +73,13 @@ def _normalize_drive_folder_id(value):
 @token_required
 def get_config(current_user):
     user = UserConfig.get_user(current_user["uid"]) or {}
-    indexing_status = IndexingService.get_status(current_user["uid"], user=user)
+    indexing_status = IndexingService.get_status(
+        current_user["uid"], user=user)
     openai_key = user.get("openai_api_key")
-    key_first4 = openai_key[:4] if openai_key and len(openai_key) >= 8 else None
-    key_last4 = openai_key[-4:] if openai_key and len(openai_key) >= 8 else None
+    key_first4 = openai_key[:4] if openai_key and len(
+        openai_key) >= 8 else None
+    key_last4 = openai_key[-4:] if openai_key and len(
+        openai_key) >= 8 else None
     openai_key_valid = bool(user.get("openai_key_valid"))
     openai_key_validated_at = (
         user.get("openai_key_validated_at") if openai_key_valid else None
@@ -83,7 +89,8 @@ def get_config(current_user):
     drive_test_folder_id = (
         user.get("drive_test_folder_id") if drive_test_success else None
     )
-    drive_tested_at = user.get("drive_tested_at") if drive_test_success else None
+    drive_tested_at = user.get(
+        "drive_tested_at") if drive_test_success else None
     if drive_test_folder_id and drive_test_folder_id != drive_folder_id:
         drive_test_success = False
         drive_tested_at = None
@@ -91,9 +98,14 @@ def get_config(current_user):
     config_ready = all(
         step.get("status") == "COMPLETED" for step in steps.values()
     )
+    drive_file_ids = user.get("drive_file_ids") or []
+    drive_file_names = user.get("drive_file_names") or []
     response = {
         "openai_model": "gpt-4.1-mini",
         "drive_folder_id": drive_folder_id,
+        "drive_file_ids": drive_file_ids,
+        "drive_file_names": drive_file_names,
+        "drive_file_count": len(drive_file_ids),
         "drive_authenticated": bool(user.get("google_token")),
         "has_openai_key": bool(openai_key),
         "openai_key_first4": key_first4,
@@ -119,13 +131,34 @@ def update_config(current_user):
     openai_key = data.get("openai_api_key")
     if openai_key:
         update_data["openai_api_key"] = openai_key.strip()
+
+    # Handle drive_folder_id (legacy)
     drive_folder_id = _normalize_drive_folder_id(data.get("drive_folder_id"))
     if drive_folder_id is not None:
         update_data["drive_folder_id"] = drive_folder_id.strip() or None
+
+    # Handle drive_file_ids (new drive.file scope)
+    if "drive_file_ids" in data:
+        file_ids = data.get("drive_file_ids") or []
+        update_data["drive_file_ids"] = file_ids if isinstance(
+            file_ids, list) else []
+    if "drive_file_names" in data:
+        file_names = data.get("drive_file_names") or []
+        update_data["drive_file_names"] = file_names if isinstance(
+            file_names, list) else []
+
     if "openai_api_key" in update_data and update_data.get(
         "openai_api_key"
     ) != existing.get("openai_api_key"):
         update_data["openai_key_valid"] = False
+
+    # Check if drive files have changed
+    files_changed = False
+    if "drive_file_ids" in update_data:
+        old_files = existing.get("drive_file_ids") or []
+        new_files = update_data.get("drive_file_ids") or []
+        files_changed = set(old_files) != set(new_files)
+
     if "drive_folder_id" in update_data and update_data.get(
         "drive_folder_id"
     ) != existing.get("drive_folder_id"):
@@ -134,18 +167,37 @@ def update_config(current_user):
         update_data["drive_test_folder_id"] = None
         update_data["drive_folder_checksum"] = None
         update_data["drive_file_count"] = 0
+
+    if files_changed:
+        update_data["drive_test_success"] = False
+        update_data["drive_tested_at"] = None
+        update_data["drive_files_checksum"] = None
+        update_data["drive_file_count"] = len(
+            update_data.get("drive_file_ids") or [])
+
     if update_data:
         UserConfig.update_config(current_user["uid"], update_data)
-        if update_data.get("openai_api_key") != existing.get(
-            "openai_api_key"
-        ) or update_data.get("drive_folder_id") != existing.get("drive_folder_id"):
+        config_changed = (
+            update_data.get("openai_api_key") != existing.get("openai_api_key")
+            or update_data.get("drive_folder_id") != existing.get("drive_folder_id")
+            or files_changed
+        )
+        if config_changed:
             RAGService.reset_user_cache(current_user["uid"])
             IndexingService.reset_indexing(current_user["uid"])
-        if (
+
+        # Check if all drive data is being removed
+        removing_folder = (
             "drive_folder_id" in update_data
             and update_data.get("drive_folder_id") is None
             and existing.get("drive_folder_id")
-        ):
+        )
+        removing_files = (
+            "drive_file_ids" in update_data
+            and not update_data.get("drive_file_ids")
+            and existing.get("drive_file_ids")
+        )
+        if removing_folder or removing_files:
             _purge_drive_documents(current_user["uid"])
     return jsonify({"message": "Configuration updated"}), 200
 
@@ -274,6 +326,27 @@ def get_picker_config(current_user):
     if not token_json:
         return jsonify({"error": "Google Drive not authorized"}), 400
 
+    # Parse the token to check scopes
+    if isinstance(token_json, str):
+        try:
+            token_data = json.loads(token_json)
+        except Exception:
+            token_data = {}
+    else:
+        token_data = token_json or {}
+
+    # Check if the token has the correct scope (drive.file)
+    token_scopes = token_data.get("scopes") or []
+    has_drive_file_scope = any("drive.file" in scope for scope in token_scopes)
+    has_old_readonly_scope = any(
+        "drive.readonly" in scope for scope in token_scopes)
+
+    if has_old_readonly_scope and not has_drive_file_scope:
+        return jsonify({
+            "error": "Please re-authorize Google Drive to use the updated permissions.",
+            "needs_reauth": True,
+        }), 400
+
     from backend.services.google_oauth import refresh_google_credentials
 
     creds, refreshed = refresh_google_credentials(token_json)
@@ -293,8 +366,9 @@ def get_picker_config(current_user):
     if creds_path and os.path.exists(creds_path):
         try:
             with open(creds_path, "r") as f:
-                creds = json.load(f)
-                web_creds = creds.get("web") or creds.get("installed") or {}
+                creds_data = json.load(f)
+                web_creds = creds_data.get(
+                    "web") or creds_data.get("installed") or {}
                 client_id = web_creds.get("client_id")
                 # Extract numeric app ID from client_id (format: 123456789-xxx.apps.googleusercontent.com)
                 if client_id and "-" in client_id:
@@ -302,12 +376,16 @@ def get_picker_config(current_user):
         except Exception:
             pass
 
+    # Include the origin in the response for the picker
+    origin = request.host_url.rstrip("/")
+
     return jsonify(
         {
             "apiKey": api_key,
             "accessToken": access_token,
             "clientId": client_id,
             "appId": app_id,
+            "origin": origin,
         }
     )
 
@@ -322,7 +400,8 @@ def test_drive(current_user):
     )
     if not drive_folder_id:
         return (
-            jsonify({"success": False, "message": "Drive folder ID not configured."}),
+            jsonify(
+                {"success": False, "message": "Drive folder ID not configured."}),
             400,
         )
     previous_folder_id = user.get("drive_folder_id")
@@ -385,7 +464,7 @@ def _purge_drive_documents(user_id):
 @token_required
 def remove_drive(current_user):
     """
-    Remove the Google Drive folder configuration and clear associated manual data.
+    Remove the Google Drive folder/files configuration and clear associated data.
     """
     user_id = current_user["uid"]
 
@@ -394,10 +473,13 @@ def remove_drive(current_user):
         user_id,
         {
             "drive_folder_id": None,
+            "drive_file_ids": [],
+            "drive_file_names": [],
             "drive_test_success": False,
             "drive_tested_at": None,
             "drive_test_folder_id": None,
             "drive_folder_checksum": None,
+            "drive_files_checksum": None,
             "drive_file_count": 0,
         },
     )
@@ -434,6 +516,7 @@ def start_indexing(current_user):
     )
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
+
 
 @config_bp.route("/re-index", methods=["POST"])
 @token_required
@@ -481,6 +564,7 @@ def build_database(current_user):
         user_config=user_config,
     )
 
-    result = IndexingService.start_indexing(user_context, force=True, inline=True)
+    result = IndexingService.start_indexing(
+        user_context, force=True, inline=True)
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code

@@ -52,7 +52,8 @@ class IndexingService:
         # Check if there's an active job running
         with cls._job_lock:
             is_active = (
-                user_id in cls._active_jobs and cls._active_jobs[user_id].is_alive()
+                user_id in cls._active_jobs and cls._active_jobs[user_id].is_alive(
+                )
             )
 
         # If status says PROCESSING but no active thread, it may have crashed
@@ -133,8 +134,8 @@ class IndexingService:
         # Validate required fields
         if not user_context.get("openai_api_key"):
             return {"success": False, "message": "OpenAI API key is required"}
-        if not user_context.get("drive_folder_id"):
-            return {"success": False, "message": "Drive folder ID is required"}
+        if not user_context.get("drive_file_ids"):
+            return {"success": False, "message": "Drive files are required"}
         if not user_context.get("google_token"):
             return {"success": False, "message": "Google Drive is not authorized"}
 
@@ -247,10 +248,12 @@ class IndexingService:
                     progress=100,
                 )
 
-            cls.logger.info("Indexing completed successfully for user %s", user_id)
+            cls.logger.info(
+                "Indexing completed successfully for user %s", user_id)
 
         except Exception as e:
-            cls.logger.error("Indexing failed for user %s: %s", user_id, str(e))
+            cls.logger.error(
+                "Indexing failed for user %s: %s", user_id, str(e))
             cls._update_status(
                 user_id, IndexingStatus.FAILED, f"Indexing failed: {str(e)}"
             )

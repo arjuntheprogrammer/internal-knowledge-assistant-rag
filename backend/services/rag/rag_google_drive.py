@@ -49,8 +49,10 @@ def sanitize_oauth_credentials_file(path):
 def resolve_credentials_path():
     candidates = [
         os.getenv("GOOGLE_OAUTH_CLIENT_PATH"),
-        os.path.join(os.getcwd(), "backend", "credentials", "client_secrets.json"),
-        os.path.join(os.getcwd(), "backend", "credentials", "credentials.json"),
+        os.path.join(os.getcwd(), "backend",
+                     "credentials", "client_secrets.json"),
+        os.path.join(os.getcwd(), "backend",
+                     "credentials", "credentials.json"),
         os.path.join(os.getcwd(), "client_secrets.json"),
     ]
 
@@ -126,11 +128,14 @@ def get_google_drive_reader():
                             if os.path.sep in safe_filename or (
                                 altsep and altsep in safe_filename
                             ):
-                                safe_filename = safe_filename.replace(os.path.sep, "_")
+                                safe_filename = safe_filename.replace(
+                                    os.path.sep, "_")
                                 if altsep:
-                                    safe_filename = safe_filename.replace(altsep, "_")
+                                    safe_filename = safe_filename.replace(
+                                        altsep, "_")
                             filepath = os.path.join(temp_dir, safe_filename)
-                            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                            os.makedirs(os.path.dirname(
+                                filepath), exist_ok=True)
                             fileid = fileid_meta[0]
                             final_filepath = self._download_with_retries(
                                 fileid, filepath, attempts=retry_attempts
@@ -248,7 +253,8 @@ def ensure_pydrive_creds_from_token(token_path, pydrive_creds_path):
         try:
             from datetime import datetime, timezone
 
-            token_expiry = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
+            token_expiry = datetime.fromisoformat(
+                expiry.replace("Z", "+00:00"))
             if token_expiry.tzinfo is None:
                 token_expiry = token_expiry.replace(tzinfo=timezone.utc)
         except Exception:
@@ -297,7 +303,8 @@ def get_google_token_data(user_id, token_json=None):
     else:
         # Fallback to original if refresh fails, though it likely won't work
         final_token_data = (
-            json.dumps(token_data) if isinstance(token_data, dict) else token_data
+            json.dumps(token_data) if isinstance(
+                token_data, dict) else token_data
         )
 
     token_path = os.path.join(
@@ -352,7 +359,8 @@ def load_google_drive_documents(user_id, drive_folder_id, token_json=None):
         creds_path and os.path.exists(creds_path)
     ):
         try:
-            loader, auth_type, error = _build_drive_loader(creds_path, token_path)
+            loader, auth_type, error = _build_drive_loader(
+                creds_path, token_path)
             if not loader:
                 if error:
                     print(error)
@@ -370,6 +378,140 @@ def load_google_drive_documents(user_id, drive_folder_id, token_json=None):
             logger.error(f"Failed to load from Drive: {e}")
 
     return documents
+
+
+def load_google_drive_documents_by_file_ids(user_id, file_ids, token_json=None):
+    """
+    Load documents from Google Drive by specific file IDs.
+    This is used with the drive.file scope where users select individual files.
+
+    Args:
+        user_id: The user's ID
+        file_ids: List of Google Drive file IDs to load
+        token_json: Optional token JSON string
+
+    Returns:
+        List of loaded documents
+    """
+    documents = []
+    if not file_ids:
+        return documents
+
+    creds_path = resolve_credentials_path()
+    token_path = get_google_token_data(user_id, token_json=token_json)
+
+    if (token_path and os.path.exists(token_path)) or (
+        creds_path and os.path.exists(creds_path)
+    ):
+        try:
+            loader, auth_type, error = _build_drive_loader(
+                creds_path, token_path)
+            if not loader:
+                if error:
+                    print(error)
+                return documents
+
+            # Load documents by file IDs
+            drive_docs = loader.load_data(file_ids=file_ids)
+            documents.extend(drive_docs)
+            logger.info(
+                f"Loaded {len(drive_docs)} documents from {len(file_ids)} Drive files."
+            )
+
+            if auth_type:
+                logger.info(f"Using {auth_type}.")
+        except Exception as e:
+            logger.error(f"Failed to load from Drive by file IDs: {e}")
+
+    return documents
+
+
+def get_selected_files_info(user_id, file_ids, token_json=None):
+    """
+    Get file metadata for selected file IDs.
+    Returns a list of file info dicts with id, name, mimeType.
+    """
+    if not file_ids:
+        return []
+
+    token_path = get_google_token_data(user_id, token_json=token_json)
+    if not token_path or not os.path.exists(token_path):
+        return []
+
+    try:
+        with open(token_path, "r") as handle:
+            token_data = json.load(handle)
+    except Exception:
+        return []
+
+    scopes = token_data.get("scopes") or [
+        "https://www.googleapis.com/auth/drive.file",
+    ]
+
+    try:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+    except Exception:
+        return []
+
+    try:
+        creds = Credentials.from_authorized_user_info(
+            token_data, scopes=scopes)
+        service = build(
+            "drive",
+            "v3",
+            credentials=creds,
+            cache_discovery=False,
+        )
+
+        files_info = []
+        for file_id in file_ids:
+            try:
+                file_meta = (
+                    service.files()
+                    .get(fileId=file_id, fields="id,name,mimeType,modifiedTime")
+                    .execute()
+                )
+                files_info.append(file_meta)
+            except Exception as e:
+                logger.warning(
+                    f"Could not get metadata for file {file_id}: {e}")
+
+        return files_info
+    except Exception as e:
+        logger.error(f"Error getting file info: {e}")
+        return []
+
+
+def get_files_checksum(user_id, file_ids, token_json=None):
+    """
+    Generate a checksum based on file IDs and modified times.
+    This is used to detect changes without downloading files.
+
+    Returns:
+        str: A hash string representing the current state of the files.
+             Returns None if files cannot be accessed.
+    """
+    import hashlib
+
+    if not file_ids:
+        return None
+
+    files_info = get_selected_files_info(
+        user_id, file_ids, token_json=token_json)
+    if not files_info:
+        return None
+
+    # Sort for consistent ordering
+    files_info.sort(key=lambda f: f.get("id", ""))
+
+    # Build a string of id:modifiedTime pairs
+    checksum_data = "|".join(
+        f"{f.get('id')}:{f.get('modifiedTime', '')}" for f in files_info
+    )
+
+    # Return MD5 hash
+    return hashlib.md5(checksum_data.encode()).hexdigest()
 
 
 def get_drive_file_list(user_id, drive_folder_id):
@@ -451,7 +593,7 @@ def _list_drive_files(token_path, folder_id):
         return None, f"Failed to read Drive token: {exc}"
 
     scopes = token_data.get("scopes") or [
-        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/drive.file",
     ]
 
     try:
@@ -462,7 +604,8 @@ def _list_drive_files(token_path, folder_id):
         return None, f"Missing Google API dependencies: {exc}"
 
     try:
-        creds = Credentials.from_authorized_user_info(token_data, scopes=scopes)
+        creds = Credentials.from_authorized_user_info(
+            token_data, scopes=scopes)
         service = build(
             "drive",
             "v3",
@@ -498,7 +641,8 @@ def _list_drive_files(token_path, folder_id):
 
 def _format_drive_http_error(err):
     try:
-        content = err.content.decode("utf-8") if hasattr(err, "content") else ""
+        content = err.content.decode(
+            "utf-8") if hasattr(err, "content") else ""
         data = json.loads(content) if content else {}
     except Exception:
         data = {}
@@ -546,7 +690,7 @@ def get_folder_checksum(user_id, drive_folder_id, token_json=None):
         return None
 
     scopes = token_data.get("scopes") or [
-        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/drive.file",
     ]
 
     try:
@@ -556,7 +700,8 @@ def get_folder_checksum(user_id, drive_folder_id, token_json=None):
         return None
 
     try:
-        creds = Credentials.from_authorized_user_info(token_data, scopes=scopes)
+        creds = Credentials.from_authorized_user_info(
+            token_data, scopes=scopes)
         service = build(
             "drive",
             "v3",

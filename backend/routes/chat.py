@@ -63,7 +63,7 @@ def chat(current_user):
                 400,
             )
 
-        drive_folder_id = user_context.get("drive_folder_id")
+        drive_file_ids = user_context.get("drive_file_ids") or []
         google_token = user_context.get("google_token")
         if not google_token:
             return (
@@ -75,11 +75,11 @@ def chat(current_user):
                 ),
                 400,
             )
-        if not drive_folder_id:
+        if not drive_file_ids:
             return (
                 jsonify(
                     {
-                        "message": "Google Drive folder is not selected. Please choose a folder in Settings.",
+                        "message": "Google Drive files are not selected. Please choose files in Settings.",
                         "needs_config": True,
                     }
                 ),
@@ -140,7 +140,8 @@ def chat(current_user):
         response_text = RAGService.query(query_bundle, user_context)
 
         # Safety Check Output
-        is_safe_response, reason_response = SafetyService.is_safe(response_text)
+        is_safe_response, reason_response = SafetyService.is_safe(
+            response_text)
         if not is_safe_response:
             response_text = "[REDACTED due to safety policy]"
 

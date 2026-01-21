@@ -45,7 +45,7 @@ let lastStepStatuses = {
 };
 const stepDefaultSubtitles = {
   1: "Validate your OpenAI key.",
-  2: "Authorize and pick a folder.",
+  2: "Authorize and select files.",
   3: "Index your Drive data.",
 };
 
@@ -65,9 +65,7 @@ function bindStepToggles() {
 }
 
 function setStepExpanded(step, expanded) {
-  const header = document.querySelector(
-    `[data-step-toggle="${step}"]`
-  );
+  const header = document.querySelector(`[data-step-toggle="${step}"]`);
   const body = document.getElementById(`step-${step}-body`);
   if (!header || !body) return;
   header.setAttribute("aria-expanded", String(expanded));
@@ -104,7 +102,7 @@ function setStepStatus(step, status, message = "") {
     "step-status--completed",
     "step-status--failed",
     "step-status--processing",
-    "step-status--locked"
+    "step-status--locked",
   );
   if (normalized === "COMPLETED") {
     statusEl.classList.add("step-status--completed");
@@ -144,7 +142,7 @@ document.addEventListener(
       showToast("Please wait until the build is complete.");
     }
   },
-  true
+  true,
 );
 
 export function bindConfigPage() {
@@ -292,7 +290,7 @@ export async function handleGoogleAuth(autoRedirect = false) {
       const popup = window.open(
         data.auth_url,
         "GoogleAuth",
-        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,status=yes`
+        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,status=yes`,
       );
 
       if (!popup) {
@@ -303,6 +301,8 @@ export async function handleGoogleAuth(autoRedirect = false) {
       const authListener = (event) => {
         if (event.origin !== window.location.origin) return;
         if (event.data?.type === "google-auth-success") {
+          // Clear cached picker config so new token is used
+          pickerConfig = null;
           checkAuthStatus().then(() => loadConfig());
         }
       };
@@ -313,6 +313,8 @@ export async function handleGoogleAuth(autoRedirect = false) {
         if (popup.closed) {
           clearInterval(timer);
           window.removeEventListener("message", authListener);
+          // Clear cached picker config so new token is used
+          pickerConfig = null;
           checkAuthStatus().then(() => loadConfig());
         }
       }, 1000);
@@ -376,18 +378,29 @@ export async function loadConfig() {
       }
     }
 
-    const driveInput = document.getElementById("drive-folder-id");
-    if (driveInput) {
-      driveInput.value = config.drive_folder_id || "";
-    }
+    // Store file IDs for later use
+    window._selectedDriveFileIds = config.drive_file_ids || [];
+    window._selectedDriveFileNames = config.drive_file_names || [];
 
     const selectBtn = document.getElementById("folder-picker-actions");
     const displayDiv = document.getElementById("selected-folder-display");
     const nameSpan = document.getElementById("selected-folder-name");
+    const filesList = document.getElementById("selected-files-list");
 
-    if (config.drive_folder_id) {
-      const storedName = localStorage.getItem("selected_folder_name");
-      const displayName = storedName || config.drive_folder_id;
+    const hasFiles = config.drive_file_ids && config.drive_file_ids.length > 0;
+
+    if (hasFiles) {
+      const fileCount = config.drive_file_ids.length;
+      const fileNames = config.drive_file_names || [];
+      const displayName = `${fileCount} file${fileCount > 1 ? "s" : ""} selected`;
+
+      // Populate the files list
+      if (filesList && fileNames.length > 0) {
+        filesList.innerHTML = fileNames
+          .map((name) => `<li>${name}</li>`)
+          .join("");
+        filesList.style.display = "flex";
+      }
 
       if (displayDiv && nameSpan) {
         nameSpan.textContent = displayName;
@@ -403,15 +416,21 @@ export async function loadConfig() {
       if (selectBtn) {
         selectBtn.style.display = "flex";
       }
+      // Clear and hide files list
+      if (filesList) {
+        filesList.innerHTML = "";
+        filesList.style.display = "none";
+      }
     }
 
     const driveSaveStatus = document.getElementById("drive-save-status");
     if (driveSaveStatus) {
-      if (config.drive_authenticated && config.drive_folder_id) {
-        driveSaveStatus.textContent = "Folder saved";
+      if (config.drive_authenticated && hasFiles) {
+        const statusText = `${config.drive_file_ids.length} file${config.drive_file_ids.length > 1 ? "s" : ""} saved`;
+        driveSaveStatus.textContent = statusText;
         driveSaveStatus.style.color = "#059669";
       } else {
-        driveSaveStatus.textContent = "No folder selected.";
+        driveSaveStatus.textContent = "No files selected.";
         driveSaveStatus.style.color = "var(--text-muted)";
       }
     }
@@ -430,6 +449,9 @@ export async function saveConfig(options = {}) {
     showAlert = true,
     includeOpenAIKey = true,
     includeDriveFolder = true,
+    includeDriveFiles = false,
+    driveFileIds = null,
+    driveFileNames = null,
   } = options;
   const openAiKeyInput = document.getElementById("openai-key");
   const driveInput = document.getElementById("drive-folder-id");
@@ -446,6 +468,10 @@ export async function saveConfig(options = {}) {
     if (driveFolder) {
       payload.drive_folder_id = driveFolder;
     }
+  }
+  if (includeDriveFiles && driveFileIds !== null) {
+    payload.drive_file_ids = driveFileIds;
+    payload.drive_file_names = driveFileNames || [];
   }
 
   try {
@@ -594,8 +620,7 @@ async function showConfigNotice(config = null) {
     notice.classList.remove("success");
   } else {
     notice.style.display = "block";
-    notice.textContent =
-      "Step 3 required: build your document database.";
+    notice.textContent = "Step 3 required: build your document database.";
     notice.classList.remove("success");
   }
 }
@@ -837,11 +862,21 @@ async function getPickerConfig() {
     const res = await fetch(`${API_BASE}/config/picker-config`, {
       headers: authHeaders(),
     });
+    const data = await safeJson(res);
+
     if (!res.ok) {
-      const data = await safeJson(res);
+      // Check for needs_reauth flag
+      if (data?.needs_reauth) {
+        const error = new Error(
+          data?.error || "Please re-authorize Google Drive.",
+        );
+        error.needs_reauth = true;
+        throw error;
+      }
       throw new Error(data?.error || "Failed to get picker config");
     }
-    pickerConfig = await safeJson(res);
+
+    pickerConfig = data;
     return pickerConfig;
   } catch (err) {
     console.error("Failed to get picker config:", err);
@@ -852,7 +887,7 @@ async function getPickerConfig() {
 async function openFolderPicker() {
   try {
     if (isStepLocked(2)) {
-      showToast("Complete Step 1 before selecting a folder.");
+      showToast("Complete Step 1 before selecting files.");
       return;
     }
 
@@ -864,9 +899,34 @@ async function openFolderPicker() {
     }
 
     // Get picker configuration
-    const config = await getPickerConfig();
-    if (!config || !config.apiKey || !config.accessToken) {
-      showToast("Unable to load folder picker. Please try again.");
+    let config;
+    try {
+      config = await getPickerConfig();
+    } catch (err) {
+      // Check if we need to re-authorize due to scope change
+      if (err.message && err.message.includes("re-authorize")) {
+        showToast("Permissions updated. Please re-authorize Google Drive.");
+        // Trigger re-authorization
+        await handleGoogleAuth();
+        return;
+      }
+      throw err;
+    }
+
+    if (!config) {
+      showToast("Unable to load file picker. Please try again.");
+      return;
+    }
+
+    // Check if we need to re-authorize
+    if (config.needs_reauth) {
+      showToast("Permissions updated. Please re-authorize Google Drive.");
+      await handleGoogleAuth();
+      return;
+    }
+
+    if (!config.apiKey || !config.accessToken) {
+      showToast("Unable to load file picker. Please try again.");
       return;
     }
 
@@ -878,8 +938,8 @@ async function openFolderPicker() {
     // Create and show the picker
     createPicker(config);
   } catch (err) {
-    console.error("Folder picker error:", err);
-    showToast("Failed to open folder picker: " + err.message);
+    console.error("File picker error:", err);
+    showToast("Failed to open file picker: " + err.message);
   }
 }
 
@@ -909,27 +969,51 @@ function loadPickerApi() {
 }
 
 function createPicker(config) {
+  // Use the origin from server config or fall back to window.location.origin
+  const pickerOrigin = config.origin || window.location.origin;
+
   const picker = new google.picker.PickerBuilder()
-    .setTitle("Select a folder to index")
-    .setOrigin(window.location.origin)
+    .setTitle("Select files to index")
+    .setOrigin(pickerOrigin)
     .setAppId(config.appId)
+    // All files view (default)
     .addView(
       new google.picker.DocsView()
         .setIncludeFolders(true)
-        .setSelectFolderEnabled(true)
-        .setMimeTypes("application/vnd.google-apps.folder")
+        .setSelectFolderEnabled(false)
+        .setMode(google.picker.DocsViewMode.LIST),
     )
+    // Documents view
+    .addView(
+      new google.picker.DocsView(google.picker.ViewId.DOCUMENTS).setMode(
+        google.picker.DocsViewMode.LIST,
+      ),
+    )
+    // Spreadsheets view
+    .addView(
+      new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS).setMode(
+        google.picker.DocsViewMode.LIST,
+      ),
+    )
+    // PDFs view
+    .addView(
+      new google.picker.DocsView(google.picker.ViewId.PDFS).setMode(
+        google.picker.DocsViewMode.LIST,
+      ),
+    )
+    // Shared drives view
     .addView(
       new google.picker.DocsView()
         .setIncludeFolders(true)
-        .setSelectFolderEnabled(true)
-        .setMimeTypes("application/vnd.google-apps.folder")
+        .setSelectFolderEnabled(false)
         .setEnableTeamDrives(true)
-        .setLabel("Shared Drives")
+        .setMode(google.picker.DocsViewMode.LIST)
+        .setLabel("Shared Drives"),
     )
     .setOAuthToken(config.accessToken)
     .setDeveloperKey(config.apiKey)
     .setCallback(pickerCallback)
+    .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
     .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
     .build();
 
@@ -938,16 +1022,117 @@ function createPicker(config) {
 
 function pickerCallback(data) {
   if (data.action === google.picker.Action.PICKED) {
-    const folder = data.docs[0];
-    if (folder) {
-      setSelectedFolder(folder.id, folder.name);
-      void saveDriveSelection();
+    const docs = data.docs || [];
+    if (docs.length > 0) {
+      // Filter out folders - we only want files
+      const files = docs.filter(
+        (doc) => doc.mimeType !== "application/vnd.google-apps.folder",
+      );
+
+      if (files.length === 0) {
+        showToast(
+          "Please select files, not folders. With the new permissions model, you need to select individual files.",
+        );
+        return;
+      }
+
+      const fileIds = files.map((doc) => doc.id);
+      const fileNames = files.map((doc) => doc.name);
+      setSelectedFiles(fileIds, fileNames);
+      void saveDriveFilesSelection(fileIds, fileNames);
     }
   } else if (data.action === google.picker.Action.CANCEL) {
     // User cancelled, do nothing
   }
 }
 
+function setSelectedFiles(fileIds, fileNames) {
+  // Store in window for later use
+  window._selectedDriveFileIds = fileIds;
+  window._selectedDriveFileNames = fileNames;
+
+  // Clear the folder input (we're using files now)
+  const folderIdInput = document.getElementById("drive-folder-id");
+  if (folderIdInput) {
+    folderIdInput.value = "";
+  }
+
+  // Show the selected files display
+  const selectBtn = document.getElementById("folder-picker-actions");
+  const displayDiv = document.getElementById("selected-folder-display");
+  const nameSpan = document.getElementById("selected-folder-name");
+  const filesList = document.getElementById("selected-files-list");
+
+  const displayName = `${fileNames.length} file${fileNames.length > 1 ? "s" : ""} selected`;
+
+  if (displayDiv && nameSpan) {
+    nameSpan.textContent = displayName;
+    displayDiv.style.display = "flex";
+  }
+  if (selectBtn) {
+    selectBtn.style.display = "none";
+  }
+
+  // Populate the files list
+  if (filesList && fileNames.length > 0) {
+    filesList.innerHTML = fileNames.map((name) => `<li>${name}</li>`).join("");
+    filesList.style.display = "flex";
+  }
+
+  // Clear folder name from localStorage since we're using files now
+  localStorage.removeItem("selected_folder_name");
+
+  const driveSaveStatus = document.getElementById("drive-save-status");
+  if (driveSaveStatus) {
+    driveSaveStatus.textContent = "Saving files...";
+    driveSaveStatus.style.color = "#f59e0b";
+  }
+}
+
+async function saveDriveFilesSelection(fileIds, fileNames) {
+  if (isSavingDrive) return;
+  const authorized = await checkAuthStatus();
+  if (!authorized) {
+    showToast("Authorize Google Drive before saving files.");
+    return;
+  }
+
+  if (!fileIds || fileIds.length === 0) {
+    showToast("Select files to continue.");
+    return;
+  }
+
+  const driveSaveStatus = document.getElementById("drive-save-status");
+  if (driveSaveStatus) {
+    driveSaveStatus.textContent = "Saving files...";
+    driveSaveStatus.style.color = "#f59e0b";
+  }
+
+  isSavingDrive = true;
+  try {
+    const saved = await saveConfig({
+      showAlert: false,
+      includeOpenAIKey: false,
+      includeDriveFolder: false,
+      includeDriveFiles: true,
+      driveFileIds: fileIds,
+      driveFileNames: fileNames,
+    });
+    if (!saved) return;
+
+    showToast(
+      `${fileIds.length} file${fileIds.length > 1 ? "s" : ""} saved!`,
+      "success",
+    );
+    await loadConfig();
+    setStepExpanded(2, false);
+    setStepExpanded(3, true);
+  } finally {
+    isSavingDrive = false;
+  }
+}
+
+// Legacy function for backward compatibility
 function setSelectedFolder(folderId, folderName) {
   // Update the hidden input
   const folderIdInput = document.getElementById("drive-folder-id");
@@ -980,7 +1165,7 @@ function setSelectedFolder(folderId, folderName) {
 
 async function removeDriveFolder() {
   const confirmed = await showConfirmToast(
-    "Are you sure you want to remove this folder? This will delete the search index and all associated data."
+    "Are you sure you want to remove the selected files? This will delete the search index and all associated data.",
   );
   if (!confirmed) {
     return;
@@ -994,7 +1179,7 @@ async function removeDriveFolder() {
 
     if (!res.ok) {
       const data = await safeJson(res);
-      showToast(data?.message || "Failed to remove folder");
+      showToast(data?.message || "Failed to remove files");
       return;
     }
 
@@ -1003,25 +1188,34 @@ async function removeDriveFolder() {
     if (folderIdInput) folderIdInput.value = "";
     localStorage.removeItem("selected_folder_name");
 
+    // Clear file IDs
+    window._selectedDriveFileIds = [];
+    window._selectedDriveFileNames = [];
+
     const selectBtn = document.getElementById("folder-picker-actions");
     const displayDiv = document.getElementById("selected-folder-display");
+    const filesList = document.getElementById("selected-files-list");
     if (displayDiv) displayDiv.style.display = "none";
     if (selectBtn) selectBtn.style.display = "flex";
+    if (filesList) {
+      filesList.innerHTML = "";
+      filesList.style.display = "none";
+    }
 
     const driveSaveStatus = document.getElementById("drive-save-status");
     if (driveSaveStatus) {
-      driveSaveStatus.textContent = "No folder selected.";
+      driveSaveStatus.textContent = "No files selected.";
       driveSaveStatus.style.color = "var(--text-muted)";
     }
 
     const indexingStatus = document.getElementById("indexing-status-inline");
     if (indexingStatus) indexingStatus.style.display = "none";
 
-    showToast("Remove successful", "success");
+    showToast("Files removed successfully", "success");
     await loadConfig();
   } catch (err) {
-    console.error("Remove folder error:", err);
-    showToast("Failed to remove folder");
+    console.error("Remove files error:", err);
+    showToast("Failed to remove files");
   }
 }
 
@@ -1029,7 +1223,7 @@ function normalizeDriveFolderId(value) {
   const trimmed = (value || "").trim();
   if (!trimmed) return "";
   const folderMatch = trimmed.match(
-    /drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/i
+    /drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/i,
   );
   if (folderMatch) return folderMatch[1];
   return trimmed;

@@ -6,7 +6,7 @@ from google_auth_oauthlib.flow import Flow
 from backend.services.rag.rag_google_drive import resolve_credentials_path
 
 SCOPES = [
-    "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/drive.file",
 ]
 
 

@@ -66,9 +66,7 @@ Assistant{% endblock %} {% block content %}
                 />
               </div>
             </div>
-            <div id="openai-key-status" class="form-status">
-              Not configured
-            </div>
+            <div id="openai-key-status" class="form-status">Not configured</div>
             <button
               id="test-openai-btn"
               class="btn-secondary"
@@ -104,7 +102,7 @@ Assistant{% endblock %} {% block content %}
               <div class="step-title-group">
                 <span class="step-title">Google Drive Setup</span>
                 <span id="step-2-subtitle" class="step-subtitle"
-                  >Authorize and pick a folder.</span
+                  >Authorize and select files.</span
                 >
               </div>
             </div>
@@ -121,8 +119,8 @@ Assistant{% endblock %} {% block content %}
                 margin-bottom: 8px;
               "
             >
-              Authorize Drive access and select a folder. No files are downloaded
-              in this step.
+              Authorize Drive access and select files to index. No files are
+              downloaded in this step.
             </p>
             <div id="google-auth-section" class="drive-auth-block">
               <div class="drive-auth-row">
@@ -148,7 +146,7 @@ Assistant{% endblock %} {% block content %}
                   margin-bottom: 8px;
                 "
               >
-                Select Folder to Index
+                Select Files to Index
               </label>
 
               <div
@@ -156,28 +154,35 @@ Assistant{% endblock %} {% block content %}
                 class="selected-folder-display"
                 style="display: none"
               >
-                <span class="folder-icon">📁</span>
-                <span id="selected-folder-name" class="selected-folder-name"
-                  >No folder selected</span
-                >
-                <div class="folder-display-actions">
-                  <button id="change-folder-btn" type="button" class="btn-link">
-                    Change
-                  </button>
-                  <span class="action-divider">|</span>
-                  <button
-                    id="remove-folder-btn"
-                    type="button"
-                    class="btn-link btn-link-danger"
+                <div class="selected-files-header">
+                  <span class="folder-icon">📄</span>
+                  <span id="selected-folder-name" class="selected-folder-name"
+                    >No files selected</span
                   >
-                    Remove
-                  </button>
+                  <div class="folder-display-actions">
+                    <button id="change-folder-btn" type="button" class="btn-link">
+                      Change
+                    </button>
+                    <span class="action-divider">|</span>
+                    <button
+                      id="remove-folder-btn"
+                      type="button"
+                      class="btn-link btn-link-danger"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
+                <ul id="selected-files-list" class="selected-files-list" style="display: none"></ul>
               </div>
 
               <div id="folder-picker-actions" class="folder-picker-actions">
-                <button id="select-folder-btn" type="button" class="btn-primary">
-                  📁 Select Folder from Drive
+                <button
+                  id="select-folder-btn"
+                  type="button"
+                  class="btn-primary"
+                >
+                  📄 Select Files from Drive
                 </button>
               </div>
 
@@ -186,7 +191,7 @@ Assistant{% endblock %} {% block content %}
 
             <div class="step-actions">
               <span id="drive-save-status" class="status-inline"
-                >No folder selected.</span
+                >No files selected.</span
               >
             </div>
           </div>
@@ -231,7 +236,10 @@ Assistant{% endblock %} {% block content %}
               class="indexing-status-inline"
               style="display: none; margin-top: 12px"
             >
-              <span id="indexing-inline-text" class="indexing-inline-text"></span>
+              <span
+                id="indexing-inline-text"
+                class="indexing-inline-text"
+              ></span>
               <div class="indexing-progress-bar">
                 <div
                   id="indexing-progress-fill"
@@ -263,7 +271,9 @@ Assistant{% endblock %} {% block content %}
 <div id="fullscreen-loader" class="fullscreen-loader">
   <div class="spinner"></div>
   <div class="loader-text">Scanning Google Drive...</div>
-  <div style="margin-top: 8px; font-size: 0.9rem; color: var(--text-muted)">Please do not close this tab</div>
+  <div style="margin-top: 8px; font-size: 0.9rem; color: var(--text-muted)">
+    Please do not close this tab
+  </div>
 </div>
 
 {% endblock %}

@@ -18,7 +18,7 @@ def build_user_context(
         "uid": user_id,
         "email": email or config.get("email"),
         "openai_api_key": config.get("openai_api_key"),
-        "drive_folder_id": config.get("drive_folder_id"),
+        "drive_file_ids": config.get("drive_file_ids") or [],
         "google_token": config.get("google_token"),
     }
     if overrides:
@@ -30,6 +30,6 @@ def is_user_context_ready(user_context: dict) -> bool:
     """Return True if context has the minimum fields required to index."""
     return bool(
         user_context.get("openai_api_key")
-        and user_context.get("drive_folder_id")
+        and user_context.get("drive_file_ids")
         and user_context.get("google_token")
     )

@@ -62,7 +62,8 @@ class SchedulerService:
                         # reset their progress to 0 and show the "Connecting" banner.
                         from backend.services.indexing_service import IndexingService
 
-                        IndexingService.start_indexing(user_context, silent=True)
+                        IndexingService.start_indexing(
+                            user_context, silent=True)
 
                 except Exception as e:
                     SchedulerService.logger.error("Polling error: %s", e)
@@ -77,22 +78,26 @@ class SchedulerService:
     @classmethod
     def _has_folder_changed(cls, user_context):
         """
-        Check if the user's Drive folder has changed since last check.
+        Check if the user's Drive folder/files have changed since last check.
 
         Returns True if:
         - This is the first check for this user
-        - The folder checksum has changed
+        - The folder/files checksum has changed
         - We couldn't get a checksum (fail-open to avoid missing updates)
         """
-        from backend.services.rag.rag_google_drive import get_folder_checksum
+        from backend.services.rag.rag_google_drive import get_files_checksum
 
         user_id = user_context.get("uid")
-        drive_folder_id = user_context.get("drive_folder_id")
+        drive_file_ids = user_context.get("drive_file_ids") or []
         token_json = user_context.get("google_token")
 
-        # Get current checksum
-        current_checksum = get_folder_checksum(
-            user_id=user_id, drive_folder_id=drive_folder_id, token_json=token_json
+        if not drive_file_ids:
+            # No drive files configured
+            return False
+
+        # Get current checksum for selected files
+        current_checksum = get_files_checksum(
+            user_id=user_id, file_ids=drive_file_ids, token_json=token_json
         )
 
         # If we couldn't get a checksum, assume changes (fail-open)
