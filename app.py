@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS
 from config import config
 from backend.routes.chat import chat_bp
@@ -25,7 +25,8 @@ def create_app(config_name="default"):
     # Handle Proxy headers for Cloud Run HTTPS
     from werkzeug.middleware.proxy_fix import ProxyFix
 
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1,
+                            x_proto=1, x_host=1, x_prefix=1)
 
     CORS(app)
 
