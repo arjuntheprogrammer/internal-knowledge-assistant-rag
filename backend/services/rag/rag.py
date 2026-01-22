@@ -104,7 +104,8 @@ class RAGService:
 
         notify(f"Processing {len(documents)} documents...", 40)
         annotate_documents(documents, user_id=user_id)
-        cls._document_catalog_by_user[user_id] = build_document_catalog(documents)
+        cls._document_catalog_by_user[user_id] = build_document_catalog(
+            documents)
 
         try:
             notify("Analyzing document structure...", 50)
@@ -119,7 +120,8 @@ class RAGService:
                 try:
                     notify("Clearing old index data...", 55)
                     client = getattr(vector_store, "client", None)
-                    collection_name = getattr(vector_store, "collection_name", None)
+                    collection_name = getattr(
+                        vector_store, "collection_name", None)
                     if client and collection_name:
                         # Delete by metadata filter
                         client.delete(
@@ -130,7 +132,8 @@ class RAGService:
                             f"Successfully cleared existing records for user {user_id}"
                         )
                 except Exception as del_err:
-                    cls.logger.warning(f"Could not clear existing records: {del_err}")
+                    cls.logger.warning(
+                        f"Could not clear existing records: {del_err}")
 
             storage_context = None
             if vector_store:
@@ -140,26 +143,49 @@ class RAGService:
 
             notify("Preparing nodes for embedding...", 60)
             splitter = SentenceSplitter(chunk_size=512, chunk_overlap=60)
-            cls._bm25_nodes_by_user[user_id] = splitter.get_nodes_from_documents(
-                documents
-            )
+
+            # Ensure all documents have file_id as their identity
+            for doc in documents:
+                f_id = doc.metadata.get("file_id")
+                if f_id:
+                    doc.id_ = f_id
+
+            # Generate nodes and assign deterministic IDs
+            nodes = splitter.get_nodes_from_documents(documents)
+            node_counts = {}
+            for node in nodes:
+                m = node.metadata
+                f_id = m.get("file_id")
+                rev_id = m.get("revision_id") or "unknown"
+                p_num = m.get("page_number") or 1
+                e_method = m.get("extraction_method") or m.get(
+                    "source") or "digital_text"
+
+                key = (f_id, rev_id, p_num, e_method)
+                idx = node_counts.get(key, 0)
+                node_counts[key] = idx + 1
+
+                node.id_ = f"{f_id}#rev:{rev_id}#p:{p_num}#m:{e_method}#c:{idx}"
+
+            cls._bm25_nodes_by_user[user_id] = nodes
 
             notify("Generating embeddings and uploading...", 75)
-            cls._index_by_user[user_id] = VectorStoreIndex.from_documents(
-                documents,
+            cls._index_by_user[user_id] = VectorStoreIndex(
+                nodes,
                 callback_manager=settings.callback_manager,
                 storage_context=storage_context,
-                transformations=[splitter],
             )
 
             notify("Finalizing...", 95)
             if vector_store:
                 log_vector_store_count(vector_store)
 
-            cls.logger.info(f"Index initialized successfully for user {user_id}.")
+            cls.logger.info(
+                f"Index initialized successfully for user {user_id}.")
             return documents
         except Exception as e:
-            cls.logger.error(f"Index initialization error for user {user_id}: {e}")
+            cls.logger.error(
+                f"Index initialization error for user {user_id}: {e}")
             raise
 
     @classmethod
@@ -226,7 +252,8 @@ class RAGService:
             selections = getattr(selector_result, "selections", None)
             if selections:
                 selected_inds = [selection.index for selection in selections]
-                selected_reasons = [selection.reason for selection in selections]
+                selected_reasons = [
+                    selection.reason for selection in selections]
             else:
                 inds = getattr(selector_result, "inds", None) or []
                 selected_inds = list(inds)

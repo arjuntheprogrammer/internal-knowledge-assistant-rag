@@ -76,6 +76,30 @@ flowchart TD
 5. **Answer synthesis**
    - Uses task-specific prompts for list vs non-list queries and a refine step.
 
+## Document and Node Identity
+
+The system uses a **file-centric identity model** to ensure consistent tracking of documents and their chunks across different ingestion methods (standard vs OCR).
+
+### 1. Document ID (`Document.id_`)
+The canonical identity of any document in the system is its **Google Drive `file_id`**.
+- Even if a document is split into multiple physical chunks during OCR (one per page), they all share the same `Document.id_`.
+- This ensures that a single file in Google Drive corresponds to exactly one "logical document" in our catalog.
+
+### 2. Node ID (`node.id_`)
+Each indexed chunk (Node) has a deterministic, unique ID based on its context:
+`{file_id}#rev:{revision_id}#p:{page_number}#m:{extraction_method}#c:{chunk_index}`
+
+- **`file_id`**: Google Drive ID.
+- **`revision_id`**: The modification timestamp or version identifier.
+- **`page_number`**: The page index (1-indexed).
+- **`extraction_method`**: Either `digital_text` or `ocr`.
+- **`chunk_index`**: The sequential index of the chunk within that specific page.
+
+This deterministic approach ensures that re-indexing the same file version results in identical node IDs, preventing duplicates and enabling stable evaluation.
+
+### 3. Metadata
+All granularity (page number, extraction method, etc.) is stored in metadata rather than encoded into the document ID. This allows for clean cataloging and filtering while retaining the ability to trace an answer back to a specific page or source.
+
 ## Query routing (casual vs retrieval)
 
 `RouterQueryEngine` + `LLMSingleSelector` choose between:
