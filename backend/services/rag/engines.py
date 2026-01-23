@@ -32,7 +32,7 @@ class CasualQueryEngine(BaseQueryEngine):
     def _load_prompts(self):
         # Load and register prompts
         system_spec = get_prompt_spec("casual_system")
-        schema_spec = get_prompt_spec("output_schema.md")
+        schema_spec = get_prompt_spec("output_schema")
 
         self._opik_prompts = [
             get_or_register_prompt(system_spec),

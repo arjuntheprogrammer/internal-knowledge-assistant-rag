@@ -13,6 +13,11 @@ import os
 import sys
 import logging
 from dotenv import load_dotenv
+import warnings
+
+# Suppress annoying library-level warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="pymilvus")
+warnings.filterwarnings("ignore", message="The 'validate_default' attribute")
 
 # 1. Add repo root to path so we can import backend
 sys.path.append(os.getcwd())
