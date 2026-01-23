@@ -17,7 +17,6 @@ llama-index-vector-stores-milvus==0.4.0
 numpy==2.4.1
 oauth2client==4.1.3
 openai==1.109.1
-posthog==3.25.0
 PyDrive==1.3.1
 Pillow==10.3.0
 pytesseract==0.3.10

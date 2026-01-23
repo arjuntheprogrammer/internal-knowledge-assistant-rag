@@ -93,7 +93,7 @@ Learn more about the retrieval pipeline and optimizations in the **[RAG Document
 
 ---
 
-## Analytics and Monitoring (Opik & PostHog)
+## Analytics and Monitoring (Opik)
 
 ### Opik
 
@@ -103,11 +103,6 @@ Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic wor
 - **Trace Attribution**: Every query is linked to the exact prompt version and hash used.
 
 > **Migration Note**: LangSmith was replaced with Opik for observability.
-
-### PostHog (Coming Soon)
-Token usage (Input, Thinking, Output) and user behavior analytics are integrated via PostHog.
-To enable, add your API key to the Cloud Run environment variables:
-`POSTHOG_API_KEY=your_key_here`
 
 ---
 
