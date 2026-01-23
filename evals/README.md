@@ -82,7 +82,6 @@ python -m evals.runner.run_eval \
 python -m evals.runner.run_eval \
   --dataset evals/datasets/stock_eval_v1.jsonl \
   --user-id <firebase_user_id> \
-  --k 10 \
   --opik-project internal-knowledge-assistant-eval \
   --opik-dataset stock_eval_v1 \
   --limit 5  # For testing
@@ -94,7 +93,6 @@ python -m evals.runner.run_eval \
 |----------|----------|---------|-------------|
 | `--dataset` | No | `evals/datasets/stock_eval_v1.jsonl` | Path to JSONL dataset file |
 | `--user-id` | No | `EVAL_USER_ID` or `NUsot...` | Firebase user ID for retrieval context |
-| `--k` | No | 10 | Top-k for retrieval metrics |
 | `--opik-project` | No | `OPIK_EVAL_PROJECT_NAME` | Opik project name |
 | `--opik-dataset` | No | `stock_eval_v1` | Opik dataset name |
 | `--use-opik-experiment` | No | `True` | Use `opik.evaluate()` for proper Experiments |
@@ -153,17 +151,19 @@ The framework uses a hybrid approach: local deterministic metrics for speed and 
 
 ### Citation & Generation Metrics
 
-- **Has Sources Section**: Whether `**Sources:**` header exists in the answer.
+The system leverages structured metadata from the `LLMOutput` model for high-precision evaluation.
+
+- **Has Sources Section**: Whether `**Sources:**` header exists in the answer (local) or `is_structured` is true (Opik side).
 - **Citation Compliance**:
-  - 50% for having a Sources section.
-  - 50% for meeting the minimum required citation count.
+  - Validates if the model correctly provided citations based on the `citations` list in the structured JSON.
+  - Checks if the number of citations meets the `required_citations_count`.
 - **Refusal Correctness**:
-  - Validates if the model correctly refused (for out-of-scope queries).
-  - Penalizes "false positive" refusals where the model refuses to answer a valid query.
+  - Validates if the model correctly toggled the `refused` flag for out-of-scope queries.
+  - Penalizes "false positive" refusals (refusing to answer a grounded query) and "false negative" refusals (grounding an out-of-scope query).
 
 ## Viewing Results in Opik
 
-The framework uses the `opik.evaluate()` API to create **Experiments**, which allow for side-by-side comparison of different RAG configurations.
+The framework uses the `opik.evaluate()` API to create **Experiments** with **high-concurrency execution** (`task_threads=10`).
 
 1. Go to [Opik Dashboard](https://www.comet.com/opik/arjun-gupta/projects)
 2. Select your project: `internal-knowledge-assistant-eval`

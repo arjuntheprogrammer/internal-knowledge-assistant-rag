@@ -182,12 +182,6 @@ async def main():
         help="Firebase user ID for retrieval context (default: NUsot0aGhVMGEEnu9RujAPSRXtv2)",
     )
     parser.add_argument(
-        "--k",
-        type=int,
-        default=10,
-        help="Top-k for retrieval metrics (default: 10)",
-    )
-    parser.add_argument(
         "--opik-project",
         type=str,
         default=None,
