@@ -14,7 +14,7 @@ from llama_index.core.vector_stores import MetadataFilters, ExactMatchFilter
 
 from .retrievers import HybridRetriever
 from backend.utils.prompt_loader import load_prompt, get_prompt_spec, load_examples
-from backend.utils.opik_prompts import get_or_register_prompt
+from backend.utils.opik_prompts import get_or_register_prompt, link_prompts_to_current_trace
 from .schemas.llm_output import LLMOutput
 from .structured_output import parse_structured_output, repair_llm_json, get_safe_llm_output
 
@@ -49,13 +49,15 @@ class CasualQueryEngine(BaseQueryEngine):
 
     def _query(self, query_bundle: QueryBundle):
         # Dynamic Schema Injection
-        schema_json = json.dumps(LLMOutput.model_json_schema(), indent=2)
+        schema_json = json.dumps(LLMOutput.model_json_schema(), indent=2).replace(
+            "{", "{{").replace("}", "}}")
         schema_instr = self._schema_prompt.replace("{{SCHEMA}}", schema_json)
 
         examples_str = ""
         if self._examples:
-            examples_str = "\n\n### Examples:\n" + \
-                json.dumps(self._examples, indent=2)
+            examples_json = json.dumps(self._examples, indent=2).replace(
+                "{", "{{").replace("}", "}}")
+            examples_str = "\n\n### Examples:\n" + examples_json
 
         # Apply prompt overrides
         prompt_overrides = self._user_context.get(
@@ -65,6 +67,9 @@ class CasualQueryEngine(BaseQueryEngine):
                        else self._system_prompt)
 
         full_prompt = f"{system_text}\n\n{schema_instr}{examples_str}\n\nUser Question: {query_bundle.query_str}"
+
+        # Link prompts while trace is active
+        link_prompts_to_current_trace(self._opik_prompts)
 
         try:
             # We use structured_predict if available, otherwise manual
@@ -133,6 +138,9 @@ class LazyRAGQueryEngine(BaseQueryEngine):
             prompt_overrides=self._user_context.get("prompt_overrides")
         )
         self._last_opik_prompts = opik_prompts
+
+        # Link prompts while trace is active
+        link_prompts_to_current_trace(opik_prompts)
 
         # Capture the response
         response = query_engine.query(query_bundle)

@@ -51,11 +51,25 @@ def get_or_register_prompt(prompt_spec: PromptSpec) -> Optional[Any]:
 
 
 def link_prompts_to_current_trace(prompts: list):
-    """Links multiple opik.Prompt objects to the current active trace."""
+    """Links multiple opik.Prompt objects to the current active trace or span."""
     try:
-        from opik.opik_context import update_current_trace
+        from opik.opik_context import update_current_trace, update_current_span, get_current_trace_data, get_current_span_data
+
         valid_prompts = [p for p in prompts if p is not None]
-        if valid_prompts:
+        if not valid_prompts:
+            return
+
+        # Attempt to link to trace first, then span
+        if get_current_trace_data() is not None:
             update_current_trace(prompts=valid_prompts)
-    except Exception:
-        pass
+            logger.debug("Linked %d prompts to current Opik trace",
+                         len(valid_prompts))
+        elif get_current_span_data() is not None:
+            update_current_span(prompts=valid_prompts)
+            logger.debug("Linked %d prompts to current Opik span",
+                         len(valid_prompts))
+        else:
+            logger.debug("No active Opik trace or span found to link prompts")
+
+    except Exception as e:
+        logger.debug("Failed to link prompts to trace/span: %s", e)

@@ -24,7 +24,6 @@ from .rag_milvus import get_milvus_vector_store
 from .rag_context import get_service_context
 from .schemas.llm_output import LLMOutput
 from .schemas.system_output import SystemOutput, RetrievalHit
-from backend.utils.opik_prompts import link_prompts_to_current_trace
 
 
 class RAGService:
@@ -189,10 +188,8 @@ class RAGService:
                 sel_res, "selections") else list(getattr(sel_res, "inds", []))
             if 0 in inds:
                 selected_tool = "casual_chat"
-                link_prompts_to_current_trace(casual_engine.opik_prompts)
             if 1 in inds:
                 selected_tool = "knowledge_base_retrieval"
-                link_prompts_to_current_trace(rag_engine.opik_prompts)
 
         # Build SystemOutput
         metadata = getattr(response, "metadata", {}) or {}
