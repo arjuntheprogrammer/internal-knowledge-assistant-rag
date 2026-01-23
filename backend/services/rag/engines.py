@@ -92,11 +92,13 @@ class LazyRAGQueryEngine(BaseQueryEngine):
         logger = logging.getLogger(__name__)
 
         try:
-            logger.info("Rebuilding index from vector store for user %s", user_id)
+            logger.info(
+                "Rebuilding index from vector store for user %s", user_id)
 
             vector_store = self._service.get_vector_store(user_id)
             if not vector_store:
-                logger.warning("No vector store available for user %s", user_id)
+                logger.warning(
+                    "No vector store available for user %s", user_id)
                 return None
 
             # Create index from existing vector store
@@ -122,16 +124,54 @@ class LazyRAGQueryEngine(BaseQueryEngine):
         return self._query(query_bundle)
 
 
-def build_rag_query_engine(
-    query_bundle, llm, callback_manager, index, bm25_nodes, user_id=None
+def build_hybrid_retriever(
+    query_bundle, index, bm25_nodes, callback_manager, user_id=None
 ):
+    """
+    Builds a hybrid (Vector + BM25) retriever with consistent logic.
+    """
     query_text = query_bundle.query_str or str(query_bundle)
     is_list_query = bool(
-        re.search(r"\b(list|all|show|enumerate|provide|give me)\b", query_text, re.I)
+        re.search(r"\b(list|all|show|enumerate|provide|give me)\b",
+                  query_text, re.I)
     )
+
     vector_top_k = 24 if is_list_query else 6
     bm25_top_k = 24 if is_list_query else 6
     max_results = 30 if is_list_query else 10
+
+    retriever_opts = {"similarity_top_k": vector_top_k}
+    if user_id:
+        retriever_opts["filters"] = MetadataFilters(
+            filters=[ExactMatchFilter(key="user_id", value=user_id)]
+        )
+
+    vector_retriever = index.as_retriever(**retriever_opts)
+    bm25_retriever = None
+    if bm25_nodes:
+        actual_bm25_top_k = min(bm25_top_k, len(bm25_nodes))
+        bm25_retriever = BM25Retriever.from_defaults(
+            nodes=bm25_nodes, similarity_top_k=actual_bm25_top_k
+        )
+
+    return HybridRetriever(
+        vector_retriever=vector_retriever,
+        bm25_retriever=bm25_retriever,
+        max_results=max_results,
+        callback_manager=callback_manager,
+        bm25_weight=1.2 if is_list_query else 1.0,
+    ), is_list_query
+
+
+def build_rag_query_engine(
+    query_bundle, llm, callback_manager, index, bm25_nodes, user_id=None
+):
+    """
+    Builds the full RAG query engine including reranking and specialized prompts.
+    """
+    hybrid_retriever, is_list_query = build_hybrid_retriever(
+        query_bundle, index, bm25_nodes, callback_manager, user_id
+    )
 
     default_text_qa_template = PromptTemplate(
         "Context: {context_str}\n"
@@ -171,29 +211,10 @@ def build_rag_query_engine(
         list_text_qa_template if is_list_query else default_text_qa_template
     )
     refine_template = list_refine_template if is_list_query else default_refine_template
+
     rerank_top_n = 24 if is_list_query else 6
     reranker = LLMRerank(llm=llm, top_n=rerank_top_n)
 
-    retriever_opts = {"similarity_top_k": vector_top_k}
-    if user_id:
-        retriever_opts["filters"] = MetadataFilters(
-            filters=[ExactMatchFilter(key="user_id", value=user_id)]
-        )
-
-    vector_retriever = index.as_retriever(**retriever_opts)
-    bm25_retriever = None
-    if bm25_nodes:
-        actual_bm25_top_k = min(bm25_top_k, len(bm25_nodes))
-        bm25_retriever = BM25Retriever.from_defaults(
-            nodes=bm25_nodes, similarity_top_k=actual_bm25_top_k
-        )
-    hybrid_retriever = HybridRetriever(
-        vector_retriever=vector_retriever,
-        bm25_retriever=bm25_retriever,
-        max_results=max_results,
-        callback_manager=callback_manager,
-        bm25_weight=1.2 if is_list_query else 1.0,
-    )
     return RetrieverQueryEngine.from_args(
         retriever=hybrid_retriever,
         llm=llm,

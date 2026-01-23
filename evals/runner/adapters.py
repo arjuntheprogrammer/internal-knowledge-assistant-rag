@@ -114,28 +114,20 @@ class RAGAdapter:
 
     def query(self, query_str: str) -> Tuple[Response, List[str], List[str], float]:
         """
-        Run a query and return (response, node_ids, file_ids, latency_ms).
+        Run a query through the production RAGService and return results.
+        This ensures evaluation is as realistic as possible by using the
+        exact production stack (including routing and lazy loading).
         """
-        if self._index is None:
-            raise RuntimeError(
-                "Adapter not initialized. Call initialize() first.")
+        from backend.services.rag import RAGService
 
-        from backend.services.rag.engines import build_rag_query_engine
-
-        settings = self._get_service_context()
-        query_bundle = QueryBundle(query_str=query_str)
-
-        query_engine = build_rag_query_engine(
-            query_bundle=query_bundle,
-            llm=settings.llm,
-            callback_manager=settings.callback_manager,
-            index=self._index,
-            bm25_nodes=self._bm25_nodes,
-            user_id=self.user_id,
-        )
+        user_context = {
+            "uid": self.user_id,
+            "openai_api_key": self.openai_api_key
+        }
 
         start_time = time.time()
-        response = query_engine.query(query_bundle)
+        # Use the production RAGService entry point
+        response = RAGService.query(query_str, user_context)
         latency_ms = (time.time() - start_time) * 1000
 
         # Extract node IDs and file IDs from source nodes
@@ -144,19 +136,21 @@ class RAGAdapter:
         seen_file_ids = set()
 
         source_nodes = getattr(response, "source_nodes", [])
-        for node_with_score in source_nodes:
-            node = getattr(node_with_score, "node", None)
-            if node:
-                node_id = getattr(node, "node_id", None) or getattr(
-                    node, "id_", None)
-                if node_id:
-                    node_ids.append(node_id)
+        if source_nodes:
+            for node_with_score in source_nodes:
+                node = getattr(node_with_score, "node", None)
+                if node:
+                    node_id = getattr(node, "node_id", None) or getattr(
+                        node, "id_", None)
+                    if node_id:
+                        node_ids.append(node_id)
 
-                metadata = getattr(node, "metadata", {}) or {}
-                file_id = metadata.get("file_id") or metadata.get("file id")
-                if file_id and file_id not in seen_file_ids:
-                    file_ids.append(file_id)
-                    seen_file_ids.add(file_id)
+                    metadata = getattr(node, "metadata", {}) or {}
+                    file_id = metadata.get(
+                        "file_id") or metadata.get("file id")
+                    if file_id and file_id not in seen_file_ids:
+                        file_ids.append(file_id)
+                        seen_file_ids.add(file_id)
 
         return response, node_ids, file_ids, latency_ms
 
