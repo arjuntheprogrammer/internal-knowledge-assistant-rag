@@ -2,6 +2,8 @@
 Adapters for RAG query engine and Opik integration.
 """
 
+from backend.utils.opik_prompts import get_or_register_prompt
+from backend.utils.prompt_loader import get_prompt_spec
 from llama_index.core.schema import QueryBundle
 from llama_index.core.base.response.schema import Response
 from llama_index.core import VectorStoreIndex
@@ -417,6 +419,10 @@ class OpikAdapter:
                     }
                 }
 
+            # Load the rag_system prompt to associate it with the experiment
+            prompt_spec = get_prompt_spec("rag_system")
+            opik_prompt = get_or_register_prompt(prompt_spec)
+
             result = evaluate(
                 dataset=dataset,
                 task=sync_evaluation_task,
@@ -431,6 +437,7 @@ class OpikAdapter:
                 ],
                 experiment_name=run_name,
                 project_name=self.project_name,
+                prompt=opik_prompt,  # Associate the experiment with the prompt
                 task_threads=10  # Correct argument for parallelism in Opik
             )
 
