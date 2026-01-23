@@ -220,7 +220,7 @@ def build_rag_query_engine(query_bundle, llm, callback_manager, index, bm25_node
 
     # Load prompts
     system_spec = get_prompt_spec("rag_system")
-    schema_spec = get_prompt_spec("output_schema.md")
+    schema_spec = get_prompt_spec("output_schema")
     examples = load_examples("rag")
 
     system_text = (prompt_overrides.get("rag_system")
