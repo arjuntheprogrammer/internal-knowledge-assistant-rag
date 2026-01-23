@@ -11,10 +11,75 @@ The evaluation framework runs a dataset of queries against the RAG system and co
 
 Results are logged to **Opik** for tracking and visualization.
 
+## End-to-End Pipeline Flow
+
+```mermaid
+flowchart TD
+    Start([CLI: python -m evals.runner.run_eval]) --> Init[Initialize Environment]
+
+    subgraph Initialization ["⚙️ Initialization Phase"]
+        Init --> LoadEnv[Load .env & REPO_ROOT]
+        LoadEnv --> Args[Parse CLI Arguments]
+        Args --> LoadDataset[Load JSONL Dataset & File Mappings]
+        LoadDataset --> Validate[Validate Dataset Path & Samples]
+    end
+
+    subgraph Adapters ["🔌 Adapter Setup"]
+        Validate --> InitRAGAdapter[Initialize RAGAdapter]
+        InitRAGAdapter --> RebuildIndex{Rebuild Index?}
+        RebuildIndex -->|Yes| Milvus[Connect to Milvus & Rebuild VectorStoreIndex]
+        RebuildIndex -->|No| RAGService[Use existing RAGService instance]
+
+        InitRAGAdapter --> InitOpikAdapter[Initialize OpikAdapter]
+        InitOpikAdapter --> OpikConfig{Opik Configured?}
+        OpikConfig -->|Yes| OpikClient[Create Opik Client & Dataset]
+        OpikConfig -->|No| OpikDisabled[Disable Opik Logging]
+    end
+
+    Adapters --> EvalMode{Use Opik Experiment?}
+
+    subgraph OpikExperiment ["🔬 Opik Experiment Flow (opik.evaluate)"]
+        EvalMode -->|True| UploadItems[Upload Dataset Items to Opik]
+        UploadItems --> DefineTask[Define Sync Evaluation Task]
+        DefineTask --> ScoringMetrics[Load Opik Custom Metrics:<br/>Recall@k, CitationCompliance, RefusalCorrect]
+        ScoringMetrics --> Evaluate[Call opik.evaluate]
+
+        subgraph InternalThread ["🔄 Parallel Execution (task_threads=10)"]
+            Evaluate --> QueryRAG[RAGAdapter.query]
+            QueryRAG --> RAGResult[Extract answer_md, citations, refused flag]
+            RAGResult --> Score[Compute Scores per Metric]
+        end
+
+        Score --> ExperimentResult[Create Opik Experiment Dashboard]
+    end
+
+    subgraph ManualEval ["📝 Manual Evaluation Flow (Fallback/Local)"]
+        EvalMode -->|False| ManualLoop[Loop through Dataset Samples]
+
+        subgraph SampleProcessing ["🔄 Single Query Cycle"]
+            ManualLoop --> RunQuery[run_single_query]
+            RunQuery --> ProductionRAG[Execute Production RAG Pipeline:<br/>Retrieve -> Rerank -> LLM]
+            ProductionRAG --> Capture[Capture latency, file_ids, node_ids]
+            Capture --> LocalMetrics[compute_metrics]
+            LocalMetrics --> Deterministic[Deterministic Checks:<br/>Recall@K, Citation Count, Refusal Detection]
+        end
+
+        Deterministic --> Accumulate[Accumulate Results & Compute Summary]
+        Accumulate --> PrintSummary[Print Detailed Stats to Console]
+        PrintSummary --> SaveLocal[Save JSONL/JSON Results to evals/runs/]
+        SaveLocal --> LogTraces[OpikAdapter.log_evaluation_run]
+        LogTraces --> TraceOpik[Log Traces & Summary to Opik Dashboard]
+    end
+
+    ExperimentResult --> End([Evaluation Complete])
+    TraceOpik --> End
+```
+
 ## Directory Structure
 
 ```
 evals/
+├── __init__.py
 ├── README.md              # This file
 ├── datasets/
 │   ├── stock_eval_v1.jsonl    # Evaluation dataset
@@ -23,6 +88,7 @@ evals/
 │   ├── __init__.py
 │   ├── run_eval.py        # Main CLI runner
 │   ├── metrics.py         # Metric computation
+│   ├── opik_metrics.py    # Opik-specific metric wrappers
 │   ├── adapters.py        # RAG and Opik adapters
 │   └── schema.py          # Data schemas
 └── runs/                  # Output directory for results
