@@ -93,7 +93,13 @@ class HasSourcesMetric(BaseMetric):
         super().__init__(name="Has Sources Section")
 
     def score(self, output: str, **kwargs: Any) -> ScoreResult:
-        has_sources = detect_sources_section(output)
+        # Use structured data if available
+        structured = kwargs.get("structured", {})
+        if structured.get("is_structured"):
+            has_sources = structured.get("citations_count", 0) > 0
+        else:
+            has_sources = detect_sources_section(output)
+
         return ScoreResult(name=self.name, value=1.0 if has_sources else 0.0)
 
 

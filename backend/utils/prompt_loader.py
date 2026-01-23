@@ -2,8 +2,9 @@ import os
 import json
 import hashlib
 import logging
+import re
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Any
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +22,11 @@ class PromptLoader:
     _instance = None
     _cache: Dict[str, PromptSpec] = {}
 
-    # New location as per PRD
-    PROMPT_DIR = os.path.join(os.path.dirname(__file__), "prompts")
+    # Prompts now at repo root
+    PROMPT_DIR = os.path.abspath(os.path.join(
+        os.path.dirname(__file__), "..", "..", "prompts"))
     VERSION_FILE = os.path.join(PROMPT_DIR, "versions.json")
+    EXAMPLES_DIR = os.path.join(PROMPT_DIR, "examples")
 
     def __new__(cls):
         if cls._instance is None:
@@ -31,7 +34,9 @@ class PromptLoader:
         return cls._instance
 
     def _get_hash(self, text: str) -> str:
-        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+        # Normalize whitespace for deterministic hashing (ignore just reformatting)
+        normalized = re.sub(r"\s+", " ", text).strip()
+        return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
     def get(self, name: str) -> PromptSpec:
         """Load a prompt by name (e.g., 'rag_system')."""
@@ -56,9 +61,11 @@ class PromptLoader:
         with open(file_path, "r") as f:
             text = f.read()
 
+        # Strip .md for version lookup
+        version_key = name[:-3] if name.endswith(".md") else name
         spec = PromptSpec(
             name=name,
-            version=versions.get(name, "unknown"),
+            version=versions.get(version_key, "unknown"),
             text=text,
             hash=self._get_hash(text),
             path=file_path
@@ -66,6 +73,21 @@ class PromptLoader:
 
         self._cache[name] = spec
         return spec
+
+    def load_examples(self, name: str) -> List[Dict[str, Any]]:
+        """Load few-shot examples for a prompt if they exist."""
+        filename = f"{name}.json" if not name.endswith(".json") else name
+        file_path = os.path.join(self.EXAMPLES_DIR, filename)
+
+        if not os.path.exists(file_path):
+            return []
+
+        try:
+            with open(file_path, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning("Failed to load examples from %s: %s", file_path, e)
+            return []
 
 
 def load_prompt(name: str) -> str:
@@ -76,3 +98,8 @@ def load_prompt(name: str) -> str:
 def get_prompt_spec(name: str) -> PromptSpec:
     """Convenience function to get full spec."""
     return PromptLoader().get(name)
+
+
+def load_examples(name: str) -> List[Dict[str, Any]]:
+    """Convenience function to get examples."""
+    return PromptLoader().load_examples(name)

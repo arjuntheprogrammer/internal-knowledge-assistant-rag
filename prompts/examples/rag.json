@@ -1,0 +1,22 @@
+[
+    {
+        "user_query": "What is the return policy?",
+        "llm_output": {
+            "answer_md": "Our return policy allows for returns within 30 days of purchase with a valid receipt.",
+            "intent": "rag",
+            "answer_type": "direct_answer",
+            "citations": [
+                {
+                    "file_id": "doc_123",
+                    "file_name": "company_handbook.pdf",
+                    "node_id": "node_456",
+                    "quote": "Returns are accepted within 30 days."
+                }
+            ],
+            "listed_file_ids": [],
+            "confidence": "high",
+            "refused": false,
+            "refusal_reason": null
+        }
+    }
+]

@@ -46,7 +46,7 @@ def parse_structured_output(text: str, model_class: Type[T]) -> T:
 
 def repair_llm_json(llm, bad_text: str, model_class: Type[T]) -> T:
     """Attempt a single repair of malformed JSON."""
-    from .prompt_loader import load_prompt
+    from backend.utils.prompt_loader import load_prompt
 
     repair_prompt = f"""
     The following text was intended to be valid JSON matching the schema, but it failed to parse.
@@ -69,10 +69,18 @@ def repair_llm_json(llm, bad_text: str, model_class: Type[T]) -> T:
         raise e
 
 
-def get_safe_llm_output(intent: str, refusal_reason: str = "unknown") -> LLMOutput:
-    """Returns a safe fallback LLMOutput."""
+def get_safe_llm_output(intent: str, refusal_reason: str = "unknown", error: Optional[Exception] = None) -> LLMOutput:
+    """Returns a safe fallback LLMOutput with helpful error suggestions."""
+    msg = "I'm sorry, I encountered an error processing the response. Please try again."
+
+    if error:
+        if "validation error" in str(error).lower():
+            msg = "I'm sorry, the model's response didn't match the expected format. [Suggestion: Try rephrasing your question or check the prompt version.]"
+        elif "json" in str(error).lower():
+            msg = "I'm sorry, I couldn't understand the model's response. [Suggestion: Avoid using special characters that might break JSON.]"
+
     return LLMOutput(
-        answer_md="I'm sorry, I encountered an error processing the response. Please try again.",
+        answer_md=msg,
         intent=intent,  # type: ignore
         answer_type="unknown",
         refused=True,

@@ -9,7 +9,7 @@ This is a premium AI-powered internal knowledge assistant designed to help you a
 1. **UI**: Modern chat interface with glassmorphism and real-time feedback.
 2. **Backend**: Flask (Python) with Gunicorn (Production).
 3. **Frontend**: HTML5, Vanilla CSS, and JavaScript.
-4. **RAG**: LlamaIndex (Hybrid search: Vector + BM25).
+4. **RAG**: LlamaIndex (Hybrid search: Vector + BM25) with **Structured JSON Output** for deterministic evaluation.
 5. **Database**: Google Cloud Firestore (Managed).
 6. **Vector Store**: Zilliz Cloud (Managed Milvus).
 7. **Chat Model**: OpenAI (GPT-4.1 mini).
@@ -59,7 +59,7 @@ flowchart TD
 - **Scalable Multi-Tenancy**: Built using a shared Zilliz Cloud (Milvus) collection with metadata isolation, ensuring high performance regardless of the number of users.
 - **Hybrid Retrieval Engine**: Combines **Vector Search** (for semantic meaning) and **BM25 Search** (for keyword exact matches) to provide the most accurate context.
 - **Intelligent OCR & Document Parsing**: Advanced multi-stage processing for PDFs and images. The system extracts digital text where available and automatically falls back to **Tesseract OCR** for scanned documents, ensuring comprehensive knowledge coverage with built-in caching and multi-threaded performance.
-- **Advanced Observability with Opik**: Deeply integrated **Opik** tracing for debugging, evaluating, and monitoring LLM applications. Track every step of the RAG pipeline with production-ready dashboards and evaluation metrics.
+- **Advanced Observability with Opik**: Deeply integrated **Opik** tracing and **Prompt Library**. Track every step of the RAG pipeline, manage prompt versions, and run high-concurrency evaluations.
 - **Automated Synchronization**: Background scheduler periodically polls your Google Drive to keep the knowledge base up-to-date.
 
 ## Not Implemented Yet
@@ -97,7 +97,10 @@ Learn more about the retrieval pipeline and optimizations in the **[RAG Document
 
 ### Opik
 
-Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic workflows with tracing, eval metrics, and production-ready dashboards. Tracing is enabled by default in production.
+Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic workflows with tracing, eval metrics, and production-ready dashboards.
+- **Prompt Library**: Centralized management and versioning of LLM prompts.
+- **Structured Evals**: Automated evaluation pipeline with asynchronous execution and structured metadata mapping.
+- **Trace Attribution**: Every query is linked to the exact prompt version and hash used.
 
 > **Migration Note**: LangSmith was replaced with Opik for observability.
 

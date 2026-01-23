@@ -75,6 +75,7 @@ flowchart TD
    - `LLMRerank` refines top results before answer synthesis.
 5. **Answer synthesis**
    - Uses task-specific prompts for list vs non-list queries and a refine step.
+   - **Structured Output**: LLM responses are enforced as JSON matching the `LLMOutput` Pydantic model. Validations include enum coercion and few-shot grounding.
 
 ## Document and Node Identity
 
@@ -138,10 +139,18 @@ questions.
 Configuration is in `backend/services/rag/rag_context.py` and is supplied per
 user from Firestore (OpenAI API key + Drive file IDs).
 
+## Prompt Management
+
+Prompts are stored in the root `prompts/` directory as markdown files.
+- `versioning`: Controlled via `prompts/versions.json`.
+- `hashing`: Deterministic hashing (whitespace-insensitive) ensures Opik Prompt Library consistency.
+- `few-shot`: Examples are loaded from `prompts/examples/*.json` and dynamically injected.
+
 ## Telemetry (Opik)
 
-Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic
-workflows with tracing, eval metrics, and production-ready dashboards.
+Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic workflows with tracing, eval metrics, and production-ready dashboards.
+- **Asynchronous Evaluation**: The evaluation runner (`run_eval.py`) runs queries in parallel for high performance.
+- **Metric Mapping**: Metrics are calculated from structured `LLMOutput` metadata for maximum precision.
 
 Tracing is enabled when `OPIK_API_KEY` is configured (set `OPIK_ENABLED=false`
 to disable). The callback handler lives in `backend/services/opik_tracing.py`

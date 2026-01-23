@@ -166,8 +166,9 @@ def save_results(
     logger.info("Saved summary to %s", summary_path)
 
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(description="Run RAG evaluation")
+    # ... existing parser code ...
     parser.add_argument(
         "--dataset",
         type=str,
@@ -277,6 +278,8 @@ def main():
         and args.use_opik_experiment
     )
 
+    summary = None  # Initialize summary
+
     if use_opik_experiment:
         # Use Opik's evaluate() API for proper Experiments
         logger.info("Running evaluation using Opik Experiment API...")
@@ -298,10 +301,9 @@ def main():
             for s in samples
         ]
 
-        experiment_name = opik_adapter.run_evaluation(
+        experiment_name = await opik_adapter.run_evaluation(
             rag_adapter=rag_adapter,
             samples=sample_dicts,
-            compute_metrics_fn=compute_metrics,
             experiment_name=f"eval_{timestamp}",
         )
 
@@ -374,8 +376,9 @@ def main():
     # Return code depends on whether we have a summary (manual mode) or not (opik experiment mode)
     if use_opik_experiment:
         return 0  # Success if experiment was created
-    return 0 if summary.failed_samples == 0 else 1
+    return 0 if (summary and summary.failed_samples == 0) else 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    import asyncio
+    sys.exit(asyncio.run(main()))

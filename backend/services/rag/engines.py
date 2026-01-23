@@ -1,5 +1,6 @@
 import re
 import logging
+import json
 from typing import List, Tuple, Any
 
 from llama_index.core.base.base_query_engine import BaseQueryEngine
@@ -12,8 +13,8 @@ from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.vector_stores import MetadataFilters, ExactMatchFilter
 
 from .retrievers import HybridRetriever
-from .prompt_loader import load_prompt, get_prompt_spec
-from .opik_prompts import get_or_register_prompt
+from backend.utils.prompt_loader import load_prompt, get_prompt_spec, load_examples
+from backend.utils.opik_prompts import get_or_register_prompt
 from .schemas.llm_output import LLMOutput
 from .structured_output import parse_structured_output, repair_llm_json, get_safe_llm_output
 
@@ -21,9 +22,10 @@ logger = logging.getLogger(__name__)
 
 
 class CasualQueryEngine(BaseQueryEngine):
-    def __init__(self, llm, callback_manager):
+    def __init__(self, llm, callback_manager, user_context=None):
         super().__init__(callback_manager)
         self._llm = llm
+        self._user_context = user_context or {}
         self._opik_prompts = []
         self._load_prompts()
 
@@ -39,13 +41,30 @@ class CasualQueryEngine(BaseQueryEngine):
 
         self._system_prompt = system_spec.text
         self._schema_prompt = schema_spec.text
+        self._examples = load_examples("casual")
 
     @property
     def opik_prompts(self):
         return self._opik_prompts
 
     def _query(self, query_bundle: QueryBundle):
-        full_prompt = f"{self._system_prompt}\n\n{self._schema_prompt}\n\nUser Question: {query_bundle.query_str}"
+        # Dynamic Schema Injection
+        schema_json = json.dumps(LLMOutput.model_json_schema(), indent=2)
+        schema_instr = self._schema_prompt.replace("{{SCHEMA}}", schema_json)
+
+        examples_str = ""
+        if self._examples:
+            examples_str = "\n\n### Examples:\n" + \
+                json.dumps(self._examples, indent=2)
+
+        # Apply prompt overrides
+        prompt_overrides = self._user_context.get(
+            "prompt_overrides") if self._user_context else {}
+        system_text = (prompt_overrides.get("casual_system")
+                       if prompt_overrides and "casual_system" in prompt_overrides
+                       else self._system_prompt)
+
+        full_prompt = f"{system_text}\n\n{schema_instr}{examples_str}\n\nUser Question: {query_bundle.query_str}"
 
         try:
             # We use structured_predict if available, otherwise manual
@@ -111,6 +130,7 @@ class LazyRAGQueryEngine(BaseQueryEngine):
             index=index,
             bm25_nodes=self._service.get_bm25_nodes(user_id),
             user_id=user_id,
+            prompt_overrides=self._user_context.get("prompt_overrides")
         )
         self._last_opik_prompts = opik_prompts
 
@@ -133,6 +153,8 @@ class LazyRAGQueryEngine(BaseQueryEngine):
                 llm_output = get_safe_llm_output(intent="rag")
                 llm_output.answer_md = raw_text  # Use raw if it failed but we have text
 
+        if not hasattr(response, "metadata") or response.metadata is None:
+            response.metadata = {}
         response.metadata["llm_output"] = llm_output
         return response
 
@@ -159,7 +181,7 @@ class LazyRAGQueryEngine(BaseQueryEngine):
         return {}
 
 
-def build_rag_query_engine(query_bundle, llm, callback_manager, index, bm25_nodes, user_id=None):
+def build_rag_query_engine(query_bundle, llm, callback_manager, index, bm25_nodes, user_id=None, prompt_overrides=None):
     query_text = query_bundle.query_str or str(query_bundle)
     is_list_query = bool(
         re.search(r"\b(list|all|show|enumerate|provide|give me)\b", query_text, re.I))
@@ -191,15 +213,28 @@ def build_rag_query_engine(query_bundle, llm, callback_manager, index, bm25_node
     # Load prompts
     system_spec = get_prompt_spec("rag_system")
     schema_spec = get_prompt_spec("output_schema.md")
+    examples = load_examples("rag")
+
+    system_text = (prompt_overrides.get("rag_system")
+                   if prompt_overrides and "rag_system" in prompt_overrides
+                   else system_spec.text)
 
     opik_prompts = [
         get_or_register_prompt(system_spec),
         get_or_register_prompt(schema_spec)
     ]
 
+    # Dynamic Schema Injection
+    schema_json = json.dumps(LLMOutput.model_json_schema(), indent=2)
+    schema_instr = schema_spec.text.replace("{{SCHEMA}}", schema_json)
+
+    examples_str = ""
+    if examples:
+        examples_str = "\n\n### Examples:\n" + json.dumps(examples, indent=2)
+
     # We combine them into the text_qa_template
     # This ensures the LLM sees the grounding rules AND the JSON schema rules.
-    combined_prompt = f"{system_spec.text}\n\n{schema_spec.text}"
+    combined_prompt = f"{system_text}\n\n{schema_instr}{examples_str}"
     text_qa_template = PromptTemplate(combined_prompt)
 
     rerank_top_n = 24 if is_list_query else 6

@@ -24,7 +24,7 @@ from .rag_milvus import get_milvus_vector_store
 from .rag_context import get_service_context
 from .schemas.llm_output import LLMOutput
 from .schemas.system_output import SystemOutput, RetrievalHit
-from .opik_prompts import link_prompts_to_current_trace
+from backend.utils.opik_prompts import link_prompts_to_current_trace
 
 
 class RAGService:
@@ -145,7 +145,7 @@ class RAGService:
             raise
 
     @classmethod
-    def query(cls, question, user_context, return_structured: bool = False) -> Union[str, Dict[str, Any]]:
+    def query(cls, question, user_context, return_structured: bool = False, prompt_overrides=None) -> Union[str, Dict[str, Any]]:
         """
         Unified query entrypoint.
         Returns markdown string by default, or SystemOutput dict if return_structured=True.
@@ -155,9 +155,18 @@ class RAGService:
             user_context.get("openai_api_key"), user_id=user_id)
 
         casual_engine = CasualQueryEngine(
-            llm=settings.llm, callback_manager=settings.callback_manager)
+            llm=settings.llm, callback_manager=settings.callback_manager, user_context=user_context)
         rag_engine = LazyRAGQueryEngine(
             llm=settings.llm, callback_manager=settings.callback_manager, service=cls, user_context=user_context)
+
+        # Apply prompt overrides if provided
+        if prompt_overrides:
+            if "casual_system" in prompt_overrides and hasattr(casual_engine, "_system_prompt"):
+                casual_engine._system_prompt = prompt_overrides["casual_system"]
+            if "rag_system" in prompt_overrides and hasattr(rag_engine, "_system_prompt"):
+                # Note: build_rag_query_engine is called during query, so we'd need to pass it there.
+                # For now, we'll mark it as a TODO or implement a deeper injection.
+                pass
 
         tools = [
             QueryEngineTool.from_defaults(query_engine=casual_engine, name="casual_chat",
@@ -186,7 +195,8 @@ class RAGService:
                 link_prompts_to_current_trace(rag_engine.opik_prompts)
 
         # Build SystemOutput
-        llm_output = response.metadata.get("llm_output")
+        metadata = getattr(response, "metadata", {}) or {}
+        llm_output = metadata.get("llm_output")
         if not isinstance(llm_output, LLMOutput):
             # Fallback if metadata is missing (shouldn't happen with our engines)
             from .structured_output import parse_structured_output, get_safe_llm_output

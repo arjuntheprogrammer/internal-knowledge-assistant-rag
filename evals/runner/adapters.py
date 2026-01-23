@@ -197,9 +197,9 @@ class OpikAdapter:
 
     def _check_enabled(self) -> bool:
         """Check if Opik is configured."""
+        from backend.config.test_settings import test_settings
         api_key = os.getenv("OPIK_API_KEY")
-        enabled_env = os.getenv("OPIK_ENABLED", "true").lower()
-        return bool(api_key) and enabled_env not in ("false", "0", "no")
+        return bool(api_key) and test_settings.opik_enabled
 
     def _get_client(self):
         """Get or create Opik client."""
@@ -304,15 +304,14 @@ class OpikAdapter:
             logger.warning("Failed to upload dataset items: %s", e)
             return False
 
-    def run_evaluation(
+    async def run_evaluation(
         self,
         rag_adapter: "RAGAdapter",
         samples: List[Dict[str, Any]],
-        compute_metrics_fn,
         experiment_name: Optional[str] = None,
     ) -> Optional[str]:
         """
-        Run evaluation using Opik's evaluate() API.
+        Run evaluation using Opik's evaluate() API with asyncio for parallel queries.
         This creates a proper Experiment in Opik.
 
         Returns the experiment ID if successful.
@@ -323,8 +322,8 @@ class OpikAdapter:
 
         try:
             import opik
+            import asyncio
             from opik.evaluation import evaluate
-            from opik.evaluation.metrics import base_metric, score_result
 
             # Upload dataset items first
             self.upload_dataset_items(samples)
@@ -335,16 +334,19 @@ class OpikAdapter:
 
             run_name = experiment_name or self._get_run_name()
 
-            # Define the evaluation task that calls our RAG system
-            def evaluation_task(dataset_item: Dict[str, Any]) -> Dict[str, Any]:
+            # Async wrapper for the query task
+            async def async_evaluation_task(dataset_item: Dict[str, Any]) -> Dict[str, Any]:
                 query = dataset_item.get("input", {}).get("query", "")
                 sample_id = dataset_item.get("input", {}).get("id", "")
 
                 try:
-                    response, node_ids, file_ids, latency_ms = rag_adapter.query(
-                        query)
+                    # RAGAdapter.query is currently sync.
+                    # We run it in a thread to avoid blocking the event loop.
+                    loop = asyncio.get_event_loop()
+                    response, node_ids, file_ids, latency_ms = await loop.run_in_executor(
+                        None, rag_adapter.query, query
+                    )
 
-                    # Extract data for metrics
                     llm_data = getattr(response, "metadata", {}).get(
                         "llm_output_obj", {})
                     answer_text = llm_data.get("answer_md", str(response))
@@ -376,6 +378,11 @@ class OpikAdapter:
                         "error": str(e),
                     }
 
+            # Opik's evaluate expects a sync task usually, but we can pass it if it handles it,
+            # or we use nb_workers for thread-level parallelism.
+            # To truly use asyncio.gather, we'd need to bypass Opik's internal loop.
+            # However, setting nb_workers=10 is the most compatible way to speed it up.
+
             from .opik_metrics import (
                 RecallAt5Metric,
                 RecallAt10Metric,
@@ -386,10 +393,33 @@ class OpikAdapter:
                 RefusalCorrectMetric,
             )
 
-            # Run the evaluation
+            # Note: evaluate() is a blocking call that manages its own threads.
+            # We'll stick to a sync task with nb_workers for reliability with Opik's current SDK.
+            def sync_evaluation_task(dataset_item):
+                # Synchronous version that calls the sync adapter
+                query = dataset_item.get("input", {}).get("query", "")
+                sample_id = dataset_item.get("input", {}).get("id", "")
+                response, node_ids, file_ids, latency_ms = rag_adapter.query(
+                    query)
+                llm_data = getattr(response, "metadata", {}
+                                   ).get("llm_output_obj", {})
+                return {
+                    "output": llm_data.get("answer_md", str(response)),
+                    "sample_id": sample_id,
+                    "retrieved_file_ids": file_ids,
+                    "retrieved_node_ids": node_ids,
+                    "latency_ms": latency_ms,
+                    "structured": {
+                        "refused": llm_data.get("refused", False),
+                        "refusal_reason": llm_data.get("refusal_reason", "unknown"),
+                        "citations_count": len(llm_data.get("citations", [])),
+                        "is_structured": bool(llm_data)
+                    }
+                }
+
             result = evaluate(
                 dataset=dataset,
-                task=evaluation_task,
+                task=sync_evaluation_task,
                 scoring_metrics=[
                     RecallAt5Metric(),
                     RecallAt10Metric(),
@@ -401,13 +431,10 @@ class OpikAdapter:
                 ],
                 experiment_name=run_name,
                 project_name=self.project_name,
+                task_threads=10  # Correct argument for parallelism in Opik
             )
 
-            logger.info(
-                "Opik experiment created: %s in project %s",
-                run_name,
-                self.project_name,
-            )
+            logger.info("Opik experiment created: %s", run_name)
             return run_name
 
         except Exception as e:
