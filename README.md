@@ -21,27 +21,53 @@ This is a premium AI-powered internal knowledge assistant designed to help you a
 
 ```mermaid
 flowchart TD
-    subgraph Auth["🔐 Authentication"]
-        A[User] --> B[Google Sign-In]
-        B --> C[Firebase Auth]
+    subgraph Auth["🔐 1. Authentication & Security"]
+        A[User Access] --> B[Google Sign-In]
+        B --> C[Firebase Authentication]
+        C --> D[Retrieve ID Token]
+        D --> E[Backend Verify Token]
     end
 
-    subgraph Setup["⚙️ Configuration"]
-        C --> D[Enter OpenAI API Key]
-        D --> E[Select Google Drive Files]
-        E --> F[Build Database]
+    subgraph Config["⚙️ 2. User Configuration"]
+        E --> F[Enter OpenAI API Key]
+        F --> G[Validate OpenAI Key]
+        G --> H[Authorize Google Drive]
+        H --> I[Select Specific Files/Folders]
     end
 
-    subgraph Chat["💬 Chat"]
-        F --> G[Ask Question]
-        G --> H{Router}
-        H -->|Casual| I[Direct LLM Response]
-        H -->|Knowledge| J[Hybrid Retrieval]
-        J --> K[Rerank & Synthesize]
-        K --> L[Answer + Citations]
+    subgraph Indexing["🗂️ 3. Knowledge Base Construction"]
+        I --> J[Trigger Indexing Service]
+        J --> K[Download Documents via Drive API]
+        K --> L{Text Extraction}
+        L -->|Digital PDF/Docx| M[Extract Raw Text]
+        L -->|Image/Scanned PDF| N[Fallback: Tesseract OCR]
+        M & N --> O[Sentence Splitting & Node Chunking]
+        O --> P[Generate OpenAI Embeddings]
+        P --> Q[Upload to Zilliz Cloud / Milvus]
+        Q --> R[Update Catalog in Firestore]
     end
 
-    L --> G
+    subgraph Chat["💬 4. Intelligent Query Pipeline"]
+        R --> S[User Asks Question]
+        S --> T{Intent Classifier / Router}
+        T -->|Casual| U[Casual Chat: LLM Direct Response]
+        T -->|Knowledge| V[Knowledge Retrieval: Hybrid Engine]
+
+        subgraph Retrieval["🔍 Hybrid Search"]
+            V --> V1[Semantic Vector Search]
+            V --> V2[Keyword BM25 Search]
+            V1 & V2 --> V3[Reciprocal Rank Fusion]
+            V3 --> V4[LLM-Based Reranking]
+        end
+
+        V4 --> W[Augment Prompt with Context]
+        W --> X[Generate Structured JSON Response]
+        X --> Y[Parse Citations & Source Mapping]
+    end
+
+    Y --> Z[Interactive UI Display + Clickable Sources]
+    U --> Z
+    Z --> S
 ```
 
 1. User signs in with Google via Firebase Auth.
