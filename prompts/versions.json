@@ -1,7 +1,0 @@
-{
-    "shared_json_schema": "v1",
-    "rag_default_json": "v1",
-    "rag_list_json": "v1",
-    "rag_refine_json": "v1",
-    "casual_json": "v1"
-}

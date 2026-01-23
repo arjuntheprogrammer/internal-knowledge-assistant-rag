@@ -126,16 +126,28 @@ class RAGAdapter:
         }
 
         start_time = time.time()
-        # Use the production RAGService structured entry point for better evaluation data
-        if hasattr(RAGService, "query_structured"):
-            structured_response = RAGService.query_structured(
-                query_str, user_context)
-            response = getattr(structured_response,
-                               "_llama_response", structured_response)
-        else:
-            response = RAGService.query(query_str, user_context)
-
+        result = RAGService.query(
+            query_str, user_context, return_structured=True)
+        llm = result.get("llm", {})
         latency_ms = (time.time() - start_time) * 1000
+
+        from llama_index.core.base.response.schema import Response
+        from llama_index.core.schema import NodeWithScore, TextNode
+
+        source_nodes = []
+        hits = result.get("retrieval", {}).get("hits", [])
+        for hit in hits:
+            source_nodes.append(NodeWithScore(
+                node=TextNode(id_=hit["node_id"], text=hit.get(
+                    "text", ""), metadata={"file_id": hit["file_id"]}),
+                score=hit.get("score")
+            ))
+
+        response = Response(
+            response=llm.get("answer_md", ""),
+            source_nodes=source_nodes,
+            metadata={"llm_output_obj": llm}
+        )
 
         # Extract node IDs and file IDs from source nodes
         node_ids = []
@@ -329,28 +341,16 @@ class OpikAdapter:
                 sample_id = dataset_item.get("input", {}).get("id", "")
 
                 try:
-                    # We call query() but RAGAdapter.query now uses query_structured internally if available
                     response, node_ids, file_ids, latency_ms = rag_adapter.query(
                         query)
 
-                    # Extract rich data for metrics
-                    answer_text = ""
-                    refused = False
-                    refusal_reason = "unknown"
-                    citations_count = 0
-
-                    from backend.services.rag.structured_output import StructuredResponse
-                    if isinstance(response, StructuredResponse):
-                        answer_text = response.answer
-                        refused = response.refused
-                        refusal_reason = response.refusal_reason
-                        citations_count = len(response.citations)
-                    elif hasattr(response, "response"):
-                        answer_text = response.response or ""
-                        # Fallback heuristic for non-structured
-                        refused = "I'm sorry" in answer_text or "cannot" in answer_text.lower()
-                    else:
-                        answer_text = str(response)
+                    # Extract data for metrics
+                    llm_data = getattr(response, "metadata", {}).get(
+                        "llm_output_obj", {})
+                    answer_text = llm_data.get("answer_md", str(response))
+                    refused = llm_data.get("refused", False)
+                    refusal_reason = llm_data.get("refusal_reason", "unknown")
+                    citations_count = len(llm_data.get("citations", []))
 
                     return {
                         "output": answer_text,
@@ -362,7 +362,7 @@ class OpikAdapter:
                             "refused": refused,
                             "refusal_reason": refusal_reason,
                             "citations_count": citations_count,
-                            "is_structured": isinstance(response, StructuredResponse)
+                            "is_structured": bool(llm_data)
                         }
                     }
                 except Exception as e:
