@@ -225,12 +225,15 @@ def build_rag_query_engine(query_bundle, llm, callback_manager, index, bm25_node
     ]
 
     # Dynamic Schema Injection
-    schema_json = json.dumps(LLMOutput.model_json_schema(), indent=2)
+    schema_json = json.dumps(LLMOutput.model_json_schema(), indent=2).replace(
+        "{", "{{").replace("}", "}}")
     schema_instr = schema_spec.text.replace("{{SCHEMA}}", schema_json)
 
     examples_str = ""
     if examples:
-        examples_str = "\n\n### Examples:\n" + json.dumps(examples, indent=2)
+        examples_json = json.dumps(examples, indent=2).replace(
+            "{", "{{").replace("}", "}}")
+        examples_str = "\n\n### Examples:\n" + examples_json
 
     # We combine them into the text_qa_template
     # This ensures the LLM sees the grounding rules AND the JSON schema rules.
