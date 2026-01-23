@@ -1,3 +1,13 @@
+"""
+RAG Pipeline Debugger.
+
+This script allows developers to step through the RAG pipeline execution by
+running a sample query. It mocks the user context and sets up the environment
+to trigger either casual or knowledge base tools.
+
+Usage:
+    PYTHONPATH=. python scripts/tests/debug_rag_flow.py
+"""
 from backend.services.rag import RAGService
 import os
 import sys
