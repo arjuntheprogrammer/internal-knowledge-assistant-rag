@@ -105,8 +105,14 @@ class CitationComplianceMetric(BaseMetric):
         text = output or ""
         expected_count = expected_output.get("required_citations_count", 0)
 
-        has_sources = detect_sources_section(text)
-        actual_count = count_citations(text)
+        # Use structured data if available
+        structured = kwargs.get("structured", {})
+        if structured.get("is_structured"):
+            actual_count = structured.get("citations_count", 0)
+            has_sources = actual_count > 0  # Simplified for structured
+        else:
+            has_sources = detect_sources_section(text)
+            actual_count = count_citations(text)
 
         score = 0.0
         reasons = []
@@ -137,7 +143,13 @@ class RefusalCorrectMetric(BaseMetric):
         must_refuse = expected_output.get("must_refuse", False)
         text = output or ""
 
-        refusal_detected = detect_refusal(text)
+        # Use structured data if available
+        structured = kwargs.get("structured", {})
+        if structured.get("is_structured"):
+            refusal_detected = structured.get("refused", False)
+        else:
+            refusal_detected = detect_refusal(text)
+
         is_correct = check_refusal_correctness(
             must_refuse, refusal_detected, text)
 

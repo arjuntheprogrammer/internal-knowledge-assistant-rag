@@ -17,15 +17,39 @@ class CasualQueryEngine(BaseQueryEngine):
     def __init__(self, llm, callback_manager):
         super().__init__(callback_manager)
         self._llm = llm
-        self._prompt = PromptTemplate(
-            "You are a friendly assistant. Respond briefly and naturally to casual "
-            "conversation. If the user asks about internal documents or data, say "
-            "you can look it up and ask for a specific question.\n"
-            "User: {query_str}\nAssistant:"
-        )
+        self._prompt_spec = None
+        self._prompt = None
+        self._opik_prompt = None
+        self._load_prompt()
+
+    def _load_prompt(self):
+        """Load prompt from external file."""
+        from backend.utils.prompt_loader import get_casual_prompt
+        from backend.utils.opik_prompts import register_prompt_in_opik
+
+        self._prompt_spec = get_casual_prompt()
+        self._prompt = PromptTemplate(self._prompt_spec.text)
+        # Register in Opik and store the object
+        self._opik_prompt = register_prompt_in_opik(self._prompt_spec)
 
     def _get_prompt_modules(self):
         return {"casual_prompt": self._prompt}
+
+    @property
+    def prompt_metadata(self) -> dict:
+        """Get prompt metadata for tracing."""
+        if self._prompt_spec:
+            return {
+                "prompt.name": self._prompt_spec.name,
+                "prompt.version": self._prompt_spec.version,
+                "prompt.hash": self._prompt_spec.hash,
+            }
+        return {}
+
+    @property
+    def opik_prompt(self):
+        """Get the opik.Prompt object."""
+        return self._opik_prompt
 
     def _query(self, query_bundle: QueryBundle):
         query_str = query_bundle.query_str or ""
@@ -43,9 +67,15 @@ class LazyRAGQueryEngine(BaseQueryEngine):
         self._callback_manager = callback_manager
         self._service = service
         self._user_context = user_context
+        self._last_opik_prompts = []
 
     def _get_prompt_modules(self):
         return {}
+
+    @property
+    def opik_prompts(self):
+        """Get the opik.Prompt objects used in the last query."""
+        return self._last_opik_prompts
 
     def _query(self, query_bundle: QueryBundle):
         user_id = self._user_context.get("uid")
@@ -73,7 +103,7 @@ class LazyRAGQueryEngine(BaseQueryEngine):
                     "Please go to Settings and click 'Connect Google Drive' to finish the setup."
                 )
 
-        query_engine = build_rag_query_engine(
+        query_engine, opik_prompts = build_rag_query_engine(
             query_bundle=query_bundle,
             llm=self._llm,
             callback_manager=self._callback_manager,
@@ -81,6 +111,7 @@ class LazyRAGQueryEngine(BaseQueryEngine):
             bm25_nodes=self._service.get_bm25_nodes(user_id),
             user_id=user_id,
         )
+        self._last_opik_prompts = opik_prompts
         return query_engine.query(query_bundle)
 
     def _rebuild_index_from_vector_store(self, user_id: str):
@@ -168,54 +199,37 @@ def build_rag_query_engine(
 ):
     """
     Builds the full RAG query engine including reranking and specialized prompts.
+
+    Returns:
+        (query_engine, opik_prompts)
     """
     hybrid_retriever, is_list_query = build_hybrid_retriever(
         query_bundle, index, bm25_nodes, callback_manager, user_id
     )
 
-    default_text_qa_template = PromptTemplate(
-        "Context: {context_str}\n"
-        "Answer the question based ONLY on the context. "
-        "If unsure, say 'I'm sorry, I couldn't find that information in your documents. I'm only able to answer questions based on the knowledge base you've provided.' "
-        "Format as Markdown with:\n"
-        "**Answer:** [response]\n"
-        "**Sources:** bullet list of citations\n"
-        "If the question asks for a list, use bullet points.\n"
-        "Question: {query_str}\n**Answer:** "
-    )
-    list_text_qa_template = PromptTemplate(
-        "Context: {context_str}\n"
-        "Answer the question based ONLY on the context. "
-        "If unsure, say 'I'm sorry, I couldn't find any relevant lists or documents in your knowledge base regarding this.' "
-        "The user asked for a list. Enumerate every unique item mentioned "
-        "in the context; do not stop early. "
-        "If the context seems incomplete, add: '(List may be incomplete)'. "
-        "Format as Markdown with:\n"
-        "**Answer:** [bullet list]\n"
-        "**Sources:** bullet list of citations\n"
-        "Question: {query_str}\n**Answer:** "
-    )
-    default_refine_template = PromptTemplate(
-        "Original: {query_str}\nPrevious answer: {existing_answer}\n"
-        "Refine using new context: {context_str}\n"
-        "If the question asks for a list, keep bullet points. "
-        "Keep the Markdown formatting. **Answer:** "
-    )
-    list_refine_template = PromptTemplate(
-        "Original: {query_str}\nPrevious answer: {existing_answer}\n"
-        "Refine using new context: {context_str}\n"
-        "Update the list with any new unique items from the context. "
-        "Keep bullet points and Markdown formatting. **Answer:** "
-    )
-    text_qa_template = (
-        list_text_qa_template if is_list_query else default_text_qa_template
-    )
-    refine_template = list_refine_template if is_list_query else default_refine_template
+    # Load external prompts
+    from backend.utils.prompt_loader import get_rag_prompt, get_refine_prompt
+    from backend.utils.opik_prompts import register_prompt_in_opik
+
+    qa_prompt_spec = get_rag_prompt(is_list_query=is_list_query)
+    refine_prompt_spec = get_refine_prompt()
+
+    text_qa_template = PromptTemplate(qa_prompt_spec.text)
+    refine_template = PromptTemplate(refine_prompt_spec.text)
+
+    # Register in Opik
+    opik_prompts = []
+    p1 = register_prompt_in_opik(qa_prompt_spec)
+    if p1:
+        opik_prompts.append(p1)
+    p2 = register_prompt_in_opik(refine_prompt_spec)
+    if p2:
+        opik_prompts.append(p2)
 
     rerank_top_n = 24 if is_list_query else 6
     reranker = LLMRerank(llm=llm, top_n=rerank_top_n)
 
-    return RetrieverQueryEngine.from_args(
+    query_engine = RetrieverQueryEngine.from_args(
         retriever=hybrid_retriever,
         llm=llm,
         callback_manager=callback_manager,
@@ -223,3 +237,5 @@ def build_rag_query_engine(
         refine_template=refine_template,
         node_postprocessors=[reranker],
     )
+
+    return query_engine, opik_prompts

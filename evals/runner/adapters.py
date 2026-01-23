@@ -112,7 +112,7 @@ class RAGAdapter:
         self._index = self._rebuild_index()
         return self._index is not None
 
-    def query(self, query_str: str) -> Tuple[Response, List[str], List[str], float]:
+    def query(self, query_str: str) -> Tuple[Any, List[str], List[str], float]:
         """
         Run a query through the production RAGService and return results.
         This ensures evaluation is as realistic as possible by using the
@@ -126,8 +126,15 @@ class RAGAdapter:
         }
 
         start_time = time.time()
-        # Use the production RAGService entry point
-        response = RAGService.query(query_str, user_context)
+        # Use the production RAGService structured entry point for better evaluation data
+        if hasattr(RAGService, "query_structured"):
+            structured_response = RAGService.query_structured(
+                query_str, user_context)
+            response = getattr(structured_response,
+                               "_llama_response", structured_response)
+        else:
+            response = RAGService.query(query_str, user_context)
+
         latency_ms = (time.time() - start_time) * 1000
 
         # Extract node IDs and file IDs from source nodes
@@ -152,6 +159,8 @@ class RAGAdapter:
                         file_ids.append(file_id)
                         seen_file_ids.add(file_id)
 
+        # For metric functions that expect a string, ensure response is string-ifiable
+        # or has a .response attribute
         return response, node_ids, file_ids, latency_ms
 
 
@@ -320,13 +329,28 @@ class OpikAdapter:
                 sample_id = dataset_item.get("input", {}).get("id", "")
 
                 try:
+                    # We call query() but RAGAdapter.query now uses query_structured internally if available
                     response, node_ids, file_ids, latency_ms = rag_adapter.query(
                         query)
-                    answer_text = (
-                        response.response
-                        if hasattr(response, "response")
-                        else str(response)
-                    )
+
+                    # Extract rich data for metrics
+                    answer_text = ""
+                    refused = False
+                    refusal_reason = "unknown"
+                    citations_count = 0
+
+                    from backend.services.rag.structured_output import StructuredResponse
+                    if isinstance(response, StructuredResponse):
+                        answer_text = response.answer
+                        refused = response.refused
+                        refusal_reason = response.refusal_reason
+                        citations_count = len(response.citations)
+                    elif hasattr(response, "response"):
+                        answer_text = response.response or ""
+                        # Fallback heuristic for non-structured
+                        refused = "I'm sorry" in answer_text or "cannot" in answer_text.lower()
+                    else:
+                        answer_text = str(response)
 
                     return {
                         "output": answer_text,
@@ -334,6 +358,12 @@ class OpikAdapter:
                         "retrieved_file_ids": file_ids,
                         "retrieved_node_ids": node_ids,
                         "latency_ms": latency_ms,
+                        "structured": {
+                            "refused": refused,
+                            "refusal_reason": refusal_reason,
+                            "citations_count": citations_count,
+                            "is_structured": isinstance(response, StructuredResponse)
+                        }
                     }
                 except Exception as e:
                     logger.error("Query failed for %s: %s", sample_id, e)

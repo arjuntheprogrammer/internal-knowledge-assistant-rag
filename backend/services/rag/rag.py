@@ -23,6 +23,15 @@ from .engines import CasualQueryEngine, LazyRAGQueryEngine
 from .rag_milvus import get_milvus_vector_store
 from .rag_context import get_service_context
 from .rag_formatter import RAGFormatter
+from .structured_output import parse_rag_json, parse_casual_json, StructuredResponse
+
+# Register prompts in Opik at module load
+try:
+    from backend.utils.opik_prompts import sync_all_prompts_to_opik
+    sync_all_prompts_to_opik()
+except Exception as e:
+    logging.getLogger(__name__).warning(
+        "Failed to sync prompts to Opik: %s", e)
 
 
 class RAGService:
@@ -190,6 +199,67 @@ class RAGService:
 
     @classmethod
     def query(cls, question, user_context):
+        """
+        Standard query method returning markdown string.
+        Maintains backward compatibility.
+        """
+        response_obj = cls.query_structured(question, user_context)
+
+        # If it was a knowledge base selection, it might have been formatted
+        # already by RAGFormatter if it wasn't valid JSON.
+        # But we want to prefer the structured response to_markdown.
+
+        # Extract selected tool info from response_obj's raw metadata
+        selected_tool = "unknown"
+        if hasattr(response_obj, "_llama_response") and isinstance(response_obj._llama_response, Response):
+            metadata = response_obj._llama_response.metadata or {}
+            selector_result = metadata.get("selector_result")
+            if selector_result:
+                selections = getattr(selector_result, "selections", None)
+                if selections:
+                    indices = [s.index for s in selections]
+                    if 1 in indices:
+                        selected_tool = "knowledge_base_retrieval"
+                    elif 0 in indices:
+                        selected_tool = "casual_chat"
+
+        if selected_tool == "knowledge_base_retrieval":
+            # Check for document catalog fallback
+            query_text = question.query_str if isinstance(
+                question, QueryBundle) else str(question)
+            user_catalog = cls.get_document_catalog(user_context.get("uid"))
+
+            is_list_query = bool(re.search(
+                r"\b(list|all|show|enumerate|provide|give me|top)\b", query_text or "", re.I))
+            is_catalog_query = bool(re.search(
+                r"\b(document|documents|doc|docs|file|files|knowledge base|drive|folder|stock|stocks|company|companies|ticker|tickers)\b", query_text or "", re.I))
+
+            # Use structured response for bullet count
+            bullet_count = len(response_obj.answer.split(
+                '\n')) if response_obj.answer_style == 'bullets' else response_obj.answer.count('\n- ')
+
+            if is_list_query and (is_catalog_query or (user_catalog and bullet_count == 0)):
+                if user_catalog:
+                    requested = parse_list_limit(query_text or "")
+                    list_all = bool(
+                        re.search(r"\ball\b", query_text or "", re.I))
+                    catalog_count = len(user_catalog)
+                    needs_fallback = bullet_count == 0
+                    if requested:
+                        needs_fallback = needs_fallback or bullet_count != requested
+                    elif list_all and bullet_count < catalog_count:
+                        needs_fallback = True
+
+                    if needs_fallback:
+                        return format_document_catalog_response(user_catalog, limit=requested)
+
+        return response_obj.to_markdown()
+
+    @classmethod
+    def query_structured(cls, question, user_context) -> StructuredResponse:
+        """
+        Query the RAG system and return a StructuredResponse object.
+        """
         user_id = user_context.get("uid")
         settings = cls.get_service_context(
             user_context.get("openai_api_key"), user_id=user_id
@@ -213,8 +283,6 @@ class RAGService:
                 description=(
                     "Handle greetings, small talk, confirmations, thanks, or casual "
                     "conversation that does not require company documents or data. "
-                    "Use this for short social replies like 'hi', 'hello', 'thanks', "
-                    "'how are you', or general chit-chat."
                 ),
             ),
             QueryEngineTool.from_defaults(
@@ -237,81 +305,55 @@ class RAGService:
         )
         response = router_engine.query(question)
 
-        query_text = None
-        if isinstance(question, QueryBundle):
-            query_text = question.query_str
-        else:
-            query_text = str(question)
-
-        selector_result = None
-        if isinstance(response, Response):
-            selector_result = (response.metadata or {}).get("selector_result")
+        # Extract selection info for logging and prompt linking
+        selector_result = (response.metadata or {}).get("selector_result")
         selected_inds = []
-        selected_reasons = []
         if selector_result is not None:
             selections = getattr(selector_result, "selections", None)
             if selections:
                 selected_inds = [selection.index for selection in selections]
-                selected_reasons = [
-                    selection.reason for selection in selections]
             else:
-                inds = getattr(selector_result, "inds", None) or []
-                selected_inds = list(inds)
-                reasons = getattr(selector_result, "reasons", None) or []
-                selected_reasons = list(reasons)
+                selected_inds = list(
+                    getattr(selector_result, "inds", None) or [])
 
-        selected_tools = [
-            tools[index].metadata.name
-            for index in selected_inds
-            if 0 <= index < len(tools)
-        ]
-        selected_tool = selected_tools[0] if selected_tools else "unknown"
-        selected_reason = selected_reasons[0] if selected_reasons else None
+        # Link prompts to Opik trace if available
+        try:
+            from opik.opik_context import update_current_trace
+            prompts_to_link = []
 
-        cls.logger.info(
-            "rag_router selection=%s reason=%s query_len=%s",
-            ",".join(selected_tools) if selected_tools else selected_tool,
-            selected_reason,
-            len(query_text) if query_text else 0,
-        )
+            if 0 in selected_inds:
+                if hasattr(casual_engine, "opik_prompt") and casual_engine.opik_prompt:
+                    prompts_to_link.append(casual_engine.opik_prompt)
+            if 1 in selected_inds:
+                if hasattr(rag_engine, "opik_prompts") and rag_engine.opik_prompts:
+                    prompts_to_link.extend(rag_engine.opik_prompts)
 
+            if prompts_to_link:
+                update_current_trace(prompts=prompts_to_link)
+        except Exception as e:
+            cls.logger.debug("Failed to link prompts to Opik trace: %s", e)
+
+        # Parse structured output based on selection
+        raw_text = response.response or ""
         if 1 in selected_inds:
-            formatted = RAGFormatter.format_markdown_response(response)
-            user_catalog = cls.get_document_catalog(user_context.get("uid"))
-            is_list_query = bool(
-                re.search(
-                    r"\b(list|all|show|enumerate|provide|give me|top)\b",
-                    query_text or "",
-                    re.I,
-                )
-            )
-            is_catalog_query = bool(
-                re.search(
-                    r"\b(document|documents|doc|docs|file|files|knowledge base|drive|"
-                    r"folder|stock|stocks|company|companies|ticker|tickers)\b",
-                    query_text or "",
-                    re.I,
-                )
-            )
-            bullet_count = extract_bullet_count(formatted)
-            if is_list_query and (
-                is_catalog_query or (user_catalog and bullet_count == 0)
-            ):
-                if not user_catalog:
-                    return formatted
-                requested = parse_list_limit(query_text or "")
-                list_all = bool(re.search(r"\ball\b", query_text or "", re.I))
-                catalog_count = len(user_catalog)
-                needs_fallback = bullet_count == 0
-                if requested:
-                    needs_fallback = needs_fallback or bullet_count != requested
-                elif list_all and bullet_count < catalog_count:
-                    needs_fallback = True
-                if needs_fallback:
-                    return format_document_catalog_response(
-                        user_catalog, limit=requested
-                    )
-            return formatted
-        if isinstance(response, Response):
-            return response.response or ""
-        return str(response)
+            structured = parse_rag_json(raw_text)
+        else:
+            structured = parse_casual_json(raw_text)
+
+        # Attach original LlamaIndex response for metadata extraction in query()
+        structured._llama_response = response
+
+        # Attach source file names to citations if missing/generic
+        if 1 in selected_inds and hasattr(response, 'source_nodes'):
+            node_map = {
+                node.node.id_: node.node for node in response.source_nodes}
+            for citation in structured.citations:
+                if not citation.file_name or citation.file_name.lower() in ["unknown", ""]:
+                    # Try to find file_name in source nodes
+                    for node in response.source_nodes:
+                        if node.node.metadata.get("file_id") == citation.file_id:
+                            citation.file_name = node.node.metadata.get(
+                                "file_name", "document")
+                            break
+
+        return structured
