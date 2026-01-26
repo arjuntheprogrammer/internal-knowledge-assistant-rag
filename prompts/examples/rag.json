@@ -1,22 +1,35 @@
 [
     {
-        "user_query": "What is the return policy?",
+        "user_query": "What are the key business drivers mentioned for ICICI Bank Limited?",
         "llm_output": {
-            "answer_md": "Our return policy allows for returns within 30 days of purchase with a valid receipt.",
+            "answer_md": "ICICI Bank's key business drivers include strong growth in its retail loan portfolio, improved asset quality with declining NPA ratios, and a robust digital banking ecosystem. The bank is also focused on maintaining a Return on Equity (ROE) above 15% through optimized cost-to-income ratios and expanded net interest margins.\n\n### Sources\n- [ICICI Bank Limited](1APMCMD3mYb7JdLLH-R_QoEcy7vF-SVpW)",
             "intent": "rag",
             "answer_type": "direct_answer",
             "citations": [
                 {
-                    "file_id": "doc_123",
-                    "file_name": "company_handbook.pdf",
-                    "node_id": "node_456",
-                    "quote": "Returns are accepted within 30 days."
+                    "file_id": "1APMCMD3mYb7JdLLH-R_QoEcy7vF-SVpW",
+                    "file_name": "ICICI Bank Limited.docx",
+                    "node_id": "node_888",
+                    "quote": "The bank targets a sustainable ROE of over 15%."
                 }
             ],
             "listed_file_ids": [],
             "confidence": "high",
             "refused": false,
             "refusal_reason": null
+        }
+    },
+    {
+        "user_query": "Compare Apple and Microsoft using my knowledge base.",
+        "llm_output": {
+            "answer_md": "I'm sorry, I cannot find any information about Apple or Microsoft in the provided company documents. My current knowledge base primarily contains information on Indian financial and technology entities like ICICI Bank, HCL Technologies, and Sun Pharmaceutical Industries.",
+            "intent": "rag",
+            "answer_type": "unknown",
+            "citations": [],
+            "listed_file_ids": [],
+            "confidence": "low",
+            "refused": true,
+            "refusal_reason": "not_in_docs"
         }
     }
 ]

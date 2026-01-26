@@ -8,16 +8,17 @@ to trigger either casual or knowledge base tools.
 Usage:
     PYTHONPATH=. python scripts/tests/debug_rag_flow.py
 """
-from backend.services.rag import RAGService
-import os
-import sys
-import logging
 from dotenv import load_dotenv
+import logging
+import sys
+import os
+from backend.services.rag import RAGService
 import warnings
 
 # Suppress annoying library-level warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pymilvus")
 warnings.filterwarnings("ignore", message="The 'validate_default' attribute")
+
 
 # 1. Add repo root to path so we can import backend
 sys.path.append(os.getcwd())
@@ -55,8 +56,8 @@ def debug_query():
 
     print("\n>>> Query Finished. Result Intent:",
           result.get("llm", {}).get("intent"))
-    print(">>> Answer Preview:", result.get(
-        "llm", {}).get("answer_md")[:100] + "...")
+    print(">>> Answer Full Output:\n")
+    print(result.get("llm", {}).get("answer_md"))
 
 
 if __name__ == "__main__":
