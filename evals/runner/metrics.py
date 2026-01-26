@@ -53,10 +53,11 @@ def compute_recall_all_at_k(
 
 
 def detect_sources_section(answer_text: str) -> bool:
-    """Check if the answer contains a Sources section."""
+    """Check if the answer contains a Sources section (### Sources or **Sources:**)."""
     if not answer_text:
         return False
-    return bool(re.search(r"\*\*Sources\s*:\*\*", answer_text, re.IGNORECASE))
+    # Support both markdown header and bolded text
+    return bool(re.search(r"(?:###|\*\*)\s*Sources\s*(?::|)", answer_text, re.IGNORECASE))
 
 
 def count_citations(answer_text: str) -> int:
@@ -67,7 +68,7 @@ def count_citations(answer_text: str) -> int:
     if not answer_text:
         return 0
     match = re.search(
-        r"\*\*Sources\s*:\*\*\s*(.*)", answer_text, re.IGNORECASE | re.DOTALL
+        r"(?:###|\*\*)\s*Sources\s*(?::|)\s*(.*)", answer_text, re.IGNORECASE | re.DOTALL
     )
     if not match:
         return 0

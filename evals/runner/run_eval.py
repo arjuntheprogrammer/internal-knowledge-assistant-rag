@@ -15,7 +15,8 @@ Usage:
 
 from evals.runner.schema import EvalResult, EvalSample, EvalSummary
 from evals.runner.metrics import compute_metrics, compute_summary
-from evals.runner.adapters import RAGAdapter, OpikAdapter
+from evals.runner.rag_adapter import RAGAdapter
+from evals.runner.opik.adapter import OpikAdapter
 from dotenv import load_dotenv
 import argparse
 import json

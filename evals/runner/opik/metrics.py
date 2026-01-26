@@ -1,6 +1,6 @@
 """
 Custom Opik metrics for RAG evaluation.
-Wraps deterministic metric functions from .metrics into Opik BaseMetric classes.
+Wraps deterministic metric functions from runner.metrics into Opik BaseMetric classes.
 """
 
 import logging
@@ -28,7 +28,7 @@ except ImportError:
             self.reason = reason
             self.scoring_failed = scoring_failed
 
-from .metrics import (
+from ..metrics import (
     compute_recall_at_k,
     compute_recall_all_at_k,
     detect_sources_section,
@@ -93,13 +93,8 @@ class HasSourcesMetric(BaseMetric):
         super().__init__(name="Has Sources Section")
 
     def score(self, output: str, **kwargs: Any) -> ScoreResult:
-        # Use structured data if available
-        structured = kwargs.get("structured", {})
-        if structured.get("is_structured"):
-            has_sources = structured.get("citations_count", 0) > 0
-        else:
-            has_sources = detect_sources_section(output)
-
+        # We always want to check the text for the Sources section
+        has_sources = detect_sources_section(output or "")
         return ScoreResult(name=self.name, value=1.0 if has_sources else 0.0)
 
 
@@ -111,13 +106,14 @@ class CitationComplianceMetric(BaseMetric):
         text = output or ""
         expected_count = expected_output.get("required_citations_count", 0)
 
-        # Use structured data if available
+        # Always check the text for the Sources section
+        has_sources = detect_sources_section(text)
+
+        # Use structured data for citation count if available, otherwise check text
         structured = kwargs.get("structured", {})
         if structured.get("is_structured"):
             actual_count = structured.get("citations_count", 0)
-            has_sources = actual_count > 0  # Simplified for structured
         else:
-            has_sources = detect_sources_section(text)
             actual_count = count_citations(text)
 
         score = 0.0
