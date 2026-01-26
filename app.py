@@ -87,6 +87,7 @@ def create_app(config_name="default"):
 
     @app.route("/robots.txt")
     @app.route("/sitemap.xml")
+    @app.route("/sw.js")
     def static_from_root():
         from flask import send_from_directory
 

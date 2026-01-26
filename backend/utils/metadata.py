@@ -58,8 +58,14 @@ def normalize_metadata(
     if page_number is not None:
         meta["page_number"] = page_number
 
-    if source:
-        meta["source"] = source
+    # extraction_method is the new canonical field for 'source'
+    extraction_method = source or meta.get(
+        "extraction_method") or meta.get("source")
+    if extraction_method:
+        meta["extraction_method"] = extraction_method
+        meta["source"] = extraction_method  # Keep for backward compatibility
+
+    meta["revision_id"] = resolve_revision_id(meta)
 
     return meta
 

@@ -9,7 +9,7 @@ This is a premium AI-powered internal knowledge assistant designed to help you a
 1. **UI**: Modern chat interface with glassmorphism and real-time feedback.
 2. **Backend**: Flask (Python) with Gunicorn (Production).
 3. **Frontend**: HTML5, Vanilla CSS, and JavaScript.
-4. **RAG**: LlamaIndex (Hybrid search: Vector + BM25).
+4. **RAG**: LlamaIndex (Hybrid search: Vector + BM25) with **Structured JSON Output** for deterministic evaluation.
 5. **Database**: Google Cloud Firestore (Managed).
 6. **Vector Store**: Zilliz Cloud (Managed Milvus).
 7. **Chat Model**: OpenAI (GPT-4.1 mini).
@@ -21,27 +21,53 @@ This is a premium AI-powered internal knowledge assistant designed to help you a
 
 ```mermaid
 flowchart TD
-    subgraph Auth["🔐 Authentication"]
-        A[User] --> B[Google Sign-In]
-        B --> C[Firebase Auth]
+    subgraph Auth["🔐 1. Authentication & Security"]
+        A[User Access] --> B[Google Sign-In]
+        B --> C[Firebase Authentication]
+        C --> D[Retrieve ID Token]
+        D --> E[Backend Verify Token]
     end
 
-    subgraph Setup["⚙️ Configuration"]
-        C --> D[Enter OpenAI API Key]
-        D --> E[Select Google Drive Files]
-        E --> F[Build Database]
+    subgraph Config["⚙️ 2. User Configuration"]
+        E --> F[Enter OpenAI API Key]
+        F --> G[Validate OpenAI Key]
+        G --> H[Authorize Google Drive]
+        H --> I[Select Specific Files/Folders]
     end
 
-    subgraph Chat["💬 Chat"]
-        F --> G[Ask Question]
-        G --> H{Router}
-        H -->|Casual| I[Direct LLM Response]
-        H -->|Knowledge| J[Hybrid Retrieval]
-        J --> K[Rerank & Synthesize]
-        K --> L[Answer + Citations]
+    subgraph Indexing["🗂️ 3. Knowledge Base Construction"]
+        I --> J[Trigger Indexing Service]
+        J --> K[Download Documents via Drive API]
+        K --> L{Text Extraction}
+        L -->|Digital PDF/Docx| M[Extract Raw Text]
+        L -->|Image/Scanned PDF| N[Fallback: Tesseract OCR]
+        M & N --> O[Sentence Splitting & Node Chunking]
+        O --> P[Generate OpenAI Embeddings]
+        P --> Q[Upload to Zilliz Cloud / Milvus]
+        Q --> R[Update Catalog in Firestore]
     end
 
-    L --> G
+    subgraph Chat["💬 4. Intelligent Query Pipeline"]
+        R --> S[User Asks Question]
+        S --> T{Intent Classifier / Router}
+        T -->|Casual| U[Casual Chat: LLM Direct Response]
+        T -->|Knowledge| V[Knowledge Retrieval: Hybrid Engine]
+
+        subgraph Retrieval["🔍 Hybrid Search"]
+            V --> V1[Semantic Vector Search]
+            V --> V2[Keyword BM25 Search]
+            V1 & V2 --> V3[Reciprocal Rank Fusion]
+            V3 --> V4[LLM-Based Reranking]
+        end
+
+        V4 --> W[Augment Prompt with Context]
+        W --> X[Generate Structured JSON Response]
+        X --> Y[Parse Citations & Source Mapping]
+    end
+
+    Y --> Z[Interactive UI Display + Clickable Sources]
+    U --> Z
+    Z --> S
 ```
 
 1. User signs in with Google via Firebase Auth.
@@ -59,7 +85,7 @@ flowchart TD
 - **Scalable Multi-Tenancy**: Built using a shared Zilliz Cloud (Milvus) collection with metadata isolation, ensuring high performance regardless of the number of users.
 - **Hybrid Retrieval Engine**: Combines **Vector Search** (for semantic meaning) and **BM25 Search** (for keyword exact matches) to provide the most accurate context.
 - **Intelligent OCR & Document Parsing**: Advanced multi-stage processing for PDFs and images. The system extracts digital text where available and automatically falls back to **Tesseract OCR** for scanned documents, ensuring comprehensive knowledge coverage with built-in caching and multi-threaded performance.
-- **Advanced Observability with Opik**: Deeply integrated **Opik** tracing for debugging, evaluating, and monitoring LLM applications. Track every step of the RAG pipeline with production-ready dashboards and evaluation metrics.
+- **Advanced Observability with Opik**: Deeply integrated **Opik** tracing and **Prompt Library**. Track every step of the RAG pipeline, manage prompt versions, and run high-concurrency evaluations.
 - **Automated Synchronization**: Background scheduler periodically polls your Google Drive to keep the knowledge base up-to-date.
 
 ## Not Implemented Yet
@@ -93,18 +119,16 @@ Learn more about the retrieval pipeline and optimizations in the **[RAG Document
 
 ---
 
-## Analytics and Monitoring (Opik & PostHog)
+## Analytics and Monitoring (Opik)
 
 ### Opik
 
-Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic workflows with tracing, eval metrics, and production-ready dashboards. Tracing is enabled by default in production.
+Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic workflows with tracing, eval metrics, and production-ready dashboards.
+- **Prompt Library**: Centralized management and versioning of LLM prompts.
+- **Structured Evals**: Automated evaluation pipeline with asynchronous execution and structured metadata mapping.
+- **Trace Attribution**: Every query is linked to the exact prompt version and hash used.
 
 > **Migration Note**: LangSmith was replaced with Opik for observability.
-
-### PostHog (Coming Soon)
-Token usage (Input, Thinking, Output) and user behavior analytics are integrated via PostHog.
-To enable, add your API key to the Cloud Run environment variables:
-`POSTHOG_API_KEY=your_key_here`
 
 ---
 

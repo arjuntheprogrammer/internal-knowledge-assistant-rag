@@ -1,3 +1,10 @@
+"""
+RAG Test Utilities.
+
+This module provides shared helper functions for the RAG testing suite,
+including authentication token retrieval, API request handling, response
+validation, and environment loading.
+"""
 import json
 import os
 import re
@@ -24,7 +31,8 @@ def request_json(method, url, payload=None, headers=None, timeout=120):
     data = None
     if payload is not None:
         data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers=headers or {}, method=method)
+    req = urllib.request.Request(
+        url, data=data, headers=headers or {}, method=method)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             body = resp.read().decode("utf-8")

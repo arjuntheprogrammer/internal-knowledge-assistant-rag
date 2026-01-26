@@ -90,10 +90,10 @@ def load_pdf_documents(
                 text,
                 metadata,
                 page_number,
-                source="digital_text",
+                extraction_method="digital_text",
             )
             if doc:
-                _set_document_id(doc, file_id, page_number, "digital_text")
+                doc.id_ = file_id
                 documents.append(doc)
         else:
             pages_to_ocr.append(page_number)
@@ -175,7 +175,8 @@ def load_image_document(
                 )
             if fallback_cached is None:
                 try:
-                    fallback_processed = preprocess_image(image, fallback_config)
+                    fallback_processed = preprocess_image(
+                        image, fallback_config)
                     fallback_text, fallback_confidence = ocr_image(
                         fallback_processed, fallback_config
                     )
@@ -235,7 +236,8 @@ def _ocr_pdf_pages(
 
         for future, page_number in futures.items():
             try:
-                text, confidence = future.result(timeout=config.page_timeout_seconds)
+                text, confidence = future.result(
+                    timeout=config.page_timeout_seconds)
             except TimeoutError:
                 future.cancel()
                 logger.warning(
@@ -339,7 +341,8 @@ def _render_pdf_page(
     try:
         doc = fitz.open(file_path)
     except Exception as exc:
-        logger.warning("Failed opening PDF for rendering %s: %s", file_path, exc)
+        logger.warning(
+            "Failed opening PDF for rendering %s: %s", file_path, exc)
         return None
     try:
         page_index = page_number - 1
@@ -369,12 +372,12 @@ def _document_from_ocr(
 ) -> Optional[Document]:
     if not text or not text.strip():
         return None
-    doc = _build_document(text, metadata, page_number, source="ocr")
+    doc = _build_document(text, metadata, page_number, extraction_method="ocr")
     if doc is None:
         return None
     if confidence is not None:
         doc.metadata["confidence"] = confidence
-    _set_document_id(doc, file_id, page_number, "ocr")
+    doc.id_ = file_id
     return doc
 
 
@@ -382,15 +385,18 @@ def _build_document(
     text: str,
     metadata: Dict[str, Any],
     page_number: int,
-    source: str,
+    extraction_method: str,
 ) -> Optional[Document]:
     if not text or not text.strip():
         return None
-    normalized = normalize_metadata(metadata, page_number=page_number, source=source)
+    normalized = normalize_metadata(
+        metadata, page_number=page_number, source=extraction_method
+    )
     try:
         return Document(text=text, metadata=normalized)
     except Exception as exc:
-        logger.warning("Failed creating document for page %s: %s", page_number, exc)
+        logger.warning(
+            "Failed creating document for page %s: %s", page_number, exc)
         return None
 
 
@@ -406,9 +412,9 @@ def _resolve_mime_type(file_path: str, metadata: Dict[str, Any]) -> str:
 
 
 def _set_document_id(
-    doc: Document, file_id: str, page_number: int, source: str
+    doc: Document, file_id: str, page_number: int, extraction_method: str
 ) -> None:
     try:
-        doc.id_ = f"{file_id}_page_{page_number}_{source}"
+        doc.id_ = file_id
     except Exception:
         return

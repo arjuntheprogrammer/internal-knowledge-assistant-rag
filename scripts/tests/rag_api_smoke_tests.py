@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""
+RAG API Smoke Tests.
+
+This script performs high-level functional testing of the RAG API endpoints.
+It authenticates with the backend and runs a series of predefined test cases
+to ensure core functionality (chat, retrieval, etc.) is working as expected.
+
+Usage:
+    python3 scripts/tests/rag_api_smoke_tests.py
+"""
 import os
 import sys
 import time

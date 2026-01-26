@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""
+RAG Passport Detail Extraction Tests.
+
+This script tests the RAG system's ability to extract specific details from
+passport documents stored in Google Drive. it verifies that the LLM finds
+exact names, dates, and addresses by matching against regular expression patterns.
+
+Usage:
+    python3 scripts/tests/rag_passport_detail_tests.py
+"""
 import os
 import re
 import sys
@@ -44,9 +54,11 @@ TEST_CASES = [
 
 
 def get_indexing_ready(base_url, headers):
-    status, payload = request_json("GET", f"{base_url}/api/config", headers=headers)
+    status, payload = request_json(
+        "GET", f"{base_url}/api/config", headers=headers)
     if status != 200:
-        raise RuntimeError(f"Failed to get indexing status: HTTP {status} {payload}")
+        raise RuntimeError(
+            f"Failed to get indexing status: HTTP {status} {payload}")
     return {
         "ready": bool(payload.get("config_ready")),
         "status": payload.get("indexing", {}).get("status"),
@@ -55,7 +67,8 @@ def get_indexing_ready(base_url, headers):
 
 
 def get_config(base_url, headers):
-    status, payload = request_json("GET", f"{base_url}/api/config", headers=headers)
+    status, payload = request_json(
+        "GET", f"{base_url}/api/config", headers=headers)
     if status != 200:
         raise RuntimeError(f"Failed to get config: HTTP {status} {payload}")
     return payload

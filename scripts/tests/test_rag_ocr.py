@@ -1,4 +1,19 @@
 #!/usr/bin/env python3
+"""
+RAG OCR Functionality Tests.
+
+This script verifies the hybrid OCR/Digital-Text extraction logic for PDFs
+and images. It creates synthetic documents (purely scanned, purely digital,
+and hybrid) and ensures the OCR system correctly identifies the extraction
+method for each page while preserving metadata.
+
+Usage:
+    python3 scripts/tests/test_rag_ocr.py
+"""
+from backend.services.rag.ocr_utils import get_ocr_config
+from backend.services.rag import ocr_readers
+from PIL import Image, ImageDraw, ImageFont
+import fitz
 import os
 import sys
 import tempfile
@@ -6,12 +21,6 @@ import tempfile
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
-
-import fitz
-from PIL import Image, ImageDraw, ImageFont
-
-from backend.services.rag import ocr_readers
-from backend.services.rag.ocr_utils import get_ocr_config
 
 
 def create_text_image(path, text, size=(1200, 400)):
@@ -29,7 +38,8 @@ def create_scanned_pdf(path, text):
         img = Image.open(image_path)
         doc = fitz.open()
         page = doc.new_page(width=img.width, height=img.height)
-        page.insert_image(fitz.Rect(0, 0, img.width, img.height), filename=image_path)
+        page.insert_image(
+            fitz.Rect(0, 0, img.width, img.height), filename=image_path)
         doc.save(path)
         doc.close()
 
@@ -43,7 +53,8 @@ def create_hybrid_pdf(path, digital_text, image_text):
         page1 = doc.new_page(width=612, height=792)
         page1.insert_text((72, 72), digital_text)
         page2 = doc.new_page(width=img.width, height=img.height)
-        page2.insert_image(fitz.Rect(0, 0, img.width, img.height), filename=image_path)
+        page2.insert_image(
+            fitz.Rect(0, 0, img.width, img.height), filename=image_path)
         doc.save(path)
         doc.close()
 
@@ -66,7 +77,8 @@ def test_scanned_pdf(config):
             "mime type": "application/pdf",
             "modified at": "2024-01-01T00:00:00Z",
         }
-        docs = ocr_readers.load_pdf_documents(pdf_path, metadata, config=config)
+        docs = ocr_readers.load_pdf_documents(
+            pdf_path, metadata, config=config)
         assert docs, "Expected OCR documents for scanned PDF"
         assert any(doc.metadata.get("source") == "ocr" for doc in docs)
         assert_has_metadata(
@@ -89,7 +101,8 @@ def test_hybrid_pdf(config):
             "mime type": "application/pdf",
             "modified at": "2024-01-02T00:00:00Z",
         }
-        docs = ocr_readers.load_pdf_documents(pdf_path, metadata, config=config)
+        docs = ocr_readers.load_pdf_documents(
+            pdf_path, metadata, config=config)
         sources = {
             (doc.metadata.get("page_number"), doc.metadata.get("source"))
             for doc in docs
@@ -113,7 +126,8 @@ def test_image_ocr(config):
             "mime type": "image/png",
             "modified at": "2024-01-03T00:00:00Z",
         }
-        docs = ocr_readers.load_documents_for_file(img_path, metadata, config=config)
+        docs = ocr_readers.load_documents_for_file(
+            img_path, metadata, config=config)
         assert docs, "Expected OCR document for image"
         doc = docs[0]
         assert_has_metadata(doc, "ocr", 1)

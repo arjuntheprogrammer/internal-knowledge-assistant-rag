@@ -14,7 +14,8 @@ def log_vector_store_count(vector_store):
         if client is not None and collection_name:
             stats = client.get_collection_stats(collection_name)
             count = stats.get("row_count", 0)
-            logger.info(f"Milvus collection '{collection_name}' count: {count}")
+            logger.info(
+                f"Milvus collection '{collection_name}' count: {count}")
             return
     except Exception as exc:
         logger.warning(f"Vector store count check failed: {exc}")
@@ -38,7 +39,7 @@ def annotate_documents(documents, user_id=None):
 
 
 def build_document_catalog(documents):
-    catalog = {}
+    catalog = {}  # file_id -> {"name": doc_name, "url": url}
     for doc in documents:
         metadata = getattr(doc, "metadata", None)
         if not isinstance(metadata, dict):
@@ -49,12 +50,15 @@ def build_document_catalog(documents):
             continue
 
         drive_id = metadata.get("file_id") or metadata.get("file id")
-        url = None
-        if drive_id:
+        if not drive_id:
+            continue
+
+        if drive_id not in catalog:
             url = f"https://drive.google.com/file/d/{drive_id}/view"
-        catalog.setdefault(doc_name, url)
+            catalog[drive_id] = {"name": doc_name, "url": url}
+
     return sorted(
-        [{"name": name, "url": url} for name, url in catalog.items()],
+        list(catalog.values()),
         key=lambda item: item["name"].lower(),
     )
 

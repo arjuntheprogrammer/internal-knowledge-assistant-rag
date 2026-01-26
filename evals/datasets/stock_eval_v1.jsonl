@@ -1,0 +1,49 @@
+{"id":"q_001","query":"List all documents available in my knowledge base.","intent":"list","expected_file_ids":["15vxlJ7LtoIzNcoLs5WzZgFN3vro4B-XI","1eXQLRp5NWbWq9glPb_xokFUQQ90M04hv","1EKfuXx2SJcXcsn1Znzo9kDTMXS4FkPsd","1IAp_Rc0kvfjA1l3mx8e5OunRYhwnyQii","1w1tyWTKTl-r0lpsCX3AC4RKA95FZwrrN","17DwHlMhRo6xXaB3Uu0_v_yabh2u2nofC","1APMCMD3mYb7JdLLH-R_QoEcy7vF-SVpW","1VAtOaamvYlAqOCa6xybEORsTUMtW5RnW","1matLGSIelwbty50wH_x2OzBb6ZeGWVFu","1VnJQ-2nkN_4TgEBaFHaQPYrdbeLtl1A9"],"must_cite":false,"required_citations_count":0,"answer_style":"bullets","max_entities":10,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":false}
+
+{"id":"q_002","query":"Summarize HCL Technologies Limited in 3 bullet points.","intent":"summary","expected_file_ids":["15vxlJ7LtoIzNcoLs5WzZgFN3vro4B-XI"],"must_cite":true,"required_citations_count":1,"answer_style":"bullets","max_entities":1,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":false}
+
+{"id":"q_003","query":"What are the main risks mentioned for Sun Pharmaceutical Industries Limited?","intent":"qa","expected_file_ids":["1eXQLRp5NWbWq9glPb_xokFUQQ90M04hv"],"must_cite":true,"required_citations_count":1,"answer_style":"bullets","max_entities":1,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":false}
+
+{"id":"q_004","query":"List the pros and cons of SBI Life Insurance Company Limited.","intent":"pros_cons","expected_file_ids":["1EKfuXx2SJcXcsn1Znzo9kDTMXS4FkPsd"],"must_cite":true,"required_citations_count":1,"answer_style":"sections","max_entities":1,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":false}
+
+{"id":"q_005","query":"What does Eternal Limited do? Answer briefly.","intent":"qa","expected_file_ids":["1IAp_Rc0kvfjA1l3mx8e5OunRYhwnyQii"],"must_cite":true,"required_citations_count":1,"answer_style":"paragraph","max_entities":1,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":false}
+
+{"id":"q_006","query":"What are the advantages of Bharat Electronics Limited?","intent":"pros_cons","expected_file_ids":["1w1tyWTKTl-r0lpsCX3AC4RKA95FZwrrN"],"must_cite":true,"required_citations_count":1,"answer_style":"bullets","max_entities":1,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":false}
+
+{"id":"q_007","query":"Summarize Bajaj Finance Limited in one paragraph.","intent":"summary","expected_file_ids":["17DwHlMhRo6xXaB3Uu0_v_yabh2u2nofC"],"must_cite":true,"required_citations_count":1,"answer_style":"paragraph","max_entities":1,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":false}
+
+{"id":"q_008","query":"What are the key business drivers mentioned for ICICI Bank Limited?","intent":"qa","expected_file_ids":["1APMCMD3mYb7JdLLH-R_QoEcy7vF-SVpW"],"must_cite":true,"required_citations_count":1,"answer_style":"bullets","max_entities":1,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":true}
+
+{"id":"q_009","query":"List the pros and cons of Bajaj Auto Limited.","intent":"pros_cons","expected_file_ids":["1VAtOaamvYlAqOCa6xybEORsTUMtW5RnW"],"must_cite":true,"required_citations_count":1,"answer_style":"sections","max_entities":1,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":false}
+
+{"id":"q_010","query":"Summarize Apollo Hospitals Enterprise Limited in 5 bullet points.","intent":"summary","expected_file_ids":["1matLGSIelwbty50wH_x2OzBb6ZeGWVFu"],"must_cite":true,"required_citations_count":1,"answer_style":"bullets","max_entities":1,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":false}
+
+{"id":"q_011","query":"What are the main risks mentioned for Adani Ports and Special Economic Zone Limited?","intent":"qa","expected_file_ids":["1VnJQ-2nkN_4TgEBaFHaQPYrdbeLtl1A9"],"must_cite":true,"required_citations_count":1,"answer_style":"bullets","max_entities":1,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":false}
+
+{"id":"q_012","query":"Compare ICICI Bank Limited and SBI Life Insurance Company Limited. Use separate sections.","intent":"compare","expected_file_ids":["1APMCMD3mYb7JdLLH-R_QoEcy7vF-SVpW","1EKfuXx2SJcXcsn1Znzo9kDTMXS4FkPsd"],"must_cite":true,"required_citations_count":2,"answer_style":"sections","max_entities":2,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":false}
+
+{"id":"q_013","query":"Compare Bajaj Auto Limited and Bajaj Finance Limited in terms of strengths and risks.","intent":"compare","expected_file_ids":["1VAtOaamvYlAqOCa6xybEORsTUMtW5RnW","17DwHlMhRo6xXaB3Uu0_v_yabh2u2nofC"],"must_cite":true,"required_citations_count":2,"answer_style":"sections","max_entities":2,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":true}
+
+{"id":"q_014","query":"Compare Apollo Hospitals Enterprise Limited and Sun Pharmaceutical Industries Limited on growth outlook mentioned in the documents.","intent":"compare","expected_file_ids":["1matLGSIelwbty50wH_x2OzBb6ZeGWVFu","1eXQLRp5NWbWq9glPb_xokFUQQ90M04hv"],"must_cite":true,"required_citations_count":2,"answer_style":"sections","max_entities":2,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":true}
+
+{"id":"q_015","query":"Compare Adani Ports and Special Economic Zone Limited with Bharat Electronics Limited in terms of risks highlighted.","intent":"compare","expected_file_ids":["1VnJQ-2nkN_4TgEBaFHaQPYrdbeLtl1A9","1w1tyWTKTl-r0lpsCX3AC4RKA95FZwrrN"],"must_cite":true,"required_citations_count":2,"answer_style":"sections","max_entities":2,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":true}
+
+{"id":"q_016","query":"Compare HCL Technologies Limited and Eternal Limited: what drivers and challenges are mentioned?","intent":"compare","expected_file_ids":["15vxlJ7LtoIzNcoLs5WzZgFN3vro4B-XI","1IAp_Rc0kvfjA1l3mx8e5OunRYhwnyQii"],"must_cite":true,"required_citations_count":2,"answer_style":"sections","max_entities":2,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":true}
+
+{"id":"q_017","query":"Which documents mention regulatory or policy-related risks? List them.","intent":"aggregate","expected_file_ids":["1VnJQ-2nkN_4TgEBaFHaQPYrdbeLtl1A9","17DwHlMhRo6xXaB3Uu0_v_yabh2u2nofC","1APMCMD3mYb7JdLLH-R_QoEcy7vF-SVpW","1EKfuXx2SJcXcsn1Znzo9kDTMXS4FkPsd","1eXQLRp5NWbWq9glPb_xokFUQQ90M04hv"],"must_cite":true,"required_citations_count":1,"answer_style":"bullets","max_entities":10,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":true}
+
+{"id":"q_018","query":"Which documents mention interest rate sensitivity?","intent":"aggregate","expected_file_ids":["17DwHlMhRo6xXaB3Uu0_v_yabh2u2nofC","1APMCMD3mYb7JdLLH-R_QoEcy7vF-SVpW","1EKfuXx2SJcXcsn1Znzo9kDTMXS4FkPsd"],"must_cite":true,"required_citations_count":1,"answer_style":"bullets","max_entities":10,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":false}
+
+{"id":"q_019","query":"Which entities mention competition as a risk? List them.","intent":"aggregate","expected_file_ids":["1IAp_Rc0kvfjA1l3mx8e5OunRYhwnyQii","15vxlJ7LtoIzNcoLs5WzZgFN3vro4B-XI","1eXQLRp5NWbWq9glPb_xokFUQQ90M04hv"],"must_cite":true,"required_citations_count":1,"answer_style":"bullets","max_entities":10,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":true}
+
+{"id":"q_020","query":"Which documents mention dividend payments or being a dividend payer?","intent":"aggregate","expected_file_ids":["1VnJQ-2nkN_4TgEBaFHaQPYrdbeLtl1A9","1VAtOaamvYlAqOCa6xybEORsTUMtW5RnW","15vxlJ7LtoIzNcoLs5WzZgFN3vro4B-XI"],"must_cite":true,"required_citations_count":1,"answer_style":"bullets","max_entities":10,"is_out_of_scope":false,"must_refuse":false,"no_external_knowledge":true,"allowed_uncertainty":true}
+
+{"id":"q_021","query":"What is the CEO of Apollo Hospitals Enterprise Limited?","intent":"qa","expected_file_ids":[],"must_cite":false,"required_citations_count":0,"answer_style":"paragraph","max_entities":1,"is_out_of_scope":false,"must_refuse":true,"no_external_knowledge":true,"allowed_uncertainty":true}
+
+{"id":"q_022","query":"Give me the current stock price of ICICI Bank Limited.","intent":"qa","expected_file_ids":[],"must_cite":false,"required_citations_count":0,"answer_style":"paragraph","max_entities":1,"is_out_of_scope":false,"must_refuse":true,"no_external_knowledge":true,"allowed_uncertainty":true}
+
+{"id":"q_023","query":"Which company should I invest in based on these documents?","intent":"advice","expected_file_ids":[],"must_cite":false,"required_citations_count":0,"answer_style":"paragraph","max_entities":10,"is_out_of_scope":false,"must_refuse":true,"no_external_knowledge":true,"allowed_uncertainty":true}
+
+{"id":"q_024","query":"Compare Apple and Microsoft using my knowledge base.","intent":"compare","expected_file_ids":[],"must_cite":false,"required_citations_count":0,"answer_style":"paragraph","max_entities":0,"is_out_of_scope":true,"must_refuse":true,"no_external_knowledge":true,"allowed_uncertainty":true}
+
+{"id":"q_025","query":"Summarize Tesla from my documents.","intent":"summary","expected_file_ids":[],"must_cite":false,"required_citations_count":0,"answer_style":"paragraph","max_entities":0,"is_out_of_scope":true,"must_refuse":true,"no_external_knowledge":true,"allowed_uncertainty":true}

@@ -19,7 +19,6 @@ dependencies:
       - google-auth-oauthlib==1.2.0
       - google-api-python-client==2.187.0
       - pymilvus==2.5.0
-      - posthog>=2.4.0,<4
       - opik>=1.0.0
       - llama-index-callbacks-opik>=0.3.0
       - black==24.3.0

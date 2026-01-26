@@ -75,6 +75,31 @@ flowchart TD
    - `LLMRerank` refines top results before answer synthesis.
 5. **Answer synthesis**
    - Uses task-specific prompts for list vs non-list queries and a refine step.
+   - **Structured Output**: LLM responses are enforced as JSON matching the `LLMOutput` Pydantic model. Validations include enum coercion and few-shot grounding.
+
+## Document and Node Identity
+
+The system uses a **file-centric identity model** to ensure consistent tracking of documents and their chunks across different ingestion methods (standard vs OCR).
+
+### 1. Document ID (`Document.id_`)
+The canonical identity of any document in the system is its **Google Drive `file_id`**.
+- Even if a document is split into multiple physical chunks during OCR (one per page), they all share the same `Document.id_`.
+- This ensures that a single file in Google Drive corresponds to exactly one "logical document" in our catalog.
+
+### 2. Node ID (`node.id_`)
+Each indexed chunk (Node) has a deterministic, unique ID based on its context:
+`{file_id}#rev:{revision_id}#p:{page_number}#m:{extraction_method}#c:{chunk_index}`
+
+- **`file_id`**: Google Drive ID.
+- **`revision_id`**: The modification timestamp or version identifier.
+- **`page_number`**: The page index (1-indexed).
+- **`extraction_method`**: Either `digital_text` or `ocr`.
+- **`chunk_index`**: The sequential index of the chunk within that specific page.
+
+This deterministic approach ensures that re-indexing the same file version results in identical node IDs, preventing duplicates and enabling stable evaluation.
+
+### 3. Metadata
+All granularity (page number, extraction method, etc.) is stored in metadata rather than encoded into the document ID. This allows for clean cataloging and filtering while retaining the ability to trace an answer back to a specific page or source.
 
 ## Query routing (casual vs retrieval)
 
@@ -114,10 +139,18 @@ questions.
 Configuration is in `backend/services/rag/rag_context.py` and is supplied per
 user from Firestore (OpenAI API key + Drive file IDs).
 
+## Prompt Management
+
+Prompts are stored in the root `prompts/` directory as markdown files.
+- `versioning`: Controlled via `prompts/versions.json`.
+- `hashing`: Deterministic hashing (whitespace-insensitive) ensures Opik Prompt Library consistency.
+- `few-shot`: Examples are loaded from `prompts/examples/*.json` and dynamically injected.
+
 ## Telemetry (Opik)
 
-Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic
-workflows with tracing, eval metrics, and production-ready dashboards.
+Debug, evaluate, and monitor your LLM applications, RAG systems, and agentic workflows with tracing, eval metrics, and production-ready dashboards.
+- **Asynchronous Evaluation**: The evaluation runner (`run_eval.py`) runs queries in parallel for high performance.
+- **Metric Mapping**: Metrics are calculated from structured `LLMOutput` metadata for maximum precision.
 
 Tracing is enabled when `OPIK_API_KEY` is configured (set `OPIK_ENABLED=false`
 to disable). The callback handler lives in `backend/services/opik_tracing.py`

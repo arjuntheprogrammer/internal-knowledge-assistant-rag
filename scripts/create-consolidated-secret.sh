@@ -1,6 +1,20 @@
 #!/bin/bash
-# Script to create the consolidated app-secrets in Secret Manager
-# Run this once to set up the secret
+# ==============================================================================
+# Consolidated Secret Manager Script
+# ==============================================================================
+# This script creates or updates a single 'app-secrets' JSON blob in GCP Secret
+# Manager by fetching individual existing secrets (Firebase, OAuth, etc.) and
+# merging them with provided values.
+#
+# Prerequisites:
+#   1. Google Cloud CLI (gcloud) installed and authenticated.
+#   2. 'jq' installed (for JSON building).
+#   3. Environment variable GOOGLE_PICKER_API_KEY set.
+#
+# Usage:
+#   export GOOGLE_PICKER_API_KEY=YOUR_KEY
+#   bash scripts/create-consolidated-secret.sh
+# ==============================================================================
 
 set -e
 

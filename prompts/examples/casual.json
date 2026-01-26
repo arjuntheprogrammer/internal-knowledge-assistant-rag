@@ -1,0 +1,15 @@
+[
+    {
+        "user_query": "Hello",
+        "llm_output": {
+            "answer_md": "Hello! How can I help you today?",
+            "intent": "casual",
+            "answer_type": "direct_answer",
+            "citations": [],
+            "listed_file_ids": [],
+            "confidence": "high",
+            "refused": false,
+            "refusal_reason": null
+        }
+    }
+]
